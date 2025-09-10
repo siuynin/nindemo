@@ -41,7 +41,6 @@ Thumbs.db
 /saas-backend/.env
 
 # Database
-*.sqlite
 *.db
 
 # Temporary files

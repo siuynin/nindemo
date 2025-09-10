@@ -93,6 +93,13 @@
                         </li>
                         
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.openai.*') ? 'active' : '' }}" href="{{ route('admin.openai.index') }}">
+                                <i class="fas fa-robot me-2"></i>
+                                OpenAI Templates
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.pricing-plans.*') ? 'active' : '' }}" href="{{ route('admin.pricing-plans.index') }}">
                                 <i class="fas fa-tags me-2"></i>
                                 Gói Credit

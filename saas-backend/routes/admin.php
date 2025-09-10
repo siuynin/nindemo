@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\PricingPlanController;
 use App\Http\Controllers\Admin\UserCreditController;
 use App\Http\Controllers\Admin\AIModelController;
+use App\Http\Controllers\Admin\AdminOpenAIController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,6 +34,9 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     
     // AI Models Management
     Route::resource('models', AIModelController::class);
+    
+    // OpenAI Templates Management
+    Route::resource('openai', AdminOpenAIController::class);
     
     // Users Management
     Route::get('users', [AdminController::class, 'users'])->name('users.index');
