@@ -1,0 +1,13 @@
+/* Custom CSS File - Tùy chỉnh giao diện theo ý muốn */
+/* This file is for user customizations - File này dành cho tùy chỉnh của người dùng */
+
+/* Example customizations - Ví dụ tùy chỉnh */
+/*
+
+*/
+.tox-tinymce {
+  border: none;
+}
+.tox .tox-statusbar {
+  display: none;
+}
