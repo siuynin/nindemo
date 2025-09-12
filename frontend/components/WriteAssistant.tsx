@@ -272,11 +272,7 @@ const WriteAssistant: React.FC = () => {
       theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
       {/* Header */}
-      <div className={`p-4 border-b ${
-        theme === 'dark' 
-          ? 'bg-gray-800 border-gray-700' 
-          : 'bg-white border-gray-200'
-      }`}>
+      <div className={`p-4`}>
         <div className="flex items-center justify-between mb-3">
           <h3 className={`font-medium ${
              theme === 'dark' ? 'text-white' : 'text-gray-800'

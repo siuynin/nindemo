@@ -4,6 +4,8 @@ import Layout from './components/Layout';
 import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
 import TextToSpeech from './pages/TextToSpeech';
+import Document from './pages/Document';
+import ElevenLabs from './pages/ElevenLabs';
 import App from './App';
 
 // Wrapper component for Canvas page
@@ -51,6 +53,14 @@ export const router = createBrowserRouter([
       {
         path: 'text-to-speech',
         element: <TextToSpeech />,
+      },
+      {
+        path: 'document',
+        element: <Document />,
+      },
+      {
+        path: 'elevenlabs',
+        element: <ElevenLabs />,
       },
     ],
   },

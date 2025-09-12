@@ -30,9 +30,36 @@ export const vi = {
   // TopBar
   topbar: {
     user: 'Người dùng',
-    profile: 'Hồ sơ',
+    profile: 'Thông tin cá nhân',
     settings: 'Cài đặt',
-    logout: 'Đăng xuất'
+    logout: 'Đăng xuất',
+    login: 'Đăng nhập',
+    register: 'Đăng ký',
+    admin: 'Quản trị viên',
+    userRole: 'Người dùng',
+    loggingOut: 'Đang đăng xuất...'
+  },
+
+  // Profile Modal
+  profile: {
+    title: 'Thông tin cá nhân',
+    name: 'Họ và tên',
+    email: 'Email',
+    emailNote: 'Email không thể thay đổi',
+    phone: 'Số điện thoại',
+    avatar: 'Avatar URL',
+    role: 'Vai trò',
+    status: 'Trạng thái',
+    createdAt: 'Ngày tạo tài khoản',
+    lastLogin: 'Lần đăng nhập cuối',
+    active: 'Hoạt động',
+    inactive: 'Không hoạt động',
+    admin: 'Quản trị viên',
+    user: 'Người dùng',
+    notUpdated: 'Chưa cập nhật',
+    updateSuccess: 'Cập nhật thông tin thành công!',
+    updateError: 'Có lỗi xảy ra khi cập nhật thông tin',
+    saving: 'Đang lưu...'
   },
 
   // Homepage
@@ -90,6 +117,10 @@ export const vi = {
     textToSpeech: {
       title: 'Chuyển Văn Bản Thành Giọng Nói',
       description: 'Chuyển đổi văn bản thành giọng nói AI'
+    },
+    documents: {
+      title: 'Documents',
+      description: 'Quản lý documents và templates'
     }
   },
 
@@ -220,6 +251,34 @@ export const vi = {
     light: 'Sáng',
     dark: 'Tối',
     toggle: 'Chuyển đổi giao diện'
+  },
+
+  // Documents
+  documents: {
+    title: 'Documents',
+    subtitle: 'Quản lý documents và templates của bạn',
+    myDocuments: 'My Documents',
+    openaiTemplates: 'OpenAI Templates',
+    search: 'Tìm kiếm',
+    searchPlaceholder: 'Tìm theo tên...',
+    type: 'Loại',
+    status: 'Trạng thái',
+    share: 'Chia sẻ',
+    filters: 'Filters',
+    name: 'Tên',
+    createdAt: 'Ngày tạo',
+    actions: 'Thao tác',
+    view: 'Xem',
+    edit: 'Sửa',
+    delete: 'Xóa',
+    createNew: 'Create New',
+    noDocuments: 'Không có documents nào',
+    noTemplates: 'Không có templates nào',
+    deleteSuccess: 'Xóa document thành công',
+    deleteError: 'Không thể xóa document',
+    loadError: 'Không thể tải danh sách',
+    loginRequired: 'Cần đăng nhập',
+    loginMessage: 'Vui lòng đăng nhập để xem trang này'
   },
 
   // Errors

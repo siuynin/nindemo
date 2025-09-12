@@ -121,6 +121,13 @@
                         </li>
                         
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.generates.*') ? 'active' : '' }}" href="{{ route('admin.generates.index') }}">
+                                <i class="fas fa-magic me-2"></i>
+                                Generates Management
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.statistics') ? 'active' : '' }}" href="{{ route('admin.statistics') }}">
                                 <i class="fas fa-chart-bar me-2"></i>
                                 Thống kê

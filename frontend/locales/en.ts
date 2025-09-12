@@ -32,7 +32,34 @@ export const en = {
     user: 'User',
     profile: 'Profile',
     settings: 'Settings',
-    logout: 'Logout'
+    logout: 'Logout',
+    login: 'Login',
+    register: 'Register',
+    admin: 'Administrator',
+    userRole: 'User',
+    loggingOut: 'Logging out...'
+  },
+
+  // Profile Modal
+  profile: {
+    title: 'Profile Information',
+    name: 'Full Name',
+    email: 'Email',
+    emailNote: 'Email cannot be changed',
+    phone: 'Phone Number',
+    avatar: 'Avatar URL',
+    role: 'Role',
+    status: 'Status',
+    createdAt: 'Account Created',
+    lastLogin: 'Last Login',
+    active: 'Active',
+    inactive: 'Inactive',
+    admin: 'Administrator',
+    user: 'User',
+    notUpdated: 'Not updated',
+    updateSuccess: 'Profile updated successfully!',
+    updateError: 'An error occurred while updating profile',
+    saving: 'Saving...'
   },
 
   // Homepage
@@ -90,6 +117,10 @@ export const en = {
     textToSpeech: {
       title: 'Text to Speech',
       description: 'Convert text to AI-powered speech'
+    },
+    documents: {
+      title: 'Documents',
+      description: 'Manage documents and templates'
     }
   },
 
@@ -218,6 +249,34 @@ export const en = {
     light: 'Light',
     dark: 'Dark',
     toggle: 'Toggle theme'
+  },
+
+  // Documents
+  documents: {
+    title: 'Documents',
+    subtitle: 'Manage your documents and templates',
+    myDocuments: 'My Documents',
+    openaiTemplates: 'OpenAI Templates',
+    search: 'Search',
+    searchPlaceholder: 'Search by name...',
+    type: 'Type',
+    status: 'Status',
+    share: 'Share',
+    filters: 'Filters',
+    name: 'Name',
+    createdAt: 'Created At',
+    actions: 'Actions',
+    view: 'View',
+    edit: 'Edit',
+    delete: 'Delete',
+    createNew: 'Create New',
+    noDocuments: 'No documents found',
+    noTemplates: 'No templates found',
+    deleteSuccess: 'Document deleted successfully',
+    deleteError: 'Could not delete document',
+    loadError: 'Could not load list',
+    loginRequired: 'Login Required',
+    loginMessage: 'Please login to view this page'
   },
 
   // Errors

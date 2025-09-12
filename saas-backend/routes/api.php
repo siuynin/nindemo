@@ -23,6 +23,9 @@ Route::post('/reset-password', [App\Http\Controllers\Api\AuthController::class, 
 // Public pricing plans
 Route::get('/pricing-plans', [App\Http\Controllers\Api\PricingPlanController::class, 'index']);
 
+// ElevenLabs webhook
+Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook']);
+
 // Public AI Models routes
 Route::prefix('models')->group(function () {
     Route::get('/', [App\Http\Controllers\Api\ModelController::class, 'index']);
@@ -31,6 +34,14 @@ Route::prefix('models')->group(function () {
     Route::get('/platform/{platform}', [App\Http\Controllers\Api\ModelController::class, 'byPlatform']);
     Route::get('/type/{type}', [App\Http\Controllers\Api\ModelController::class, 'byType']);
     Route::get('/{slug}', [App\Http\Controllers\Api\ModelController::class, 'show']);
+});
+
+// Public OpenAI Templates routes (for viewing templates without authentication)
+Route::prefix('openai-templates')->group(function () {
+    Route::get('/', [App\Http\Controllers\Api\OpenAIController::class, 'index']);
+    Route::get('/filter-options', [App\Http\Controllers\Api\OpenAIController::class, 'filterOptions']);
+    Route::get('/{id}', [App\Http\Controllers\Api\OpenAIController::class, 'show']);
+    Route::get('/type/{type}', [App\Http\Controllers\Api\OpenAIController::class, 'byType']);
 });
 
 // Protected routes
@@ -48,6 +59,25 @@ Route::middleware('auth:sanctum')->group(function () {
     // File management
     Route::apiResource('files', App\Http\Controllers\Api\FileController::class);
     Route::post('/files/{file}/download', [App\Http\Controllers\Api\FileController::class, 'download']);
+    
+    // OpenAI Templates (protected routes for CRUD operations)
+    Route::prefix('openai-templates')->group(function () {
+        Route::post('/', [App\Http\Controllers\Api\OpenAIController::class, 'store']);
+        Route::put('/{id}', [App\Http\Controllers\Api\OpenAIController::class, 'update']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\OpenAIController::class, 'destroy']);
+        Route::get('/user/{userId}', [App\Http\Controllers\Api\OpenAIController::class, 'byUser']);
+    });
+    
+    // User Generates Management
+    Route::prefix('generates')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\UserGenerateController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\UserGenerateController::class, 'store']);
+        Route::get('/statistics', [App\Http\Controllers\Api\UserGenerateController::class, 'statistics']);
+        Route::get('/types', [App\Http\Controllers\Api\UserGenerateController::class, 'types']);
+         Route::get('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'show']);
+         Route::put('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'update']);
+         Route::delete('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'destroy']);
+     });
     
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption

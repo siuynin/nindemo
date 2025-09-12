@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\PricingPlanController;
 use App\Http\Controllers\Admin\UserCreditController;
 use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AdminOpenAIController;
+use App\Http\Controllers\Admin\GenerateController;
 
 /*
 |--------------------------------------------------------------------------
@@ -46,6 +47,9 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     // Files Management
     Route::get('files', [AdminController::class, 'files'])->name('files.index');
     Route::delete('files/{file}', [AdminController::class, 'deleteFile'])->name('files.destroy');
+    
+    // Generate Management
+    Route::resource('generates', GenerateController::class);
     
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');

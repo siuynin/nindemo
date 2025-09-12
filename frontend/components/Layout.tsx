@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
+import { AuthProvider } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 
@@ -43,6 +44,9 @@ const LayoutContent: React.FC = () => {
     if (pathname.includes('/text-to-speech')) {
       return 'text-to-speech';
     }
+    if (pathname.includes('/document')) {
+      return 'document';
+    }
     return 'canvas';
   };
 
@@ -76,17 +80,17 @@ const LayoutContent: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white overflow-hidden font-sans relative flex flex-col transition-colors duration-200">
-      {/* Top Bar */} 
+    <div className="w-screen h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-white font-sans relative flex flex-col transition-colors duration-200">
+      {/* Top Bar - Fixed */}
+      <TopBar />
       {/* Main Content Area */}
-      <div className="flex flex-1">
+      <div className="flex flex-1 pt-16">
         <Sidebar 
           isOpen={isSidebarOpen} 
           onToggle={handleSidebarToggle}
           currentPage={currentPage}
         /> 
-        <div className="flex-1">
-          <TopBar />
+        <div className="flex-1 overflow-y-auto xl:ml-80">
           <Outlet />
         </div>
       </div>
@@ -98,7 +102,9 @@ const Layout: React.FC = () => {
   return (
     <LanguageProvider>
       <ThemeProvider>
-        <LayoutContent />
+        <AuthProvider>
+          <LayoutContent />
+        </AuthProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

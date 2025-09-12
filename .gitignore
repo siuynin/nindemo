@@ -43,6 +43,8 @@ Thumbs.db
 
 # Database
 *.db
+# But include our main database
+!saas-backend/database/database.sqlite
 
 # Temporary files
 *.tmp

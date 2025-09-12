@@ -115,3 +115,58 @@ export interface ModelSettings {
   video: string;
   interpretation: string;
 }
+
+// ElevenLabs Voice interfaces
+export interface VerifiedLanguage {
+  language: string;
+  model_id: string;
+  accent: string;
+  locale: string;
+  preview_url: string;
+}
+
+export interface ElevenLabsVoice {
+  public_owner_id: string;
+  voice_id: string;
+  date_unix: number;
+  name: string;
+  accent: string;
+  gender: 'male' | 'female' | 'neutral';
+  age: 'young' | 'middle_aged' | 'old';
+  descriptive: string;
+  use_case: string;
+  category: string;
+  language: string;
+  locale: string;
+  description: string;
+  preview_url: string;
+  usage_character_count_1y: number;
+  usage_character_count_7d: number;
+  play_api_usage_character_count_1y: number;
+  cloned_by_count: number;
+  rate: number;
+  fiat_rate: number | null;
+  free_users_allowed: boolean;
+  live_moderation_enabled: boolean;
+  featured: boolean;
+  verified_languages: VerifiedLanguage[];
+  notice_period: number;
+  instagram_username: string | null;
+  twitter_username: string | null;
+  youtube_username: string | null;
+  tiktok_username: string | null;
+  image_url: string;
+  is_added_by_user: boolean;
+}
+
+export interface ElevenLabsVoicesResponse {
+  voices: ElevenLabsVoice[];
+}
+
+export interface VoiceFilters {
+  language?: string;
+  gender?: 'male' | 'female' | 'neutral';
+  age?: 'young' | 'middle_aged' | 'old';
+  category?: string;
+  search?: string;
+}

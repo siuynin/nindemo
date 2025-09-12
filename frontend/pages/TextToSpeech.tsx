@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { SpeakerIcon, DownloadIcon, TrashIcon, PlusIcon } from '../components/icons';
@@ -20,7 +21,8 @@ interface GeneratedFile {
 
 const TextToSpeech: React.FC = () => {
   const { theme } = useTheme();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
+  const navigate = useNavigate();
 
   const ttsServices = [
     {
@@ -112,7 +114,13 @@ const TextToSpeech: React.FC = () => {
           {ttsServices.map((service) => (
             <div
               key={service.id}
-              onClick={() => window.open(service.url, '_blank')}
+              onClick={() => {
+                if (service.id === 'elevenlabs') {
+                  navigate('/app/elevenlabs');
+                } else {
+                  window.open(service.url, '_blank');
+                }
+              }}
               className={`relative p-6 rounded-xl cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
                 theme === 'dark'
                   ? 'bg-gray-800 hover:bg-gray-750'

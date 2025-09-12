@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { PenIcon, ImageIcon, SparklesIcon, SpeakerIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
+import { PenIcon, ImageIcon, SparklesIcon, SpeakerIcon, DocumentIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
       </button>
 
       {/* Sidebar - Always visible on xl screens (1200px+), toggleable on smaller screens */}
-      <div className={`fixed top-0 left-0 h-full backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[50] xl:translate-x-0 xl:relative xl:shadow-none xl:w-80 ${
+      <div className={`fixed top-16 left-0 h-full backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[50] xl:translate-x-0 xl:w-80 ${
         theme === 'dark' 
           ? 'bg-gray-900/95 border-gray-700' 
           : 'bg-white/95 border-gray-200'
@@ -149,6 +149,48 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
                    <div className={`text-xs sm:text-sm truncate ${
                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                    }`}>{t.sidebar.textToSpeech.description}</div>
+                </div>
+              </Link>
+
+              <Link
+                to="/app/elevenlabs"
+                className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 text-left rounded-lg transition-colors ${
+                  currentPage === 'elevenlabs'
+                    ? theme === 'dark'
+                      ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
+                      : 'bg-blue-100 text-blue-700 border-l-4 border-blue-500'
+                    : theme === 'dark'
+                      ? 'text-gray-300 hover:bg-gray-800'
+                      : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <SpeakerIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium text-sm sm:text-base truncate">ElevenLabs TTS</div>
+                   <div className={`text-xs sm:text-sm truncate ${
+                     theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                   }`}>High-quality AI voice generation</div>
+                </div>
+              </Link>
+
+              <Link
+                to="/app/document"
+                className={`w-full flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-3 text-left rounded-lg transition-colors ${
+                  currentPage === 'document'
+                    ? theme === 'dark'
+                      ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
+                      : 'bg-blue-100 text-blue-700 border-l-4 border-blue-500'
+                    : theme === 'dark'
+                      ? 'text-gray-300 hover:bg-gray-800'
+                      : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <DocumentIcon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-medium text-sm sm:text-base truncate">Documents</div>
+                   <div className={`text-xs sm:text-sm truncate ${
+                     theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                   }`}>Quản lý documents & templates</div>
                 </div>
               </Link>
 
