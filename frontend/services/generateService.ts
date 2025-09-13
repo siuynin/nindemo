@@ -146,6 +146,38 @@ class GenerateService {
   async getTypes(): Promise<{ success: boolean; data: string[] }> {
     return this.makeRequest(`${this.baseUrl}/types`);
   }
+
+  // Method to get download URL with proper authentication
+  getDownloadUrl(id: number): string {
+    const token = authService.getToken();
+    const baseUrl = `${this.baseUrl}/${id}/download`;
+    return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
+  }
+
+  // Method to download audio file as blob
+  async downloadGenerate(id: number): Promise<Blob> {
+    const token = authService.getToken();
+    
+    const headers: Record<string, string> = {
+      'Accept': 'audio/*,*/*',
+      ...(token && { 'Authorization': `Bearer ${token}` }),
+    };
+
+    const response = await fetch(`${this.baseUrl}/${id}/download`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        authService.logout();
+        throw new Error('Unauthorized');
+      }
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return response.blob();
+  }
 }
 
 export const generateService = new GenerateService();

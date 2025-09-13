@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 
 /*
 |--------------------------------------------------------------------------
@@ -25,6 +26,58 @@ Route::get('/pricing-plans', [App\Http\Controllers\Api\PricingPlanController::cl
 
 // ElevenLabs webhook
 Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook']);
+
+// Debug route
+Route::get('/debug/generates', function() {
+    $generates = App\Models\Generate::all();
+    return response()->json([
+        'generates' => $generates->map(function($g) {
+            return [
+                'id' => $g->id,
+                'user_id' => $g->user_id,
+                'status' => $g->status,
+                'result_url' => $g->result_url
+            ];
+        })
+    ]);
+});
+
+// Debug users route
+Route::get('/debug/users', function() {
+    $users = App\Models\User::all(['id', 'name', 'email']);
+    return response()->json([
+        'users' => $users
+    ]);
+});
+
+// Debug current user route
+Route::middleware('auth:sanctum')->get('/debug/current-user', function(Request $request) {
+    $user = Auth::user();
+    return response()->json([
+        'user_id' => $user->id,
+        'user_email' => $user->email,
+        'user_name' => $user->name
+    ]);
+});
+
+// Debug user generates
+Route::middleware('auth:sanctum')->get('/debug/my-generates', function(Request $request) {
+    $user = Auth::user();
+    $generates = App\Models\Generate::where('user_id', $user->id)->get(['id', 'user_id', 'status', 'result_url', 'name']);
+    return response()->json([
+        'current_user_id' => $user->id,
+        'generates' => $generates
+    ]);
+});
+
+// Webhook endpoints for testing
+Route::prefix('webhooks')->group(function () {
+    Route::post('/test', [App\Http\Controllers\WebhookController::class, 'test']);
+    Route::post('/handle', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
+    Route::post('/payment', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
+    Route::post('/user', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
+    Route::post('/elevenlabs', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
+});
 
 // Public AI Models routes
 Route::prefix('models')->group(function () {
@@ -77,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
          Route::get('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'show']);
          Route::put('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'update']);
          Route::delete('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'destroy']);
+         Route::get('/{id}/download', [App\Http\Controllers\Api\UserGenerateController::class, 'download']);
      });
     
     // Note: Admin functionality is handled through web routes with Blade views

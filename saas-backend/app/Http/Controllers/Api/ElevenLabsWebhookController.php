@@ -46,23 +46,37 @@ class ElevenLabsWebhookController extends Controller
 
             // Update the generate record based on the webhook status
             if ($status === 'done' && $audioUrl) {
-                // Download and store the audio file
+                // Download and store the audio file to AWS S3
                 $audioContent = file_get_contents($audioUrl);
                 if ($audioContent !== false) {
                     $fileName = 'audio/' . $generate->id . '_' . time() . '.mp3';
-                    Storage::disk('public')->put($fileName, $audioContent);
                     
-                    $generate->update([
-                        'status' => 'completed',
-                        'file_patch' => Storage::url($fileName),
-                        'result_url' => Storage::url($fileName),
-                        'completed_at' => now()
-                    ]);
+                    // Store to AWS S3
+                    $s3Path = Storage::disk('s3')->put($fileName, $audioContent);
                     
-                    Log::info('ElevenLabs webhook: Audio saved successfully', [
-                        'generate_id' => $generate->id,
-                        'file_path' => $fileName
-                    ]);
+                    if ($s3Path) {
+                        // Get the full S3 URL
+                        $s3Url = Storage::disk('s3')->url($fileName);
+                        
+                        $generate->update([
+                            'status' => 'completed',
+                            'file_patch' => $s3Url,
+                            'result_url' => $s3Url,
+                            'completed_at' => now()
+                        ]);
+                        
+                        Log::info('ElevenLabs webhook: Audio saved to S3 successfully', [
+                            'generate_id' => $generate->id,
+                            'file_path' => $fileName,
+                            's3_url' => $s3Url
+                        ]);
+                    } else {
+                        Log::error('ElevenLabs webhook: Failed to upload to S3', ['file_name' => $fileName]);
+                        $generate->update([
+                            'status' => 'failed',
+                            'error_message' => 'Failed to upload audio file to S3'
+                        ]);
+                    }
                 } else {
                     Log::error('ElevenLabs webhook: Failed to download audio', ['audio_url' => $audioUrl]);
                     $generate->update([

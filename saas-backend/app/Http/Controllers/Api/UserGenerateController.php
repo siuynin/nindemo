@@ -292,4 +292,67 @@ class UserGenerateController extends Controller
             'data' => $types
         ]);
     }
+
+    /**
+     * Download the generated audio file.
+     */
+    public function download(string $id)
+    {
+        $generate = Generate::where('user_id', Auth::id())->find($id);
+
+        if (!$generate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Generate not found'
+            ], 404);
+        }
+
+        if (!$generate->result_url) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No audio file available for this generate'
+            ], 404);
+        }
+
+        // If result_url is a full URL (from ElevenLabs), proxy the request
+        if (filter_var($generate->result_url, FILTER_VALIDATE_URL)) {
+            try {
+                $response = file_get_contents($generate->result_url);
+                
+                if ($response === false) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to fetch audio file'
+                    ], 500);
+                }
+
+                return response($response, 200, [
+                    'Content-Type' => 'audio/mpeg',
+                    'Content-Disposition' => 'attachment; filename="' . $generate->name . '.mp3"',
+                    'Cache-Control' => 'no-cache, must-revalidate'
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error downloading audio: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        // If result_url is a local file path
+        $filePath = ltrim($generate->result_url, '/');
+        // Remove 'storage/' prefix if it exists since we're already in storage/app
+        $filePath = preg_replace('/^storage\//', '', $filePath);
+        
+        // Check if file exists in storage/app directory
+        $fullPath = storage_path('app/' . $filePath);
+        
+        if (file_exists($fullPath)) {
+            return response()->download($fullPath, $generate->name . '.mp3');
+        }
+        return response()->json([
+            'success' => false,
+            'message' => 'Audio file not found'
+        ], 404);
+    }
 }

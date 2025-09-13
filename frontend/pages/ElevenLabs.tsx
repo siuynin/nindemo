@@ -4,16 +4,19 @@ import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { LoadingSpinner } from '../components/icons'; 
 import generateService from '../services/generateService';
-import { SpeakerIcon, PlayIcon, PauseIcon } from '../components/icons';
+import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon } from '../components/icons';
 import AuthModal from '../components/AuthModal';
 import VoiceSelectionModal from '../components/VoiceSelectionModal';
 import { ElevenLabsVoice } from '../types';
 
-interface VoiceSettings {
-  stability: number;
-  similarity: number;
-  style: number;
-  speakerBoost: boolean;
+interface Generate {
+  id: number;
+  name: string;
+  status: string;
+  created_at: string;
+  credit_cost: number;
+  task_id?: string;
+  result_url?: string;
 }
 
 const ElevenLabs: React.FC = () => {
@@ -34,12 +37,7 @@ const ElevenLabs: React.FC = () => {
   
   const [selectedVoice, setSelectedVoice] = useState<ElevenLabsVoice | null>(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
-  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
-    stability: 50,
-    similarity: 75,
-    style: 0,
-    speakerBoost: false
-  });
+  const [userGenerates, setUserGenerates] = useState<Generate[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
@@ -68,13 +66,42 @@ const ElevenLabs: React.FC = () => {
     }));
   };
 
-  // Handle voice settings changes
-  const handleSettingChange = (setting: keyof VoiceSettings, value: number | boolean) => {
-    setVoiceSettings(prev => ({
-      ...prev,
-      [setting]: value
-    }));
+
+
+  // Fetch user generates
+  const fetchUserGenerates = async () => {
+    console.log('Auth status:', { isAuthenticated, user: user?.email });
+    if (!isAuthenticated || !user) {
+      console.log('User not authenticated, skipping fetch');
+      return;
+    }
+    
+    try {
+      console.log('Fetching user generates...');
+      const response = await generateService.getGenerates({
+        type: 'audio',
+        per_page: 10
+      });
+      
+      console.log('API Response:', response);
+      
+      if (response.success && response.data) {
+        console.log('Setting userGenerates:', response.data);
+        setUserGenerates(response.data);
+      } else {
+        console.log('No data or unsuccessful response:', response);
+        setUserGenerates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user generates:', error);
+      setUserGenerates([]);
+    }
   };
+
+  // Load user generates on component mount and auth change
+  useEffect(() => {
+    fetchUserGenerates();
+  }, [isAuthenticated, user]);
 
   // Handle voice preview
   const handleVoicePreview = (voiceId: string) => {
@@ -150,13 +177,7 @@ const ElevenLabs: React.FC = () => {
         content: formData.content.trim(),
         type: 'audio',
         status: 'pending',
-        voice_id: selectedVoice.voice_id,
-        voice_settings: {
-          stability: voiceSettings.stability / 100,
-          similarity_boost: voiceSettings.similarity / 100,
-          style: voiceSettings.style / 100,
-          use_speaker_boost: voiceSettings.speakerBoost
-        }
+        voice_id: selectedVoice.voice_id
       });
       
       if (!generateResponse.success || !generateResponse.data.id) {
@@ -175,15 +196,10 @@ const ElevenLabs: React.FC = () => {
       
       showToast(`Yêu cầu tạo audio đã được gửi thành công! Task ID: ${generateResponse.data.task_id || 'N/A'}`, 'success');
       
-      // Reset form
+      // Reset form and refresh generates list
       setFormData({ name: '', content: '' });
       setSelectedVoice(null);
-      setVoiceSettings({
-        stability: 50,
-        similarity: 75,
-        style: 0,
-        speakerBoost: false
-      });
+      fetchUserGenerates();
     } catch (error) {
       console.error('Error in submission process:', error);
       showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
@@ -217,10 +233,10 @@ const ElevenLabs: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-8">
             {/* Left Column - Form */}
             <div className="space-y-6">
-              {/* Project Name */}
+              {/* Project Information */}
               <div className={`p-6 rounded-xl ${
                 theme === 'dark' ? 'bg-gray-800' : 'bg-white'
               } shadow-lg`}>
@@ -245,6 +261,77 @@ const ElevenLabs: React.FC = () => {
                       }`}
                       required
                     />
+                  </div>
+
+                  {/* Voice Selection */}
+                  <div>
+                    <label className={`block text-sm font-medium mb-2 ${
+                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                    }`}>
+                      Select Voice *
+                    </label>
+                    
+                    {/* Selected Voice Display */}
+                    {selectedVoice ? (
+                      <div className={`p-4 rounded-lg border mb-2 ${
+                        theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+                      }`}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-sm mb-1">{selectedVoice.name}</h4>
+                            <p className={`text-xs ${
+                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                            }`}>
+                              {selectedVoice.language} • {selectedVoice.gender} • {selectedVoice.age}
+                            </p>
+                            <p className={`text-xs mt-1 ${
+                              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
+                            }`}>
+                              {selectedVoice.description}
+                            </p>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => handleVoicePreview(selectedVoice.voice_id)}
+                              className={`p-2 rounded-full transition-colors ${
+                                theme === 'dark'
+                                  ? 'hover:bg-gray-600 text-gray-300'
+                                  : 'hover:bg-gray-200 text-gray-600'
+                              }`}
+                            >
+                              {isPlaying === selectedVoice.voice_id ? (
+                                <PauseIcon className="w-4 h-4" />
+                              ) : (
+                                <PlayIcon className="w-4 h-4" />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className={`p-4 rounded-lg border mb-2 text-center ${
+                        theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'
+                      }`}>
+                        <p className="text-sm">Chưa chọn voice nào</p>
+                      </div>
+                    )}
+                    
+                    {/* Voice Selection Button */}
+                    <button
+                      type="button"
+                      onClick={() => setIsVoiceModalOpen(true)}
+                      className={`w-full p-3 rounded-lg border-2 border-dashed transition-colors ${
+                        theme === 'dark'
+                          ? 'border-gray-600 hover:border-gray-500 text-gray-300 hover:bg-gray-700'
+                          : 'border-gray-300 hover:border-gray-400 text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-center space-x-2">
+                        <SpeakerIcon className="w-5 h-5" />
+                        <span>{selectedVoice ? 'Thay đổi Voice' : 'Chọn Voice'}</span>
+                      </div>
+                    </button>
                   </div>
                   
                   <div>
@@ -272,202 +359,168 @@ const ElevenLabs: React.FC = () => {
                       {formData.content.length} characters
                     </p>
                   </div>
-                </div>
-              </div>
-
-              {/* Voice Settings */}
-              <div className={`p-6 rounded-xl ${
-                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg`}>
-                <h2 className="text-xl font-semibold mb-4">Voice Settings</h2>
-                <div className="space-y-6">
-                  {/* Stability */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        Stability: {voiceSettings.stability}%
-                      </label>
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        More stable
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={voiceSettings.stability}
-                      onChange={(e) => handleSettingChange('stability', parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                  </div>
-
-                  {/* Similarity */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        Similarity: {voiceSettings.similarity}%
-                      </label>
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        High
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={voiceSettings.similarity}
-                      onChange={(e) => handleSettingChange('similarity', parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                  </div>
-
-                  {/* Style Exaggeration */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
-                        Style Exaggeration: {voiceSettings.style}%
-                      </label>
-                      <span className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
-                        None
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={voiceSettings.style}
-                      onChange={(e) => handleSettingChange('style', parseInt(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                  </div>
-
-                  {/* Speaker Boost */}
-                  <div className="flex items-center justify-between">
-                    <label className={`text-sm font-medium ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Speaker Boost
-                    </label>
+                  
+                  {/* Generate Button */}
+                  <div className="flex justify-center mt-6">
                     <button
-                      type="button"
-                      onClick={() => handleSettingChange('speakerBoost', !voiceSettings.speakerBoost)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        voiceSettings.speakerBoost ? 'bg-blue-600' : 'bg-gray-200'
+                      type="submit"
+                      disabled={isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice}
+                      className={`px-8 py-4 rounded-lg font-semibold text-white transition-all ${
+                        isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice
+                          ? 'bg-gray-400 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transform hover:scale-105'
                       }`}
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          voiceSettings.speakerBoost ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {isLoading ? (
+                        <div className="flex items-center space-x-2">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                          <span>Generating...</span>
+                        </div>
+                      ) : (
+                        'Generate Speech'
+                      )}
                     </button>
                   </div>
                 </div>
               </div>
+
+
             </div>
 
-            {/* Right Column - Voice Selection */}
+            {/* Right Column - Recent Audio Generates */}
             <div className={`p-6 rounded-xl ${
               theme === 'dark' ? 'bg-gray-800' : 'bg-white'
             } shadow-lg`}>
-              <h2 className="text-xl font-semibold mb-4">Select Voice</h2>
+              <h2 className="text-xl font-semibold mb-4">Recent Audio Generates</h2>
               
-              {/* Selected Voice Display */}
-              {selectedVoice ? (
-                <div className={`p-4 rounded-lg border mb-4 ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+              {!isAuthenticated || !user ? (
+                <div className={`p-8 text-center ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-sm mb-1">{selectedVoice.name}</h4>
-                      <p className={`text-xs ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                      }`}>
-                        {selectedVoice.language} • {selectedVoice.gender} • {selectedVoice.age}
-                      </p>
-                      <p className={`text-xs mt-1 ${
-                        theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                      }`}>
-                        {selectedVoice.description}
-                      </p>
+                  <SpeakerIcon className={`w-12 h-12 mx-auto mb-3 ${
+                    theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
+                  }`} />
+                  <p className="text-sm">Vui lòng đăng nhập để xem lịch sử</p>
+                  <button
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                        : 'bg-blue-500 hover:bg-blue-600 text-white'
+                    }`}
+                  >
+                    Đăng nhập
+                  </button>
+                </div>
+              ) : userGenerates.length > 0 ? (
+                <div className="space-y-3">
+                  {userGenerates.map((generate) => (
+                    <div key={generate.id} className={`p-4 rounded-lg border ${
+                      theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm mb-1 truncate">{generate.name}</h4>
+                          <p className={`text-xs mb-2 ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
+                          }`}>
+                            {new Date(generate.created_at).toLocaleDateString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
+                            generate.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                            generate.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            generate.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                            'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                          }`}>
+                            {generate.status === 'processing' ? 'Đang xử lý' :
+                             generate.status === 'completed' ? 'Hoàn thành' :
+                             generate.status === 'failed' ? 'Thất bại' :
+                             generate.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-2 ml-2">
+                          {generate.status === 'completed' && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    // Use blob URL for better compatibility and authentication
+                                    const audioBlob = await generateService.downloadGenerate(generate.id);
+                                    const audioUrl = URL.createObjectURL(audioBlob);
+                                    const audio = new Audio(audioUrl);
+                                    
+                                    audio.onended = () => {
+                                      URL.revokeObjectURL(audioUrl); // Clean up blob URL
+                                    };
+                                    
+                                    await audio.play();
+                                  } catch (error) {
+                                    console.error('Error playing audio:', error);
+                                    showToast('Không thể phát audio', 'error');
+                                  }
+                                }}
+                                className={`p-2 rounded-full transition-colors ${
+                                  theme === 'dark'
+                                    ? 'hover:bg-gray-600 text-gray-300'
+                                    : 'hover:bg-gray-200 text-gray-600'
+                                }`}
+                                title="Play audio"
+                              >
+                                <PlayIcon className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    const audioBlob = await generateService.downloadGenerate(generate.id);
+                                    const url = URL.createObjectURL(audioBlob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${generate.name}.mp3`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                  } catch (error) {
+                                    console.error('Error downloading audio:', error);
+                                    showToast('Không thể tải xuống audio', 'error');
+                                  }
+                                }}
+                                className={`p-2 rounded-full transition-colors ${
+                                  theme === 'dark'
+                                    ? 'hover:bg-gray-600 text-gray-300'
+                                    : 'hover:bg-gray-200 text-gray-600'
+                                }`}
+                                title="Download audio"
+                              >
+                                <DownloadIcon className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => handleVoicePreview(selectedVoice.voice_id)}
-                        className={`p-2 rounded-full transition-colors ${
-                          theme === 'dark'
-                            ? 'hover:bg-gray-600 text-gray-300'
-                            : 'hover:bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {isPlaying === selectedVoice.voice_id ? (
-                          <PauseIcon className="w-4 h-4" />
-                        ) : (
-                          <PlayIcon className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               ) : (
-                <div className={`p-4 rounded-lg border mb-4 text-center ${
-                  theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'
+                <div className={`p-8 text-center ${
+                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                 }`}>
-                  <p className="text-sm">Chưa chọn voice nào</p>
+                  <SpeakerIcon className={`w-12 h-12 mx-auto mb-3 ${
+                    theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
+                  }`} />
+                  <p className="text-sm">Chưa có audio generates nào</p>
+                  <p className="text-xs mt-1">Tạo audio đầu tiên của bạn!</p>
                 </div>
               )}
-              
-              {/* Voice Selection Button */}
-              <button
-                type="button"
-                onClick={() => setIsVoiceModalOpen(true)}
-                className={`w-full p-3 rounded-lg border-2 border-dashed transition-colors ${
-                  theme === 'dark'
-                    ? 'border-gray-600 hover:border-gray-500 text-gray-300 hover:bg-gray-700'
-                    : 'border-gray-300 hover:border-gray-400 text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center justify-center space-x-2">
-                  <SpeakerIcon className="w-5 h-5" />
-                  <span>{selectedVoice ? 'Thay đổi Voice' : 'Chọn Voice'}</span>
-                </div>
-              </button>
             </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="flex justify-center">
-            <button
-              type="submit"
-              disabled={isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice}
-              className={`px-8 py-4 rounded-lg font-semibold text-white transition-all ${
-                isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transform hover:scale-105'
-              }`}
-            >
-              {isLoading ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                  <span>Generating...</span>
-                </div>
-              ) : (
-                'Generate Speech'
-              )}
-            </button>
           </div>
 
           {/* Generate Result Display */}

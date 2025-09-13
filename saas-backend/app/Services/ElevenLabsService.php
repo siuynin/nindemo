@@ -21,30 +21,22 @@ class ElevenLabsService
      *
      * @param string $text
      * @param string $voiceId
-     * @param array $voiceSettings
      * @return array
      */
-    public function textToSpeech($text, $voiceId = 'pNInz6obpgDQGcFmaJgB', $voiceSettings = [])
+    
+    public function textToSpeech($text, $voiceId = 'pNInz6obpgDQGcFmaJgB')
     {
         try {
             if (!$this->apiKey) {
                 throw new Exception('ElevenLabs API key not configured');
             }
 
-            $defaultVoiceSettings = [
-                'stability' => 0.5,
-                'similarity_boost' => 0.5,
-                'style' => 0.0
-            ];
-
-            $voiceSettings = array_merge($defaultVoiceSettings, $voiceSettings);
-
             $requestData = [
                 'text' => $text,
-                'model_id' => 'eleven_multilingual_v2',
-                'voice_settings' => $voiceSettings,
+                'model_id' => 'eleven_v3',
                 'with_transcript' => false,
-                'receive_url' => config('app.url') . '/api/getaudio'
+                // 'receive_url' => config('app.url') . '/api/getaudio',
+                'receive_url' => 'http://myapp.loca.lt/api/getaudio'
             ];
             
             $url = $this->baseUrl . '/text-to-speech/' . $voiceId . '?output_format=mp3_44100_128';
