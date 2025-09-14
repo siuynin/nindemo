@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserCreditController;
 use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AdminOpenAIController;
 use App\Http\Controllers\Admin\GenerateController;
+use App\Http\Controllers\VoiceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,9 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     
     // Generate Management
     Route::resource('generates', GenerateController::class);
+    
+    // Voice Management
+    Route::resource('voices', VoiceController::class);
     
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');
