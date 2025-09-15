@@ -130,6 +130,36 @@ class AuthService {
     }
   }
 
+  // Login with Google
+  async loginWithGoogle(googleData: {
+    credential: string;
+  }): Promise<AuthResponse> {
+    try {
+      const response = await fetch(`${this.baseUrl}/google-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(googleData)
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.data?.token) {
+        this.setToken(data.data.token);
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Google login error:', error);
+      return {
+        success: false,
+        message: 'Network error occurred'
+      };
+    }
+  }
+
   // Logout user
   async logout(): Promise<{ success: boolean; message: string }> {
     try {

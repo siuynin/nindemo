@@ -95,6 +95,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a href="{{ route('admin.bills.index') }}" class="nav-link {{ request()->routeIs('admin.bills.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-receipt"></i>
+                                <p>Quản lý Hóa đơn</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a href="{{ route('admin.files.index') }}" class="nav-link {{ request()->routeIs('admin.files.*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-file"></i>
                                 <p>Files</p>

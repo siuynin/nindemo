@@ -290,7 +290,13 @@ export const vi = {
     notFound: 'Không tìm thấy',
     validationError: 'Lỗi xác thực dữ liệu',
     unknownError: 'Lỗi không xác định'
-  }
+  },
+
+  // Install Prompt
+  installApp: 'Cài đặt ứng dụng',
+  installAppDescription: 'Truy cập nhanh hơn, hoạt động offline',
+  install: 'Cài đặt',
+  later: 'Để sau'
 };
 
 export type TranslationKeys = typeof vi;

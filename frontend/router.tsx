@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import TextToSpeech from './pages/TextToSpeech';
 import Document from './pages/Document';
 import ElevenLabs from './pages/ElevenLabs';
+import Price from './pages/Price';
 import App from './App';
 
 // Wrapper component for Canvas page
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
         path: 'elevenlabs',
         element: <ElevenLabs />,
       },
+      {
+        path: 'price',
+        element: <Price />,
+      },
     ],
   },
   // Legacy routes for backward compatibility
@@ -102,6 +107,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <TextToSpeech />,
+      },
+    ],
+  },
+  {
+    path: '/price',
+    element: <Layout />,
+    children: [
+      {
+        index: true,
+        element: <Price />,
       },
     ],
   },

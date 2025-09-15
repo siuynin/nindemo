@@ -18,11 +18,16 @@ use Illuminate\Support\Facades\Auth;
 // Public routes
 Route::post('/register', [App\Http\Controllers\Api\AuthController::class, 'register']);
 Route::post('/login', [App\Http\Controllers\Api\AuthController::class, 'login']);
+Route::post('/google-login', [App\Http\Controllers\Api\AuthController::class, 'googleLogin']);
 Route::post('/forgot-password', [App\Http\Controllers\Api\AuthController::class, 'forgotPassword']);
 Route::post('/reset-password', [App\Http\Controllers\Api\AuthController::class, 'resetPassword']);
 
 // Public pricing plans
 Route::get('/pricing-plans', [App\Http\Controllers\Api\PricingPlanController::class, 'index']);
+
+// Public voices from ElevenLabs
+Route::get('/public-voices', [App\Http\Controllers\Api\VoiceController::class, 'index']);
+Route::get('/public-voices/{id}', [App\Http\Controllers\Api\VoiceController::class, 'show']);
 
 // ElevenLabs webhook
 Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook']);
@@ -109,6 +114,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user/credits', [App\Http\Controllers\Api\UserCreditController::class, 'index']);
     Route::get('/user/credits/summary', [App\Http\Controllers\Api\UserCreditController::class, 'summary']);
     
+    // Pricing Plans Management (Admin only)
+    Route::apiResource('pricing-plans', App\Http\Controllers\Api\PricingPlanController::class)->except(['index']);
+    
     // File management
     Route::apiResource('files', App\Http\Controllers\Api\FileController::class);
     Route::post('/files/{file}/download', [App\Http\Controllers\Api\FileController::class, 'download']);
@@ -132,6 +140,16 @@ Route::middleware('auth:sanctum')->group(function () {
          Route::delete('/{id}', [App\Http\Controllers\Api\UserGenerateController::class, 'destroy']);
          Route::get('/{id}/download', [App\Http\Controllers\Api\UserGenerateController::class, 'download']);
      });
+    
+    // Bills Management
+    Route::prefix('bills')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\BillController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\BillController::class, 'store']);
+        Route::get('/stats', [App\Http\Controllers\Api\BillController::class, 'stats']);
+        Route::get('/{id}', [App\Http\Controllers\Api\BillController::class, 'show']);
+        Route::put('/{id}', [App\Http\Controllers\Api\BillController::class, 'update']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\BillController::class, 'destroy']);
+    });
     
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption

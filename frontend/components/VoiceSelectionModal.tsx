@@ -67,9 +67,12 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
     return voices.filter(voice => {
       const matchesSearch = !filters.search || 
         voice.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        voice.description.toLowerCase().includes(filters.search.toLowerCase());
+        (voice.description && voice.description.toLowerCase().includes(filters.search.toLowerCase()));
       
-      const matchesLanguage = !filters.language || voice.language === filters.language;
+      const matchesLanguage = !filters.language || 
+        (Array.isArray(voice.language) 
+          ? voice.language.some(lang => (typeof lang === 'object' ? lang.language : lang) === filters.language)
+          : voice.language === filters.language);
       const matchesGender = !filters.gender || voice.gender === filters.gender;
       const matchesAge = !filters.age || voice.age === filters.age;
       const matchesCategory = !filters.category || voice.category === filters.category;
@@ -112,7 +115,17 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
     }
 
     try {
-      const audio = new Audio(voice.preview_url);
+      // Get preview URL from language array or direct property
+      const previewUrl = Array.isArray(voice.language) && voice.language.length > 0
+        ? voice.language[0].preview_url
+        : voice.preview_url;
+      
+      if (!previewUrl) {
+        console.error('No preview URL available for this voice');
+        return;
+      }
+      
+      const audio = new Audio(previewUrl);
       setCurrentAudio(audio);
       setPlayingVoiceId(voice.voice_id);
       
@@ -155,8 +168,14 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
 
   // Get unique values for filter options
   const filterOptions = useMemo(() => {
-    const languages = [...new Set(voices.map(v => v.language))].sort();
-    const categories = [...new Set(voices.map(v => v.category))].sort();
+    const languages = [...new Set(
+      voices.flatMap(v => 
+        Array.isArray(v.language) 
+          ? v.language.map(lang => typeof lang === 'object' ? lang.language : lang)
+          : [v.language]
+      )
+    )].filter(Boolean).sort();
+    const categories = [...new Set(voices.map(v => v.category))].filter(Boolean).sort();
     
     return {
       languages,
@@ -250,9 +269,13 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
                 }`}
               >
                 <option value="">Tất cả ngôn ngữ</option>
-                {filterOptions.languages.map(lang => (
-                  <option key={lang} value={lang}>{lang.toUpperCase()}</option>
-                ))}
+                {filterOptions.languages.map(lang => {
+                  const langValue = typeof lang === 'object' ? lang.language : lang;
+                  const langDisplay = typeof langValue === 'string' ? langValue.toUpperCase() : 'N/A';
+                  return (
+                    <option key={langValue} value={langValue}>{langDisplay}</option>
+                  );
+                })}
               </select>
             </div>
 
@@ -391,7 +414,10 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
                         <p className={`text-xs mb-2 ${
                           theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                         }`}>
-                          {voice.language.toUpperCase()} • {voice.gender === 'male' ? 'Nam' : voice.gender === 'female' ? 'Nữ' : 'Trung tính'} • {voice.age === 'young' ? 'Trẻ' : voice.age === 'middle_aged' ? 'Trung niên' : 'Lớn tuổi'}
+                          {Array.isArray(voice.language) 
+                            ? voice.language.map(lang => typeof lang === 'object' ? lang.language : lang).join(', ').toUpperCase()
+                            : (typeof voice.language === 'string' ? voice.language.toUpperCase() : 'N/A')
+                          } • {voice.gender === 'male' ? 'Nam' : voice.gender === 'female' ? 'Nữ' : voice.gender === 'neutral' ? 'Trung tính' : (voice.gender || 'N/A')} • {voice.age === 'young' ? 'Trẻ' : voice.age === 'middle_aged' ? 'Trung niên' : voice.age === 'old' ? 'Lớn tuổi' : (voice.age || 'N/A')}
                         </p>
                         <p className={`text-xs line-clamp-2 ${
                           theme === 'dark' ? 'text-gray-300' : 'text-gray-700'

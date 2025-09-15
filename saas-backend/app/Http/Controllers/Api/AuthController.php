@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -247,5 +249,89 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Password reset successfully'
         ]);
+    }
+
+    /**
+     * Google OAuth Login
+     */
+    public function googleLogin(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'credential' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            // Verify Google JWT token
+            $response = Http::get('https://www.googleapis.com/oauth2/v3/tokeninfo', [
+                'id_token' => $request->credential
+            ]);
+
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid Google token'
+                ], 401);
+            }
+
+            $googleUser = $response->json();
+
+            // Check if user exists
+            $user = User::where('email', $googleUser['email'])->first();
+
+            if (!$user) {
+                // Create new user
+                $user = User::create([
+                    'name' => $googleUser['name'],
+                    'email' => $googleUser['email'],
+                    'password' => Hash::make(Str::random(32)), // Random password
+                    'google_id' => $googleUser['sub'],
+                    'avatar' => $googleUser['picture'] ?? null,
+                    'email_verified_at' => now(),
+                    'role' => 'user',
+                    'status' => 'active',
+                ]);
+            } else {
+                // Update existing user with Google info if not set
+                if (!$user->google_id) {
+                    $user->update([
+                        'google_id' => $googleUser['sub'],
+                        'avatar' => $user->avatar ?? $googleUser['picture'],
+                        'email_verified_at' => $user->email_verified_at ?? now(),
+                    ]);
+                }
+            }
+
+            // Update last login info
+            $user->update([
+                'last_login_at' => now(),
+                'last_login_ip' => $request->ip()
+            ]);
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Google login successful',
+                'data' => [
+                    'user' => $user->load('pricingPlan'),
+                    'token' => $token,
+                    'token_type' => 'Bearer'
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Google login failed: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

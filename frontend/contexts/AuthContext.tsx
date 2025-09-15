@@ -9,6 +9,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   totalCredits: number;
   login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  loginWithGoogle: (credential: string) => Promise<{ success: boolean; message: string }>;
   register: (userData: {
     name: string;
     email: string;
@@ -123,6 +124,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const loginWithGoogle = async (credential: string) => {
+    try {
+      setIsLoading(true);
+      const response = await authService.loginWithGoogle({ credential });
+      
+      if (response.success && response.data) {
+        setUser(response.data.user);
+        setTotalCredits(0); // Will be loaded by refreshUser
+        await refreshUser();
+        return { success: true, message: response.message };
+      } else {
+        return { success: false, message: response.message };
+      }
+    } catch (error) {
+      console.error('Google login error:', error);
+      return { success: false, message: 'Đã xảy ra lỗi khi đăng nhập với Google' };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       setIsLoading(true);
@@ -180,6 +202,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isAuthenticated,
     totalCredits,
     login,
+    loginWithGoogle,
     register,
     logout,
     updateProfile,

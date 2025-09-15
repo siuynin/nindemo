@@ -26,7 +26,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
       </button>
 
       {/* Sidebar - Always visible on xl screens (1200px+), toggleable on smaller screens */}
-      <div className={`fixed top-16 left-0 h-full backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[50] xl:translate-x-0 xl:w-80 ${
+      <div className={`fixed top-16 left-0 h-full backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[10] xl:translate-x-0 xl:w-80 ${
         theme === 'dark' 
           ? 'bg-gray-900/95 border-gray-700' 
           : 'bg-white/95 border-gray-200'

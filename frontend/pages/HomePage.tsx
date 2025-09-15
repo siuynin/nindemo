@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PenIcon, ImageIcon, PencilIcon } from '../components/icons';
+import InstallPrompt from '../components/InstallPrompt';
 
 const HomePage: React.FC = () => {
   const { theme } = useTheme();
@@ -174,6 +175,9 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };

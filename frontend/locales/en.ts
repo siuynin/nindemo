@@ -288,7 +288,13 @@ export const en = {
     notFound: 'Not found',
     validationError: 'Validation error',
     unknownError: 'Unknown error'
-  }
+  },
+
+  // Install Prompt
+  installApp: 'Install App',
+  installAppDescription: 'Faster access, works offline',
+  install: 'Install',
+  later: 'Later'
 };
 
 export type TranslationKeys = typeof en;

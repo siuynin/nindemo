@@ -282,7 +282,12 @@ const ElevenLabs: React.FC = () => {
                             <p className={`text-xs ${
                               theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                             }`}>
-                              {selectedVoice.language} • {selectedVoice.gender} • {selectedVoice.age}
+                              {Array.isArray(selectedVoice.language) 
+                                ? selectedVoice.language.map(lang => 
+                                    typeof lang === 'object' && lang.language ? lang.language : lang
+                                  ).join(', ').toUpperCase()
+                                : (typeof selectedVoice.language === 'string' ? selectedVoice.language.toUpperCase() : 'N/A')
+                              } • {selectedVoice.gender} • {selectedVoice.age}
                             </p>
                             <p className={`text-xs mt-1 ${
                               theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
@@ -604,7 +609,7 @@ const ElevenLabs: React.FC = () => {
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
         onSelectVoice={handleVoiceSelect}
-        selectedVoice={selectedVoice}
+        selectedVoiceId={selectedVoice?.voice_id}
       />
     </div>
   );

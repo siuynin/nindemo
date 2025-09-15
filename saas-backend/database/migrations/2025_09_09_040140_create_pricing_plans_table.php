@@ -19,8 +19,8 @@ return new class extends Migration
             $table->string('billing_cycle'); // monthly, yearly, lifetime
             $table->integer('credits_included'); // Số credit được cung cấp
             $table->json('features')->nullable(); // Các tính năng (JSON format)
-            $table->integer('max_file_size')->nullable(); // Kích thước file tối đa (MB)
-            $table->integer('max_files_per_month')->nullable(); // Số file tối đa mỗi tháng
+            $table->boolean('max_voice_clone')->default(false); // Cho phép clone giọng nói
+            $table->boolean('is_premium')->default(false); // Gói premium
             $table->boolean('is_active')->default(true); // Trạng thái kích hoạt
             $table->integer('sort_order')->default(0); // Thứ tự hiển thị
             $table->timestamps();

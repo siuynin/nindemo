@@ -24,8 +24,8 @@ class PricingPlan extends Model
         'status',
         'is_popular',
         'features',
-        'max_file_size',
-        'max_files_per_month',
+        'max_voice_clone',
+        'is_premium',
         'is_active',
         'sort_order',
     ];
@@ -41,8 +41,8 @@ class PricingPlan extends Model
         'credits' => 'integer',
         'is_popular' => 'boolean',
         'features' => 'array',
-        'max_file_size' => 'integer',
-        'max_files_per_month' => 'integer',
+        'max_voice_clone' => 'boolean',
+        'is_premium' => 'boolean',
         'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];

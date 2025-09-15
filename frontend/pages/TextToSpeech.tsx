@@ -234,7 +234,7 @@ const TextToSpeech: React.FC = () => {
                       <p className={`text-xs ${
                         theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                       }`}>
-                        {voice.language} • {voice.gender}
+                        {typeof voice.language === 'string' ? voice.language : 'N/A'} • {voice.gender}
                       </p>
                     </div>
                     <div className="w-2 h-2 bg-blue-500 rounded-full opacity-50"></div>

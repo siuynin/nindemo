@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\UserCreditController;
 use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AdminOpenAIController;
 use App\Http\Controllers\Admin\GenerateController;
+use App\Http\Controllers\Admin\BillController;
 use App\Http\Controllers\VoiceController;
 
 /*
@@ -54,6 +55,11 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     
     // Voice Management
     Route::resource('voices', VoiceController::class);
+    
+    // Bills Management
+    Route::resource('bills', BillController::class);
+    Route::patch('bills/{bill}/mark-paid', [BillController::class, 'markAsPaid'])->name('bills.mark-paid');
+    Route::patch('bills/{bill}/mark-failed', [BillController::class, 'markAsFailed'])->name('bills.mark-failed');
     
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');

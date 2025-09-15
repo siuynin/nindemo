@@ -79,29 +79,66 @@ class ElevenLabsService {
 
   async fetchSharedVoices(filters?: VoiceFilters): Promise<ElevenLabsVoicesResponse> {
     try {
-      const url = new URL(`${this.baseUrl}/shared-voices`);
+      // Use Laravel backend API for public voices
+      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
       
-      // Add query parameters for filtering if provided
-      if (filters) {
-        if (filters.language) url.searchParams.append('language', filters.language);
-        if (filters.gender) url.searchParams.append('gender', filters.gender);
-        if (filters.age) url.searchParams.append('age', filters.age);
-        if (filters.category) url.searchParams.append('category', filters.category);
-        if (filters.search) url.searchParams.append('search', filters.search);
-      }
-
-      const response = await fetch(url.toString(), {
-        headers: {
-          'xi-api-key': this.apiKey
+      // Fetch all voices with pagination
+      let allVoices: any[] = [];
+      let currentPage = 1;
+      let hasMorePages = true;
+      
+      while (hasMorePages) {
+        const url = new URL(`${backendUrl}/public-voices`);
+        url.searchParams.append('page', currentPage.toString());
+        url.searchParams.append('per_page', '100'); // Get more voices per request
+        
+        // Add query parameters for filtering if provided
+        if (filters) {
+          if (filters.language) url.searchParams.append('language', filters.language);
+          if (filters.gender) url.searchParams.append('gender', filters.gender);
+          if (filters.age) url.searchParams.append('age', filters.age);
+          if (filters.category) url.searchParams.append('category', filters.category);
         }
-      });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const response = await fetch(url.toString(), {
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const apiResponse = await response.json();
+        
+        if (apiResponse.success && apiResponse.data) {
+          allVoices.push(...apiResponse.data.voices);
+          hasMorePages = apiResponse.data.pagination.current_page < apiResponse.data.pagination.last_page;
+          currentPage++;
+        } else {
+          hasMorePages = false;
+        }
       }
+      
+      // Transform Laravel API response to match expected format
+      const transformedVoices = allVoices.map((voice: any) => ({
+        voice_id: voice.voice_id,
+        name: voice.name,
+        category: voice.category,
+        gender: voice.gender,
+        age: voice.age,
+        language: voice.language, // Keep the full language array
+        preview_url: voice.language[0]?.preview_url || '',
+        description: voice.description || ''
+      }));
 
-      const data: ElevenLabsVoicesResponse = await response.json();
-      return data;
+      return {
+        voices: transformedVoices,
+        has_more: false // We've loaded all voices
+      };
+      
     } catch (error) {
       console.error('Error fetching shared voices:', error);
       throw error;

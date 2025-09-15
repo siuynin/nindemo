@@ -34,8 +34,8 @@ class PricingPlanController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly,one_time',
             'credits_included' => 'required|integer|min:0',
             'features' => 'nullable|array',
-            'max_file_size' => 'required|integer|min:1',
-            'max_files_per_month' => 'required|integer|min:1',
+            'max_voice_clone' => 'boolean',
+            'is_premium' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);
@@ -80,8 +80,8 @@ class PricingPlanController extends Controller
             'billing_cycle' => 'required|in:monthly,yearly,one_time',
             'credits_included' => 'required|integer|min:0',
             'features' => 'nullable|array',
-            'max_file_size' => 'required|integer|min:1',
-            'max_files_per_month' => 'required|integer|min:1',
+            'max_voice_clone' => 'boolean',
+            'is_premium' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
         ]);

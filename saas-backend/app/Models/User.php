@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'phone',
         'avatar',
+        'google_id',
         'role',
         'status',
         'current_pricing_plan_id',
