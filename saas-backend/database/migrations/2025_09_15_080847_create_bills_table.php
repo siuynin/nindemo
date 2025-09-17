@@ -21,6 +21,9 @@ return new class extends Migration
             $table->enum('status', ['pending', 'paid', 'failed', 'cancelled', 'refunded'])->default('pending');
             $table->enum('payment_method', ['credit_card', 'paypal', 'bank_transfer', 'stripe', 'other'])->nullable();
             $table->string('transaction_id')->nullable();
+            $table->string('paypal_order_id')->nullable(); // PayPal Order ID
+            $table->string('paypal_capture_id')->nullable(); // PayPal Capture ID
+            $table->json('paypal_response')->nullable(); // PayPal API response
             $table->string('invoice_url')->nullable();
             $table->timestamp('due_date')->nullable();
             $table->timestamp('paid_at')->nullable();
@@ -29,6 +32,7 @@ return new class extends Migration
             
             $table->index(['user_id', 'status']);
             $table->index('bill_number');
+            $table->index('paypal_order_id');
             $table->index('created_at');
         });
     }

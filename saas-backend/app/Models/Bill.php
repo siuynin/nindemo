@@ -18,6 +18,9 @@ class Bill extends Model
         'status',
         'payment_method',
         'transaction_id',
+        'paypal_order_id',
+        'paypal_capture_id',
+        'paypal_response',
         'invoice_url',
         'due_date',
         'paid_at',
@@ -28,7 +31,8 @@ class Bill extends Model
         'amount' => 'decimal:2',
         'due_date' => 'datetime',
         'paid_at' => 'datetime',
-        'metadata' => 'array'
+        'metadata' => 'array',
+        'paypal_response' => 'array'
     ];
 
     protected static function boot()
@@ -77,12 +81,24 @@ class Bill extends Model
     /**
      * Mark the bill as paid.
      */
-    public function markAsPaid(): void
+    public function markAsPaid(string $transactionId = null, array $paypalData = []): void
     {
-        $this->update([
+        $updateData = [
             'status' => 'paid',
             'paid_at' => now()
-        ]);
+        ];
+        
+        if ($transactionId) {
+            $updateData['transaction_id'] = $transactionId;
+        }
+        
+        if (!empty($paypalData)) {
+            $updateData['paypal_order_id'] = $paypalData['order_id'] ?? null;
+            $updateData['paypal_capture_id'] = $paypalData['capture_id'] ?? null;
+            $updateData['paypal_response'] = $paypalData['response'] ?? null;
+        }
+        
+        $this->update($updateData);
     }
 
     /**
@@ -107,5 +123,25 @@ class Bill extends Model
     public function scopeByUser($query, $userId)
     {
         return $query->where('user_id', $userId);
+    }
+
+    /**
+     * Generate unique bill number.
+     */
+    public static function generateBillNumber(): string
+    {
+        do {
+            $billNumber = 'BILL-' . date('Y') . '-' . str_pad(mt_rand(1, 999999), 6, '0', STR_PAD_LEFT);
+        } while (self::where('bill_number', $billNumber)->exists());
+
+        return $billNumber;
+    }
+
+    /**
+     * Get formatted amount with currency.
+     */
+    public function getFormattedAmountAttribute(): string
+    {
+        return number_format($this->amount, 2) . ' ' . $this->currency;
     }
 }

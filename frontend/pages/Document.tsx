@@ -263,13 +263,13 @@ const Document: React.FC = () => {
               {/* Filters */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
                     Loại
                   </label>
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   >
                     <option value="">Tất cả</option>
                     <option value="text">Text</option>
@@ -279,13 +279,13 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
                     Trạng thái
                   </label>
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   >
                     <option value="">Tất cả</option>
                     <option value="pending">Pending</option>
@@ -295,13 +295,13 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
                     Chia sẻ
                   </label>
                   <select
                     value={filters.share}
                     onChange={(e) => setFilters({ ...filters, share: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
                   >
                     <option value="">Tất cả</option>
                     <option value="private">Private</option>
@@ -312,7 +312,9 @@ const Document: React.FC = () => {
             </div>
 
             {/* Documents List */}
-            <div className="bg-white rounded-lg shadow">
+            <div className={`rounded-lg shadow ${
+               actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'
+             }`}>
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
@@ -324,59 +326,59 @@ const Document: React.FC = () => {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className={`min-w-full divide-y divide-${actualTheme === 'dark' ? 'gray-700' : 'gray-200'}`}>
+                    <thead className={`bg-${actualTheme === 'dark' ? 'gray-700' : 'gray-50'}`}>
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Tên
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Loại
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Trạng thái
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Ngày tạo
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Chi phí
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className={`px-6 py-3 text-right text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
                           Thao tác
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className={`bg-${actualTheme === 'dark' ? 'gray-800' : 'white'} divide-y divide-gray-200`}>
                       {generates.map((generate) => (
-                        <tr key={generate.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm font-medium text-gray-900">
+                        <tr key={generate.id} className={`hover:bg-${actualTheme === 'dark' ? 'gray-700' : 'gray-50'}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-900'}`}>
+                            <div className="text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-900'}">
                               {generate.name}
                             </div>
                             {generate.content && (
-                              <div className="text-sm text-gray-500 truncate max-w-xs">
+                              <div className={`text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'} truncate max-w-xs`}>
                                 {generate.content}
                               </div>
                             )}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${actualTheme === 'dark' ? 'blue-900' : 'blue-100'} text-${actualTheme === 'dark' ? 'blue-200' : 'blue-800'}`}>
                               {generate.type}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(generate.status)}`}>
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(generate.status, actualTheme)}`}>
                               {generate.status}
                             </span>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
                             {formatDate(generate.created_at)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
                             {generate.credit_cost} credits
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
                             <div className="flex items-center justify-end space-x-2">
                               <button
                                 className="text-blue-600 hover:text-blue-900"

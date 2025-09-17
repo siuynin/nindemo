@@ -76,12 +76,12 @@ Route::middleware('auth:sanctum')->get('/debug/my-generates', function(Request $
 });
 
 // Webhook endpoints for testing
-Route::prefix('webhooks')->group(function () {
-    Route::post('/test', [App\Http\Controllers\WebhookController::class, 'test']);
+Route::prefix('webhooks')->group(function () { 
     Route::post('/handle', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
     Route::post('/payment', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
     Route::post('/user', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
     Route::post('/elevenlabs', [App\Http\Controllers\WebhookController::class, 'handleWebhook']);
+    Route::post('/paypal', [App\Http\Controllers\Api\PayPalController::class, 'handleWebhook']);
 });
 
 // Public AI Models routes
@@ -149,6 +149,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/{id}', [App\Http\Controllers\Api\BillController::class, 'show']);
         Route::put('/{id}', [App\Http\Controllers\Api\BillController::class, 'update']);
         Route::delete('/{id}', [App\Http\Controllers\Api\BillController::class, 'destroy']);
+    });
+    
+    // PayPal Payment Management
+    Route::prefix('paypal')->group(function () {
+        Route::post('/create-order', [App\Http\Controllers\Api\PayPalController::class, 'createOrder']);
+        Route::post('/capture-order', [App\Http\Controllers\Api\PayPalController::class, 'captureOrder']);
+    });
+    
+    // SePay Bank Transfer Payment Management
+    Route::prefix('sepay')->group(function () {
+        Route::post('/create-order', [App\Http\Controllers\Api\SePayController::class, 'createOrder']);
+        Route::get('/check-payment/{orderId}', [App\Http\Controllers\Api\SePayController::class, 'checkPayment']);
     });
     
     // Note: Admin functionality is handled through web routes with Blade views

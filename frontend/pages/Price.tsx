@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { pricingService, PricingPlan } from '../services/pricingService';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import PaymentMethodModal from '../components/PaymentMethodModal';
 
 const Price: React.FC = () => {
   const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -43,9 +46,32 @@ const Price: React.FC = () => {
   };
 
   const handleSelectPlan = (plan: PricingPlan) => {
-    // TODO: Implement plan selection logic
-    console.log('Selected plan:', plan);
-    alert(`Bạn đã chọn gói ${plan.name}. Tính năng thanh toán sẽ được triển khai sau.`);
+    if (!user) {
+      alert('Vui lòng đăng nhập để chọn gói.');
+      return;
+    }
+    setSelectedPlan(plan);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handlePaymentMethodSelect = (method: 'paypal' | 'bank_transfer') => {
+    if (!selectedPlan) return;
+    
+    console.log('Selected payment method:', method, 'for plan:', selectedPlan);
+    
+    if (method === 'paypal') {
+      // TODO: Integrate PayPal payment
+      alert(`Đang chuyển hướng đến PayPal để thanh toán gói ${selectedPlan.name}...`);
+      // Here you would integrate with PayPal SDK
+    } else if (method === 'bank_transfer') {
+      // TODO: Show bank transfer instructions
+      alert(`Chức năng chuyển khoản ngân hàng sẽ được triển khai sau.`);
+    }
+  };
+
+  const handleClosePaymentModal = () => {
+    setIsPaymentModalOpen(false);
+    setSelectedPlan(null);
   };
 
   if (loading) {
@@ -225,6 +251,14 @@ const Price: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Payment Method Modal */}
+      <PaymentMethodModal
+        isOpen={isPaymentModalOpen}
+        onClose={handleClosePaymentModal}
+        onPaymentMethodSelect={handlePaymentMethodSelect}
+        selectedPlan={selectedPlan}
+      />
     </div>
   );
 };

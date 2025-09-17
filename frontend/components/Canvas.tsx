@@ -695,13 +695,13 @@ const Canvas: React.FC<CanvasProps> = ({
 
               return (
                   <div style={drawingStyle}>
-                        <svg 
-                          width="100%" 
-                          height="100%" 
-                          viewBox={`0 0 ${box.width} ${box.height}`} 
-                          style={{ overflow: 'visible' }}
+                    <svg 
+                        width="100%" 
+                        height="100%" 
+                        viewBox={`0 0 ${box.width} ${box.height}`} 
+                        style={{ overflow: 'visible' }}
                       >
-                          <path 
+                        <path 
                               d={pathData} 
                               stroke="rgba(239, 68, 68, 0.7)" 
                               strokeWidth={item.strokeWidth / zoom} 
@@ -709,7 +709,7 @@ const Canvas: React.FC<CanvasProps> = ({
                               strokeLinecap="round" 
                               strokeLinejoin="round"
                           />
-                      </svg>
+                        </svg>
                   </div>
               );
             })()}

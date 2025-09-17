@@ -2,13 +2,7 @@
 The AI canvas where small ideas spark limitless creations.  
 
 NanoCanvas is an infinite, intelligent canvas where your layout *is the prompt*. Arrange images, notes, and drawings—then let AI generate context-aware images, videos, and edits directly from your visual story.  
-
-👉 [Watch Demo Video](https://youtu.be/QqlPSQ9X4d8)
-
-👉 [Try demo](https://ai.studio/apps/drive/16qKBUpJQ47Pe6ddJMwpNEE-sD04S4pdv)
-
----
-
+ 
 
 ## ✨ Features
 - **Context-Aware AI** – Blend images, notes, and styles into coherent scenes.  
@@ -41,12 +35,7 @@ Artists, designers, storytellers, and hobbyists looking to explore AI-driven cre
    ```bash
    npm run dev
    ```
-
 ---
-
-## 🙏 Acknowledgment
-
-Thanks [Google AI Studio](https://aistudio.google.com/apps) for vibe coding to create this app
 
 ## Note
 💡 Note: This project is *entirely vibe coded*, so I’m looking for passionate and enthusiastic contributors to **refactor** and **further develop the app**. Please see the `technical_notes.md` for details.

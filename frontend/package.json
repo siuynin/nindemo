@@ -11,6 +11,7 @@
   "dependencies": {
     "@google/genai": "^1.17.0",
     "@google/generative-ai": "^0.21.0",
+    "@paypal/react-paypal-js": "^8.9.1",
     "@tinymce/tinymce-react": "^5.1.1",
     "i18next": "^25.5.2",
     "react": "^19.1.1",
