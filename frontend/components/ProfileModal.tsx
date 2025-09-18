@@ -261,28 +261,6 @@ const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose }) => {
                 </span>
               </p>
             </div>
-
-            {/* Created At */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                {t.profile?.createdAt || 'Ngày tạo tài khoản'}
-              </label>
-              <p className="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white">
-                {formatDate(user.created_at)}
-              </p>
-            </div>
-
-            {/* Last Login */}
-            {user.last_login_at && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  {t.profile?.lastLogin || 'Lần đăng nhập cuối'}
-                </label>
-                <p className="px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg text-gray-900 dark:text-white">
-                  {formatDate(user.last_login_at)}
-                </p>
-              </div>
-            )}
           </div>
         </div>
 

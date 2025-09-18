@@ -98,7 +98,7 @@ const TopBar: React.FC<TopBarProps> = ({ className = '' }) => {
                   {getUserInitials(user.name)}
                 </div>
               )}
-              <div className="flex flex-col items-start">
+              <div className="hidden sm:flex flex-col items-start">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {user.name}
                 </span>
@@ -109,7 +109,7 @@ const TopBar: React.FC<TopBarProps> = ({ className = '' }) => {
               <svg
                 className={`w-4 h-4 text-gray-500 transition-transform duration-200 ${
                   isAccountDropdownOpen ? 'rotate-180' : ''
-                }`}
+                } hidden sm:block`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"

@@ -44,7 +44,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
       const paymentAmount = plan.price;
 
       // Call backend API to create SePay order
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
       const response = await fetch(`${apiBaseUrl}/sepay/create-order`, {
         method: 'POST',
         headers: {
@@ -54,7 +54,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
           amount: paymentAmount,
           currency: paymentCurrency,
           plan_id: plan.id,
-          user_id: user?.id
+          user_id: user?.id || 1 // Fallback user ID
         })
       });
 
@@ -79,7 +79,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
   const startPaymentCheck = (orderIdToCheck: string) => {
     const interval = setInterval(async () => {
       try {
-        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
         const response = await fetch(`${apiBaseUrl}/sepay/check-payment/${orderIdToCheck}`);
         const data = await response.json();
 

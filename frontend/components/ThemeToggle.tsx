@@ -42,7 +42,7 @@ const ThemeToggle: React.FC = () => {
       title={`Current theme: ${getThemeLabel()} (Click to cycle)`}
     >
       {getThemeIcon()}
-      <span className="text-sm font-medium">{getThemeLabel()}</span>
+      <span className="hidden sm:inline text-sm font-medium">{getThemeLabel()}</span>
     </button>
   );
 };

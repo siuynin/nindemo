@@ -42,7 +42,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Load user data on mount
   useEffect(() => {
-    loadUser();
+    const initializeAuth = async () => {
+      if (authService.isAuthenticated()) {
+        setIsLoading(true);
+        await loadUser();
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
+
+  // Auto-refresh token periodically
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (authService.isAuthenticated() && authService.isTokenExpiringSoon()) {
+        console.log('Token expiring soon, attempting refresh...');
+        const refreshed = await authService.refreshAccessToken();
+        if (refreshed) {
+          console.log('Token refreshed successfully');
+          await loadUser(); // Reload user data with new token
+        } else {
+          console.log('Token refresh failed, logging out');
+          logout();
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
   }, []);
 
   const loadUser = async () => {

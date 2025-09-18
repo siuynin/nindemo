@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { PenIcon, ImageIcon, SparklesIcon, SpeakerIcon, DocumentIcon, ChevronLeftIcon, ChevronRightIcon } from './icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -13,6 +14,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const { user, isAuthenticated, totalCredits } = useAuth();
 
   return (
     <>
@@ -26,47 +28,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
       </button>
 
       {/* Sidebar - Always visible on xl screens (1200px+), toggleable on smaller screens */}
-      <div className={`fixed top-16 left-0 h-full backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[10] xl:translate-x-0 xl:w-80 ${
+      <div className={`fixed top-16 left-0 h-[calc(100vh-4rem)] backdrop-blur-sm border-r shadow-xl transition-all duration-300 z-[10] xl:translate-x-0 xl:w-80 ${
         theme === 'dark' 
           ? 'bg-gray-900/95 border-gray-700' 
           : 'bg-white/95 border-gray-200'
       } ${
         isOpen ? 'w-80 sm:w-96 translate-x-0' : 'w-0 -translate-x-full'
       }`}>
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className={`p-3 sm:p-4 border-b ${
-            theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-          }`}>
-            <div className="flex items-center justify-between">
-               <div className="flex items-center space-x-2">
-                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                   <span className="text-white font-bold text-sm">AI</span>
-                 </div>
-                 <h2 className={`text-base sm:text-lg font-semibold ${
-                   theme === 'dark' ? 'text-white' : 'text-gray-800'
-                 }`}>AI Studio</h2>
-               </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={onToggle}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      theme === 'dark' 
-                        ? 'hover:bg-gray-700 text-gray-300' 
-                        : 'hover:bg-gray-200 text-gray-600'
-                    }`}
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </button>
-                </div>
-            </div>
-          </div>
-
+        <div className="flex flex-col h-full overflow-hidden"> 
           {/* Navigation Menu */}
-          <nav className="flex-1 p-2">
-            <div className="space-y-1">
+          <div className="flex-1 overflow-y-auto">
+            <nav className="p-2">
+              <div className="space-y-1">
               
 
               <Link
@@ -193,9 +166,72 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
                    }`}>Quản lý documents & templates</div>
                 </div>
               </Link>
-
             </div>
           </nav>
+          </div>
+
+          {/* User Plan Section - Always show for testing */}
+          <div className={`p-3 sm:p-4 border-t flex-shrink-0 ${
+            theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+          }`}>
+            <div className="space-y-3">
+              {/* Current Plan */}
+              <div className={`p-3 rounded-lg ${
+                theme === 'dark' 
+                  ? 'bg-gray-800/50 border border-gray-700' 
+                  : 'bg-gray-50 border border-gray-200'
+              }`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className={`text-xs font-medium ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Current Plan
+                  </span>
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    user?.pricing_plan?.is_premium
+                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white'
+                      : theme === 'dark'
+                        ? 'bg-gray-700 text-gray-300'
+                        : 'bg-gray-200 text-gray-700'
+                  }`}>
+                    {user?.pricing_plan?.name || 'Free'}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`text-sm font-medium ${
+                      theme === 'dark' ? 'text-white' : 'text-gray-900'
+                    }`}>
+                      {totalCredits || 0} Credits
+                    </div>
+                    <div className={`text-xs ${
+                      theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
+                      Available
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Change Plan Button */}
+              <div className="w-full">
+                <Link
+                  to="/app/price"
+                  className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg transition-colors ${
+                    theme === 'dark'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Upgrade Plan
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       {/* Overlay - Only show on smaller screens when sidebar is open */}
