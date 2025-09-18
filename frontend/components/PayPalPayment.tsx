@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PayPalScriptProvider, PayPalButtons } from '@paypal/react-paypal-js';
 import { PricingPlan } from '../services/pricingService';
 
@@ -17,9 +17,32 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPayPalReady, setIsPayPalReady] = useState(false);
+  const componentMounted = useRef(true);
+
+  useEffect(() => {
+    console.log('PayPal component mounted, plan:', plan);
+    componentMounted.current = true;
+    setIsPayPalReady(false);
+    
+    // Set PayPal ready after a short delay to ensure DOM is stable
+    const timer = setTimeout(() => {
+      if (componentMounted.current) {
+        console.log('Setting PayPal ready to true');
+        setIsPayPalReady(true);
+      }
+    }, 100);
+
+    return () => {
+      console.log('PayPal component unmounting');
+      componentMounted.current = false;
+      clearTimeout(timer);
+    };
+  }, [plan.id]);
 
   // PayPal configuration
   const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || process.env.REACT_APP_PAYPAL_CLIENT_ID;
+  console.log('PayPal Client ID:', paypalClientId);
   
   // Validate PayPal Client ID
   if (!paypalClientId || paypalClientId === 'test') {
@@ -38,42 +61,49 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
   }
   
   // Determine if this is a sandbox environment
-  const isSandbox = paypalClientId.startsWith('AeA1Q') || paypalClientId.includes('sandbox') || paypalClientId.includes('sb-');
+  // Force sandbox for development - PayPal sandbox client IDs typically start with 'A' and are for testing
+  const isSandbox = true; // Force sandbox for development
   
   const initialOptions = {
     "client-id": paypalClientId,
-    currency: plan.currency || "USD",
+    currency: "USD",
     intent: "capture",
-    "data-sdk-integration-source": "react-paypal-js",
-    "disable-funding": "credit,card",
-    // Explicitly set environment
-    ...(isSandbox ? {
-      "data-client-token": undefined,
-      "buyer-country": "US",
-    } : {}),
   };
   
-  // Add environment to options if sandbox
-  if (isSandbox) {
-    initialOptions.environment = 'sandbox';
-  }
+  console.log('=== PayPal Debug Info ===');
+  console.log('PayPal Client ID:', paypalClientId);
+  console.log('PayPal initialOptions:', initialOptions);
+  console.log('Is sandbox:', isSandbox);
+  console.log('Loading state:', loading, 'PayPal ready:', isPayPalReady);
+  console.log('Component mounted:', componentMounted.current);
+  console.log('Plan details:', plan);
 
   const createOrder = async () => {
     try {
       setLoading(true);
       setError(null);
 
+      // Check authentication token
+      const token = localStorage.getItem('auth_token');
+      console.log('PayPal createOrder - Token exists:', !!token);
+      
+      if (!token) {
+        throw new Error('Bạn cần đăng nhập để thực hiện thanh toán');
+      }
+
       // Convert VND to USD if needed (approximate rate: 1 USD = 24,000 VND)
       const paymentCurrency = plan.currency === 'VND' ? 'USD' : (plan.currency || 'USD');
       const paymentAmount = plan.currency === 'VND' ? Math.ceil(plan.price / 24000) : plan.price;
 
       // Call your backend API to create PayPal order
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
+      console.log('PayPal createOrder - API URL:', `${apiBaseUrl}/paypal/create-order`);
+      
       const response = await fetch(`${apiBaseUrl}/paypal/create-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           amount: paymentAmount,
@@ -84,24 +114,41 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
         }),
       });
 
+      console.log('PayPal createOrder - Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to create PayPal order');
+        const errorText = await response.text();
+        console.error('PayPal createOrder - Error response:', errorText);
+        
+        if (response.status === 401) {
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        } else if (response.status === 403) {
+          throw new Error('Bạn không có quyền thực hiện thanh toán này.');
+        } else {
+          throw new Error(`Lỗi tạo đơn hàng PayPal: ${response.status}`);
+        }
       }
 
       const orderData = await response.json();
+      console.log('PayPal createOrder - Response data:', orderData);
+      
       if (orderData.success && orderData.order_id) {
         // Store bill_id for later use in capture
         sessionStorage.setItem('paypal_bill_id', orderData.bill_id);
         return orderData.order_id;
       } else {
-        throw new Error('Invalid response from server');
+        throw new Error(orderData.message || 'Phản hồi không hợp lệ từ server');
       }
     } catch (err: any) {
-      setError(err.message);
-      onError(err);
+      if (componentMounted.current) {
+        setError(err.message);
+        onError(err);
+      }
       throw err;
     } finally {
-      setLoading(false);
+      if (componentMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
@@ -110,13 +157,23 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
       setLoading(true);
       setError(null);
 
+      // Check authentication token
+      const token = localStorage.getItem('auth_token');
+      console.log('PayPal onApprove - Token exists:', !!token);
+      
+      if (!token) {
+        throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+
       // Call your backend API to capture the payment
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
+      console.log('PayPal onApprove - API URL:', `${apiBaseUrl}/paypal/capture-order`);
+      
       const response = await fetch(`${apiBaseUrl}/paypal/capture-order`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           order_id: data.orderID,
@@ -124,28 +181,47 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
         }),
       });
 
+      console.log('PayPal onApprove - Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Failed to capture PayPal payment');
+        const errorText = await response.text();
+        console.error('PayPal onApprove - Error response:', errorText);
+        
+        if (response.status === 401) {
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        } else if (response.status === 403) {
+          throw new Error('Bạn không có quyền thực hiện thanh toán này.');
+        } else {
+          throw new Error(`Lỗi xác nhận thanh toán PayPal: ${response.status}`);
+        }
       }
 
       const details = await response.json();
       onSuccess(details);
     } catch (err: any) {
-      setError(err.message);
-      onError(err);
+      if (componentMounted.current) {
+        setError(err.message);
+        onError(err);
+      }
     } finally {
-      setLoading(false);
+      if (componentMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   const onErrorHandler = (err: any) => {
-    setError('PayPal payment failed');
-    onError(err);
+    if (componentMounted.current) {
+      setError('PayPal payment failed');
+      onError(err);
+    }
   };
 
   const onCancelHandler = () => {
-    setError(null);
-    onCancel();
+    if (componentMounted.current) {
+      setError(null);
+      onCancel();
+    }
   };
 
   if (error) {
@@ -189,28 +265,38 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
       </div>
 
       {/* Loading State */}
-      {loading && (
+      {(loading || !isPayPalReady) && (
         <div className="flex items-center justify-center p-4">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          <span className="ml-2 text-gray-600 dark:text-gray-400">Đang xử lý...</span>
+          <span className="ml-2 text-gray-600 dark:text-gray-400">
+            {loading ? 'Đang xử lý...' : 'Đang tải PayPal...'}
+          </span>
         </div>
       )}
 
       {/* PayPal Buttons */}
-      {!loading && (
-        <PayPalScriptProvider options={initialOptions}>
+      {!loading && isPayPalReady && (
+        <PayPalScriptProvider 
+          options={initialOptions}
+          onLoadStart={() => console.log('PayPal SDK loading started')}
+          onLoadEnd={() => console.log('PayPal SDK loading ended')}
+          onError={(err) => {
+            console.error('PayPal SDK Error:', err);
+            setError('Lỗi khởi tạo PayPal SDK: ' + (err.message || 'Không xác định'));
+          }}
+        >
           <PayPalButtons
-            style={{
-              layout: 'vertical',
-              color: 'blue',
-              shape: 'rect',
-              label: 'paypal',
-            }}
             createOrder={createOrder}
             onApprove={onApprove}
-            onError={onErrorHandler}
-            onCancel={onCancelHandler}
-            disabled={loading}
+            onError={(err) => {
+              console.error('PayPal Buttons Error:', err);
+              setError('Lỗi PayPal: ' + (err.message || 'Không xác định'));
+              onError(err);
+            }}
+            onCancel={() => {
+              console.log('PayPal payment cancelled');
+              onCancel();
+            }}
           />
         </PayPalScriptProvider>
       )}

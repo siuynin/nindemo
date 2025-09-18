@@ -69,14 +69,16 @@ class PayPalController extends Controller
             // Verify amount matches plan price
             if ($request->amount != $plan->price) {
                 return response()->json([
-                    'error' => 'Amount does not match plan price'
+                    'success' => false,
+                    'message' => 'Amount does not match plan price'
                 ], 400);
             }
 
             $accessToken = $this->getAccessToken();
             if (!$accessToken) {
                 return response()->json([
-                    'error' => 'Failed to get PayPal access token'
+                    'success' => false,
+                    'message' => 'Failed to get PayPal access token'
                 ], 500);
             }
 
@@ -107,7 +109,7 @@ class PayPalController extends Controller
                 $orderResponse = $response->json();
                 
                 // Store transaction record
-                PayPalTransaction::create([
+                $transaction = PayPalTransaction::create([
                     'user_id' => $user->id,
                     'plan_id' => $plan->id,
                     'paypal_order_id' => $orderResponse['id'],
@@ -118,7 +120,9 @@ class PayPalController extends Controller
                 ]);
 
                 return response()->json([
-                    'id' => $orderResponse['id'],
+                    'success' => true,
+                    'order_id' => $orderResponse['id'],
+                    'bill_id' => $transaction->id,
                     'status' => $orderResponse['status'],
                     'links' => $orderResponse['links']
                 ]);
@@ -126,7 +130,9 @@ class PayPalController extends Controller
 
             Log::error('PayPal create order error', $response->json());
             return response()->json([
-                'error' => 'Failed to create PayPal order'
+                'success' => false,
+                'message' => 'Failed to create PayPal order',
+                'error' => $response->json()
             ], 500);
 
         } catch (\Exception $e) {
@@ -136,7 +142,9 @@ class PayPalController extends Controller
             ]);
             
             return response()->json([
-                'error' => 'Internal server error'
+                'success' => false,
+                'message' => 'Internal server error',
+                'error' => $e->getMessage()
             ], 500);
         }
     }
@@ -163,20 +171,23 @@ class PayPalController extends Controller
 
             if (!$transaction) {
                 return response()->json([
-                    'error' => 'Transaction not found'
+                    'success' => false,
+                    'message' => 'Transaction not found'
                 ], 404);
             }
 
             if ($transaction->status === 'completed') {
                 return response()->json([
-                    'error' => 'Transaction already completed'
+                    'success' => false,
+                    'message' => 'Transaction already completed'
                 ], 400);
             }
 
             $accessToken = $this->getAccessToken();
             if (!$accessToken) {
                 return response()->json([
-                    'error' => 'Failed to get PayPal access token'
+                    'success' => false,
+                    'message' => 'Failed to get PayPal access token'
                 ], 500);
             }
 
@@ -200,10 +211,10 @@ class PayPalController extends Controller
                     $this->addCreditsToUser($user, $plan);
 
                     return response()->json([
-                        'status' => 'success',
+                        'success' => true,
+                        'message' => 'Payment completed successfully',
                         'transaction_id' => $transaction->id,
-                        'credits_added' => $plan->credits_included,
-                        'message' => 'Payment completed successfully'
+                        'credits_added' => $plan->credits_included
                     ]);
                 }
             }
@@ -216,7 +227,9 @@ class PayPalController extends Controller
 
             Log::error('PayPal capture order error', $response->json());
             return response()->json([
-                'error' => 'Failed to capture PayPal payment'
+                'success' => false,
+                'message' => 'Failed to capture PayPal payment',
+                'error' => $response->json()
             ], 500);
 
         } catch (\Exception $e) {
@@ -226,7 +239,9 @@ class PayPalController extends Controller
             ]);
             
             return response()->json([
-                'error' => 'Internal server error'
+                'success' => false,
+                'message' => 'Internal server error',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

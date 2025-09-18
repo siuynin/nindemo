@@ -45,7 +45,7 @@ export interface GenerateStatistics {
 }
 
 class GenerateService {
-  private baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'}/generates`;
+  private baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`;
 
   private async makeRequest(url: string, options: RequestInit = {}) {
     const token = authService.getToken();

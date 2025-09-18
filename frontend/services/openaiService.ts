@@ -33,7 +33,7 @@ export interface OpenAITemplateResponse {
 }
 
 class OpenAIService {
-  private baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'}/openai-templates`;
+  private baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/openai-templates`;
 
   private async makeRequest(url: string, options: RequestInit = {}) {
     const token = authService.getToken();

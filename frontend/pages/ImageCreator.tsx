@@ -87,7 +87,7 @@ const ImageCreator: React.FC = () => {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api'}/models/type/image`);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/models/type/image`);
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
@@ -626,7 +626,7 @@ const ImageCreator: React.FC = () => {
                     }`}>
                       {model.thumbnail ? (
                         <img 
-                          src={`http://localhost:8000/storage/${model.thumbnail}`} 
+                          src={`${import.meta.env.VITE_STORAGE_BASE_URL || 'http://127.0.0.1:8001/storage'}/${model.thumbnail}`} 
                           alt={model.name}
                           className="w-full h-full object-cover"
                           onError={(e) => {
