@@ -61,6 +61,12 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::patch('bills/{bill}/mark-paid', [BillController::class, 'markAsPaid'])->name('bills.mark-paid');
     Route::patch('bills/{bill}/mark-failed', [BillController::class, 'markAsFailed'])->name('bills.mark-failed');
     
+    // Transaction Management
+    Route::get('transactions', [BillController::class, 'transactions'])->name('transactions.index');
+    Route::get('transactions/create', [BillController::class, 'createTransaction'])->name('transactions.create');
+    Route::post('transactions', [BillController::class, 'storeTransaction'])->name('transactions.store');
+    Route::get('transactions/{transaction}', [BillController::class, 'showTransaction'])->name('transactions.show');
+    
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');
 });

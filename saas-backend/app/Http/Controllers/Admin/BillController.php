@@ -183,4 +183,109 @@ class BillController extends Controller
         return redirect()->back()
                         ->with('success', 'Bill marked as failed successfully!');
     }
+
+    /**
+     * Display all transactions (Bills + PayPal Transactions)
+     */
+    public function transactions(Request $request)
+    {
+        $query = Bill::with(['user', 'pricingPlan']);
+
+        // Search functionality
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('bill_number', 'like', "%{$search}%")
+                  ->orWhere('transaction_id', 'like', "%{$search}%")
+                  ->orWhere('paypal_order_id', 'like', "%{$search}%")
+                  ->orWhere('paypal_capture_id', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('name', 'like', "%{$search}%")
+                               ->orWhere('email', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Filter by status
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        // Filter by payment method
+        if ($request->filled('payment_method')) {
+            $query->where('payment_method', $request->payment_method);
+        }
+
+        // Filter by date range
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $transactions = $query->orderBy('created_at', 'desc')->paginate(20);
+
+        return view('admin.transactions.index', compact('transactions'));
+    }
+
+    /**
+     * Show form to create new transaction
+     */
+    public function createTransaction()
+    {
+        $users = User::where('role', 'user')->orderBy('name')->get();
+        $pricingPlans = PricingPlan::where('is_active', true)->orderBy('price')->get();
+        
+        return view('admin.transactions.create', compact('users', 'pricingPlans'));
+    }
+
+    /**
+     * Store new transaction
+     */
+    public function storeTransaction(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id' => 'required|exists:users,id',
+            'pricing_plan_id' => 'required|exists:pricing_plans,id',
+            'description' => 'required|string|max:1000',
+            'status' => 'required|in:pending,paid,failed',
+            'payment_method' => 'required|in:paypal,bank_transfer,credit_card',
+            'transaction_id' => 'nullable|string|max:255',
+            'due_date' => 'nullable|date'
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()->back()
+                           ->withErrors($validator)
+                           ->withInput();
+        }
+
+        // Get pricing plan to set amount
+        $pricingPlan = PricingPlan::findOrFail($request->pricing_plan_id);
+        
+        $bill = Bill::create([
+            'user_id' => $request->user_id,
+            'pricing_plan_id' => $pricingPlan->id,
+            'amount' => $pricingPlan->price,
+            'currency' => 'USD',
+            'description' => $request->description,
+            'status' => $request->status,
+            'payment_method' => $request->payment_method,
+            'transaction_id' => $request->transaction_id,
+            'due_date' => $request->due_date,
+        ]);
+
+        return redirect()->route('admin.transactions.index')
+                        ->with('success', 'Transaction created successfully!');
+    }
+
+    /**
+     * Show transaction details
+     */
+    public function showTransaction($id)
+    {
+        $transaction = Bill::with(['user', 'pricingPlan'])->findOrFail($id);
+        return view('admin.transactions.show', compact('transaction'));
+    }
 }

@@ -157,12 +157,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/capture-order', [App\Http\Controllers\Api\PayPalController::class, 'captureOrder']);
     });
     
-    // SePay Bank Transfer Payment Management
-    Route::prefix('sepay')->group(function () {
-        Route::post('/create-order', [App\Http\Controllers\Api\SePayController::class, 'createOrder']);
-        Route::get('/check-payment/{orderId}', [App\Http\Controllers\Api\SePayController::class, 'checkPayment']);
-    });
-    
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption
+});
+
+// SePay Bank Transfer Payment Management (Public routes to avoid CORS issues)
+Route::prefix('sepay')->group(function () {
+    Route::post('/create-order', [App\Http\Controllers\Api\SePayController::class, 'createOrder']);
+    Route::get('/check-payment/{orderId}', [App\Http\Controllers\Api\SePayController::class, 'checkPayment']);
+    Route::post('/webhook', [App\Http\Controllers\Api\SePayController::class, 'handleWebhook']);
 });

@@ -39,10 +39,44 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
 
   const handlePayPalSuccess = (details: any) => {
     console.log('PayPal payment successful:', details);
-    alert(`Thanh toán thành công! Transaction ID: ${details.transaction_id}`);
+    
+    // Show success toast notification
+    const successMessage = `Thanh toán thành công! 
+    - Plan: ${details.plan_activated || 'N/A'}
+    - Credits: ${details.credits_added || 0}
+    - Transaction ID: ${details.transaction_id}`;
+    
+    // Create and show toast notification
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm';
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <div>
+          <div class="font-semibold">Thanh toán thành công!</div>
+          <div class="text-sm">Plan: ${details.plan_activated || 'N/A'}</div>
+          <div class="text-sm">Credits: +${details.credits_added || 0}</div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove toast after 5 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+    
     onClose();
-    // Reload page or update user credits
-    window.location.reload();
+    
+    // Reload page to update user plan and credits
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   };
 
   const handlePayPalError = (error: any) => {
@@ -56,10 +90,38 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
 
   const handleSePaySuccess = (details: any) => {
     console.log('SePay payment successful:', details);
-    alert(`Thanh toán thành công! Order ID: ${details.orderId}`);
+    
+    // Show success toast notification
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm';
+    toast.innerHTML = `
+      <div class="flex items-center">
+        <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+        </svg>
+        <div>
+          <div class="font-semibold">Thanh toán thành công!</div>
+          <div class="text-sm">Order ID: ${details.orderId}</div>
+          <div class="text-sm">Credits: +${details.credits_added || 0}</div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove toast after 5 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 5000);
+    
     onClose();
-    // Reload page or update user credits
-    window.location.reload();
+    
+    // Reload page to update user plan and credits
+    setTimeout(() => {
+      window.location.reload();
+    }, 1500);
   };
 
   const handleSePayError = (error: any) => {

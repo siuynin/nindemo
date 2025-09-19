@@ -112,6 +112,12 @@
                                 Quản lý Credits
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.transactions.*') ? 'active' : '' }}" href="{{ route('admin.transactions.index') }}">
+                                <i class="fas fa-coins me-2"></i>
+                                Quản lý Transactions
+                            </a>
+                        </li>
                         
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.files.*') ? 'active' : '' }}" href="{{ route('admin.files.index') }}">

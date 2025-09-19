@@ -28,6 +28,37 @@ class PayPalController extends Controller
     }
 
     /**
+     * Activate user plan after successful payment
+     */
+    private function activateUserPlan(User $user, PricingPlan $plan)
+    {
+        try {
+            // Calculate plan expiry date (30 days from now for most plans)
+            $expiryDate = now()->addDays($plan->duration_days ?? 30);
+            
+            // Update user's current plan
+            $user->update([
+                'current_pricing_plan_id' => $plan->id,
+                'plan_expires_at' => $expiryDate
+            ]);
+
+            Log::info('User plan activated', [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'plan_name' => $plan->name,
+                'expires_at' => $expiryDate
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to activate user plan', [
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Get PayPal access token
      */
     private function getAccessToken()
@@ -191,8 +222,13 @@ class PayPalController extends Controller
                 ], 500);
             }
 
-            // Capture PayPal order
+            // Capture PayPal order - PayPal API v2 requires empty JSON object for capture
             $response = Http::withToken($accessToken)
+                ->withHeaders([
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json'
+                ])
+                ->withBody('{}')
                 ->post($this->paypalBaseUrl . "/v2/checkout/orders/{$request->order_id}/capture");
 
             if ($response->successful()) {
@@ -209,12 +245,16 @@ class PayPalController extends Controller
 
                     // Add credits to user
                     $this->addCreditsToUser($user, $plan);
+                    
+                    // Update user's current plan and expiry date
+                    $this->activateUserPlan($user, $plan);
 
                     return response()->json([
                         'success' => true,
                         'message' => 'Payment completed successfully',
                         'transaction_id' => $transaction->id,
-                        'credits_added' => $plan->credits_included
+                        'credits_added' => $plan->credits_included,
+                        'plan_activated' => $plan->name
                     ]);
                 }
             }
