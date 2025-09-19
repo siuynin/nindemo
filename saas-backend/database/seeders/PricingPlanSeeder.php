@@ -19,7 +19,7 @@ class PricingPlanSeeder extends Seeder
                 'description' => 'Basic plan with limited features for new users',
                 'price' => 0.00,
                 'billing_cycle' => 'monthly',
-                'credits_included' => 10,
+                'credits' => 10,
                 'features' => [
                     'Upload up to 10 files',
                     'Basic file management',
@@ -36,7 +36,7 @@ class PricingPlanSeeder extends Seeder
                 'description' => 'Perfect for individuals and small projects',
                 'price' => 9.99,
                 'billing_cycle' => 'monthly',
-                'credits_included' => 100,
+                'credits' => 100,
                 'features' => [
                     'Upload up to 100 files',
                     'Advanced file management',
@@ -54,7 +54,7 @@ class PricingPlanSeeder extends Seeder
                 'description' => 'Ideal for professionals and growing businesses',
                 'price' => 29.99,
                 'billing_cycle' => 'monthly',
-                'credits_included' => 500,
+                'credits' => 500,
                 'features' => [
                     'Upload up to 500 files',
                     'Advanced file management',
@@ -73,7 +73,7 @@ class PricingPlanSeeder extends Seeder
                 'description' => 'Comprehensive solution for large organizations',
                 'price' => 99.99,
                 'billing_cycle' => 'monthly',
-                'credits_included' => 2000,
+                'credits' => 2000,
                 'features' => [
                     'Unlimited file uploads',
                     'Advanced file management',

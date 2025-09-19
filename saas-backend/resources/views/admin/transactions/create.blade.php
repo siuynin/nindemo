@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('admin.layouts.app')
 
 @section('title', 'Add New Transaction')
 
@@ -47,12 +47,12 @@
                                         <option value="">-- Select Plan --</option>
                                         @foreach($pricingPlans as $plan)
                                             <option value="{{ $plan->id }}" 
-                                                    data-price="{{ $plan->price }}" 
-                                                    data-credits="{{ $plan->credits ?? $plan->credits_included }}"
-                                                    {{ old('pricing_plan_id') == $plan->id ? 'selected' : '' }}>
-                                                {{ $plan->name }} - ${{ number_format($plan->price, 2) }} 
-                                                ({{ number_format($plan->credits ?? $plan->credits_included) }} credits)
-                                            </option>
+                                        data-price="{{ $plan->price }}" 
+                                        data-credits="{{ $plan->credits }}"
+                                        {{ old('pricing_plan_id') == $plan->id ? 'selected' : '' }}>
+                                        {{ $plan->name }} - ${{ number_format($plan->price, 2) }} 
+                                        ({{ number_format($plan->credits) }} credits)
+                                    </option>
                                         @endforeach
                                     </select>
                                     @error('pricing_plan_id')

@@ -165,5 +165,5 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::prefix('sepay')->group(function () {
     Route::post('/create-order', [App\Http\Controllers\Api\SePayController::class, 'createOrder']);
     Route::get('/check-payment/{orderId}', [App\Http\Controllers\Api\SePayController::class, 'checkPayment']);
-    Route::post('/webhook', [App\Http\Controllers\Api\SePayController::class, 'handleWebhook']);
+    Route::post('/webhook', [App\Http\Controllers\Api\SePayController::class, 'handleWebhook'])->middleware('ngrok.bypass');
 });

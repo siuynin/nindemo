@@ -58,7 +58,8 @@
                         <th>Mô tả</th>
                         <th>Credits</th>
                         <th>Giá (VND)</th>
-                        <th>Giá/Credit</th>
+                        <th>Chu kỳ</th>
+                        <th>Voice Clone</th>
                         <th>Trạng thái</th>
                         <th>Người dùng</th>
                         <th>Ngày tạo</th>
@@ -85,13 +86,24 @@
                             <strong class="text-success">{{ number_format($plan->price) }}đ</strong>
                         </td>
                         <td>
-                            <small class="text-muted">
-                                @if($plan->credits > 0)
-                                    {{ number_format($plan->price / $plan->credits, 2) }}đ
-                                @else
-                                    N/A
-                                @endif
-                            </small>
+                            <span class="badge bg-secondary">
+                                @switch($plan->billing_cycle)
+                                    @case('monthly')
+                                        Hàng tháng
+                                        @break
+                                    @case('yearly')
+                                        Hàng năm
+                                        @break
+                                    @case('one_time')
+                                        Một lần
+                                        @break
+                                    @default
+                                        N/A
+                                @endswitch
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">{{ $plan->max_voice_clone ?? 0 }}</span>
                         </td>
                         <td>
                             <span class="badge bg-{{ $plan->status === 'active' ? 'success' : 'secondary' }}">
@@ -129,7 +141,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="text-center py-4">
+                        <td colspan="11" class="text-center py-4">
                             <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                             <p class="text-muted mb-0">Chưa có gói credit nào</p>
                             <button type="button" class="btn btn-primary mt-2" data-bs-toggle="modal" data-bs-target="#createPlanModal">

@@ -74,7 +74,7 @@
                         </td>
                         <td>
                             <span class="badge bg-info">
-                                {{ number_format($user->userCredits ? $user->userCredits->sum('credits') : 0) }} credits
+                                {{ number_format($user->userCredits->sum('remaining_credits') ?: 0) }} credits
                             </span>
                         </td>
                         <td>

@@ -121,7 +121,7 @@ class PayPalController extends Controller
                         'currency_code' => $request->currency,
                         'value' => number_format($request->amount, 2, '.', '')
                     ],
-                    'description' => "AI Credits - {$plan->name} ({$plan->credits_included} credits)",
+                    'description' => "AI Credits - {$plan->name} ({$plan->credits} credits)",
                     'custom_id' => "user_{$user->id}_plan_{$plan->id}"
                 ]],
                 'application_context' => [
@@ -292,19 +292,23 @@ class PayPalController extends Controller
     private function addCreditsToUser(User $user, PricingPlan $plan)
     {
         try {
-            // Get or create user credit record
-            $userCredit = UserCredit::firstOrCreate(
-                ['user_id' => $user->id],
-                ['credits' => 0]
-            );
-
-            // Add credits
-            $userCredit->increment('credits', $plan->credits_included);
+            // Create new user credit record with proper structure
+            UserCredit::create([
+                'user_id' => $user->id,
+                'pricing_plan_id' => $plan->id,
+                'total_credits' => $plan->credits ?? 0,
+                'used_credits' => 0,
+                'remaining_credits' => $plan->credits ?? 0,
+                'expires_at' => now()->addDays(31), // 31 days from payment date
+                'credit_type' => 'monthly',
+                'notes' => "Credits from {$plan->name} plan purchase via PayPal"
+            ]);
 
             Log::info('Credits added to user', [
                 'user_id' => $user->id,
-                'credits_added' => $plan->credits_included,
-                'total_credits' => $userCredit->credits
+                'plan_id' => $plan->id,
+                'credits_added' => $plan->credits,
+                'expires_at' => now()->addDays(31)->toDateTimeString()
             ]);
 
         } catch (\Exception $e) {

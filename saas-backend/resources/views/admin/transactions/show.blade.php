@@ -1,4 +1,4 @@
-@extends('layouts.admin')
+@extends('admin.layouts.app')
 
 @section('title', 'Transaction Details #' . $transaction->bill_number)
 
@@ -215,7 +215,7 @@
                                     <div class="form-group">
                                         <label class="font-weight-bold">Current Credits:</label>
                                         <p class="mb-2">
-                                            <span class="badge badge-success">{{ number_format($transaction->user->credits ?? 0) }} credits</span>
+                                            <span class="badge badge-success">{{ number_format($transaction->user->total_remaining_credits ?? 0) }} credits</span>
                                         </p>
                                     </div>
                                     
@@ -246,7 +246,7 @@
                                         
                                         <div class="form-group">
                                             <label class="font-weight-bold">Credits Included:</label>
-                                            <p class="mb-2">{{ number_format($transaction->pricingPlan->credits ?? $transaction->pricingPlan->credits_included ?? 0) }} credits</p>
+                                            <p class="mb-2">{{ number_format($transaction->pricingPlan->credits ?? 0) }} credits</p>
                                         </div>
                                         
                                         @if($transaction->pricingPlan->description)

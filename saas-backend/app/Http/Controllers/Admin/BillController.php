@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Bill;
 use App\Models\User;
 use App\Models\PricingPlan;
+use App\Models\UserCredit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -263,6 +264,7 @@ class BillController extends Controller
 
         // Get pricing plan to set amount
         $pricingPlan = PricingPlan::findOrFail($request->pricing_plan_id);
+        $user = User::findOrFail($request->user_id);
         
         $bill = Bill::create([
             'user_id' => $request->user_id,
@@ -276,8 +278,68 @@ class BillController extends Controller
             'due_date' => $request->due_date,
         ]);
 
+        // Process payment based on method and status
+        if ($request->status === 'paid') {
+            $this->processPaymentByMethod($bill, $request->payment_method, $user, $pricingPlan);
+        }
+
         return redirect()->route('admin.transactions.index')
                         ->with('success', 'Transaction created successfully!');
+    }
+
+    /**
+     * Process payment based on payment method
+     */
+    private function processPaymentByMethod(Bill $bill, string $paymentMethod, User $user, PricingPlan $plan)
+    {
+        switch ($paymentMethod) {
+            case 'paypal':
+                // For PayPal, the payment is already processed through PayPal API
+                // Just add credits and activate plan
+                $this->addCreditsToUser($user, $plan);
+                $this->activateUserPlan($user, $plan);
+                break;
+                
+            case 'bank_transfer':
+            case 'credit_card':
+                // For manual payments (bank transfer, credit card), add credits and activate plan
+                $this->addCreditsToUser($user, $plan);
+                $this->activateUserPlan($user, $plan);
+                break;
+        }
+    }
+
+    /**
+     * Add credits to user
+     */
+    private function addCreditsToUser(User $user, PricingPlan $plan)
+    {
+        UserCredit::create([
+            'user_id' => $user->id,
+            'credits' => $plan->credits,
+                    'remaining_credits' => $plan->credits,
+            'source' => 'purchase',
+            'description' => "Credits from {$plan->name} plan purchase",
+            'expires_at' => now()->addYear(), // Credits expire after 1 year
+        ]);
+    }
+
+    /**
+     * Activate user plan
+     */
+    private function activateUserPlan(User $user, PricingPlan $plan)
+    {
+        $expiryDate = match($plan->billing_cycle) {
+            'monthly' => now()->addMonth(),
+            'yearly' => now()->addYear(),
+            'one_time' => null, // One-time plans don't expire
+            default => now()->addMonth()
+        };
+
+        $user->update([
+            'pricing_plan_id' => $plan->id,
+            'plan_expires_at' => $expiryDate,
+        ]);
     }
 
     /**

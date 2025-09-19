@@ -59,6 +59,33 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group">
+                                    <label for="billing_cycle">Chu kỳ thanh toán <span class="text-danger">*</span></label>
+                                    <select class="form-control @error('billing_cycle') is-invalid @enderror" id="billing_cycle" name="billing_cycle" required>
+                                        <option value="">Chọn chu kỳ thanh toán</option>
+                                        <option value="monthly" {{ old('billing_cycle', $pricingPlan->billing_cycle) == 'monthly' ? 'selected' : '' }}>Hàng tháng</option>
+                                        <option value="yearly" {{ old('billing_cycle', $pricingPlan->billing_cycle) == 'yearly' ? 'selected' : '' }}>Hàng năm</option>
+                                        <option value="one_time" {{ old('billing_cycle', $pricingPlan->billing_cycle) == 'one_time' ? 'selected' : '' }}>Một lần</option>
+                                    </select>
+                                    @error('billing_cycle')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="max_voice_clone">Số lượng voice clone tối đa</label>
+                                    <input type="number" class="form-control @error('max_voice_clone') is-invalid @enderror" 
+                                           id="max_voice_clone" name="max_voice_clone" value="{{ old('max_voice_clone', $pricingPlan->max_voice_clone ?? 0) }}" min="0">
+                                    @error('max_voice_clone')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
                                     <label for="status">Trạng thái</label>
                                     <select class="form-control @error('status') is-invalid @enderror" id="status" name="status">
                                         <option value="active" {{ old('status', $pricingPlan->status) == 'active' ? 'selected' : '' }}>Kích hoạt</option>

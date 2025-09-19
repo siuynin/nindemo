@@ -71,7 +71,7 @@ class UserCreditController extends Controller
         $pricingPlan = PricingPlan::findOrFail($request->pricing_plan_id);
         
         // Use custom credits if provided, otherwise use plan's default
-        $totalCredits = $request->total_credits ?? $pricingPlan->credits_included;
+        $totalCredits = $request->total_credits ?? $pricingPlan->credits;
         
         // Calculate expiry date if not provided
         $expiresAt = $request->expires_at;

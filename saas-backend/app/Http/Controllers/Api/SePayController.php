@@ -172,9 +172,35 @@ class SePayController extends Controller
                         'sepay_response' => $data
                     ]);
 
-                    // Add credits to user if applicable
-                    if ($bill->pricingPlan && $bill->pricingPlan->credits) {
-                        $bill->user->increment('credits', $bill->pricingPlan->credits);
+                    // Update user's current plan and add credits
+                    if ($bill->pricingPlan) {
+                        $user = $bill->user;
+                        $plan = $bill->pricingPlan;
+                        
+                        // Update user's current plan
+                        $user->update([
+                            'current_pricing_plan_id' => $plan->id,
+                            'plan_expires_at' => now()->addDays($plan->duration_days ?? 30)
+                        ]);
+                        
+                        // Create new user credit record
+                        \App\Models\UserCredit::create([
+                            'user_id' => $user->id,
+                            'pricing_plan_id' => $plan->id,
+                            'total_credits' => $plan->credits ?? 0,
+                            'used_credits' => 0,
+                            'remaining_credits' => $plan->credits ?? 0,
+                            'expires_at' => now()->addDays(31), // 31 days from payment date
+                            'credit_type' => 'monthly',
+                            'notes' => "Credits from {$plan->name} plan purchase via SePay"
+                        ]);
+                        
+                        Log::info('SePay: User plan activated and credits added', [
+                            'user_id' => $user->id,
+                            'plan_id' => $plan->id,
+                            'credits_added' => $plan->credits,
+                            'expires_at' => now()->addDays(31)->toDateTimeString()
+                        ]);
                     }
 
                     Log::info('SePay payment completed', [

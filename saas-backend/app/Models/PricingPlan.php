@@ -19,7 +19,6 @@ class PricingPlan extends Model
         'description',
         'price',
         'billing_cycle',
-        'credits_included',
         'credits',
         'status',
         'is_popular',
@@ -37,13 +36,12 @@ class PricingPlan extends Model
      */
     protected $casts = [
         'price' => 'decimal:2',
-        'credits_included' => 'integer',
         'credits' => 'integer',
-        'is_popular' => 'boolean',
+        'duration_days' => 'integer',
+        'is_active' => 'boolean',
         'features' => 'array',
         'max_voice_clone' => 'boolean',
         'is_premium' => 'boolean',
-        'is_active' => 'boolean',
         'sort_order' => 'integer',
     ];
 

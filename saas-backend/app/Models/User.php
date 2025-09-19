@@ -77,6 +77,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Alias for credits relationship (for backward compatibility).
+     */
+    public function userCredits()
+    {
+        return $this->hasMany(UserCredit::class);
+    }
+
+    /**
      * Get the user's files.
      */
     public function files()

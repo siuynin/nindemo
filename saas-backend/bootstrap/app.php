@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role' => \App\Http\Middleware\CheckRole::class,
             'credits' => \App\Http\Middleware\ValidateCredits::class,
             'admin' => \App\Http\Middleware\CheckAdminRole::class,
+            'ngrok.bypass' => \App\Http\Middleware\NgrokBypass::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
