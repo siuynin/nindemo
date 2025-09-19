@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import { authService } from '../services/authService';
 
 interface Plan {
   id: number;
@@ -39,26 +40,64 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
       setLoading(true);
       setError(null);
 
+      // Check authentication
+      const token = authService.getToken();
+      console.log('=== SePay Debug Info ===');
+      console.log('Token exists:', !!token);
+      console.log('Token value:', token ? `${token.substring(0, 20)}...` : 'null');
+      console.log('User object:', user);
+      console.log('User authenticated:', !!user);
+      console.log('AuthService authenticated:', authService.isAuthenticated());
+
+      if (!token) {
+        throw new Error('Bạn cần đăng nhập để thực hiện thanh toán');
+      }
+
+      if (!user) {
+        throw new Error('Thông tin người dùng không hợp lệ');
+      }
+
       // Convert VND to VND (no conversion needed for bank transfer)
       const paymentCurrency = plan.currency || 'VND';
       const paymentAmount = plan.price;
 
       // Call backend API to create SePay order
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
+      console.log('API URL:', `${apiBaseUrl}/sepay/create-order`);
+      
+      const requestHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/json',
+      };
+      
+      console.log('Request headers:', requestHeaders);
+
+      const requestBody = {
+        amount: paymentAmount,
+        currency: paymentCurrency,
+        plan_id: plan.id,
+        user_id: user.id
+      };
+      console.log('Request body:', requestBody);
+
       const response = await fetch(`${apiBaseUrl}/sepay/create-order`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          amount: paymentAmount,
-          currency: paymentCurrency,
-          plan_id: plan.id,
-          user_id: user?.id || 1 // Fallback user ID
-        })
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody)
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Response error text:', errorText);
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
       const data = await response.json();
+      console.log('Response data:', data);
 
       if (data.success) {
         setBankInfo(data.bank_info);
@@ -69,6 +108,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
         throw new Error(data.message || 'Failed to create order');
       }
     } catch (err: any) {
+      console.error('SePay create order error:', err);
       setError(err.message);
       onError(err.message);
     } finally {
@@ -80,7 +120,13 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
     const interval = setInterval(async () => {
       try {
         const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
-        const response = await fetch(`${apiBaseUrl}/sepay/check-payment/${orderIdToCheck}`);
+        const token = authService.getToken();
+        const response = await fetch(`${apiBaseUrl}/sepay/check-payment/${orderIdToCheck}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+          }
+        });
         const data = await response.json();
 
         if (data.success && data.status === 'paid') {

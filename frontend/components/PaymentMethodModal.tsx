@@ -83,7 +83,7 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
-              {showPayPalPayment && (
+              {(showPayPalPayment || showSePayPayment) && (
                 <button
                   onClick={handleBackToMethods}
                   className="mr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
