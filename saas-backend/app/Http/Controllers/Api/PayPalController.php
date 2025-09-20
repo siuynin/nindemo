@@ -293,26 +293,34 @@ class PayPalController extends Controller
     {
         try {
             // Create new user credit record with proper structure
-            UserCredit::create([
-                'user_id' => $user->id,
-                'pricing_plan_id' => $plan->id,
-                'total_credits' => $plan->credits ?? 0,
-                'used_credits' => 0,
-                'remaining_credits' => $plan->credits ?? 0,
-                'expires_at' => now()->addDays(31), // 31 days from payment date
-                'credit_type' => 'monthly',
-                'notes' => "Credits from {$plan->name} plan purchase via PayPal"
-            ]);
+            if ($plan->credits_included > 0) {
+                UserCredit::create([
+                    'user_id' => $user->id,
+                    'pricing_plan_id' => $plan->id,
+                    'total_credits' => $plan->credits_included,
+                    'used_credits' => 0,
+                    'remaining_credits' => $plan->credits_included,
+                    'expires_at' => now()->addDays(31), // 31 days from payment date
+                    'credit_type' => 'purchased',
+                    'notes' => "Credits from {$plan->name} plan purchase via PayPal"
+                ]);
 
-            Log::info('Credits added to user', [
-                'user_id' => $user->id,
-                'plan_id' => $plan->id,
-                'credits_added' => $plan->credits,
-                'expires_at' => now()->addDays(31)->toDateTimeString()
-            ]);
+                Log::info('Credits added to user via PayPal', [
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'credits_added' => $plan->credits_included,
+                    'expires_at' => now()->addDays(31)->toDateTimeString()
+                ]);
+            } else {
+                Log::info('No credits to add - plan has no credits_included', [
+                    'user_id' => $user->id,
+                    'plan_id' => $plan->id,
+                    'plan_name' => $plan->name
+                ]);
+            }
 
         } catch (\Exception $e) {
-            Log::error('Failed to add credits to user', [
+            Log::error('Failed to add credits to user via PayPal', [
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'error' => $e->getMessage()

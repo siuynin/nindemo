@@ -67,6 +67,7 @@
                                         <option value="Anthropic" {{ old('platform') == 'Anthropic' ? 'selected' : '' }}>Anthropic</option>
                                         <option value="Runware" {{ old('platform') == 'Runware' ? 'selected' : '' }}>Runware</option>
                                         <option value="NDhubs" {{ old('platform') == 'NDhubs' ? 'selected' : '' }}>NDhubs</option>
+                                        <option value="AI33" {{ old('platform') == 'AI33' ? 'selected' : '' }}>AI33</option>
                                         <option value="Other" {{ old('platform') == 'Other' ? 'selected' : '' }}>Other</option>
                                     </select>
                                     @error('platform')
@@ -90,7 +91,7 @@
                                         <option value="code" {{ old('type') == 'code' ? 'selected' : '' }}>Code Generation</option>
                                         <option value="translation" {{ old('type') == 'translation' ? 'selected' : '' }}>Translation</option>
                                         <option value="analysis" {{ old('type') == 'analysis' ? 'selected' : '' }}>Analysis</option>
-                                        <option value="other" {{ old('type') == 'other' ? 'selected' : '' }}>Other</option>
+                                         <option value="other" {{ old('type') == 'other' ? 'selected' : '' }}>Other</option>  
                                     </select>
                                     @error('type')
                                         <div class="invalid-feedback">{{ $message }}</div>

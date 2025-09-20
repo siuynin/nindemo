@@ -314,14 +314,18 @@ class BillController extends Controller
      */
     private function addCreditsToUser(User $user, PricingPlan $plan)
     {
-        UserCredit::create([
-            'user_id' => $user->id,
-            'credits' => $plan->credits,
-                    'remaining_credits' => $plan->credits,
-            'source' => 'purchase',
-            'description' => "Credits from {$plan->name} plan purchase",
-            'expires_at' => now()->addYear(), // Credits expire after 1 year
-        ]);
+        if ($plan->credits_included > 0) {
+            UserCredit::create([
+                'user_id' => $user->id,
+                'pricing_plan_id' => $plan->id,
+                'total_credits' => $plan->credits_included,
+                'used_credits' => 0,
+                'remaining_credits' => $plan->credits_included,
+                'expires_at' => now()->addDays(31), // 31 days from payment date
+                'credit_type' => 'purchased',
+                'notes' => "Credits from {$plan->name} plan purchase via Admin"
+            ]);
+        }
     }
 
     /**

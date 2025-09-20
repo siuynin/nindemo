@@ -24,7 +24,7 @@ class AIModelSeeder extends Seeder
             ],
             [
                 'name' => 'Midjourney V6',
-                'slug' => 'midjourney-v6',
+                'slug' => '-v6',
                 'platform' => 'Midjourney',
                 'type' => 'image',
                 'credit_price' => 4.00,

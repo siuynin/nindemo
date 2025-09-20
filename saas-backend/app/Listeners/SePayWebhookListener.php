@@ -56,6 +56,28 @@ class SePayWebhookListener
                                 'subscription_plan' => $bill->plan_name,
                                 'subscription_expires_at' => now()->addMonth()
                             ]);
+                            
+                            // Thêm credits cho user từ pricing plan
+                            $pricingPlan = $bill->pricingPlan;
+                            if ($pricingPlan && $pricingPlan->credits_included > 0) {
+                                \App\Models\UserCredit::create([
+                                    'user_id' => $user->id,
+                                    'pricing_plan_id' => $pricingPlan->id,
+                                    'total_credits' => $pricingPlan->credits_included,
+                                    'used_credits' => 0,
+                                    'remaining_credits' => $pricingPlan->credits_included,
+                                    'expires_at' => now()->addDays(31), // 31 ngày từ ngày thanh toán
+                                    'credit_type' => 'purchased',
+                                    'notes' => "Credits from {$pricingPlan->name} plan purchase via SePay"
+                                ]);
+                                
+                                Log::info('Credits added to user via SePay', [
+                                    'user_id' => $user->id,
+                                    'plan_id' => $pricingPlan->id,
+                                    'credits_added' => $pricingPlan->credits,
+                                    'expires_at' => now()->addDays(31)->toDateTimeString()
+                                ]);
+                            }
                         }
                         
                         Log::info('Payment processed successfully', [

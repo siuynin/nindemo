@@ -68,6 +68,7 @@
                                         <option value="Anthropic" {{ old('platform', $model->platform) == 'Anthropic' ? 'selected' : '' }}>Anthropic</option>
                                         <option value="Runware" {{ old('platform', $model->platform) == 'Runware' ? 'selected' : '' }}>Runware</option>
                                         <option value="NDhubs" {{ old('platform', $model->platform) == 'NDhubs' ? 'selected' : '' }}>NDhubs</option>
+                                        <option value="AI33" {{ old('platform', $model->platform) == 'AI33' ? 'selected' : '' }}>AI33</option>
                                         <option value="Other" {{ old('platform', $model->platform) == 'Other' ? 'selected' : '' }}>Other</option>
                                     </select>
                                     @error('platform')

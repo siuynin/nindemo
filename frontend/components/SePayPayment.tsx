@@ -128,7 +128,6 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
           }
         });
         const data = await response.json();
-
         if (data.success && data.status === 'paid') {
           setPaymentStatus('paid');
           clearInterval(interval);
@@ -212,7 +211,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
           onClick={createOrder}
           className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
         >
-          Tạo đơn hàng chuyển khoản
+          Tiến hành chuyển khoản
         </button>
       </div>
     );
@@ -233,7 +232,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
         )}
       </div>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+      <div className=" border border-gray-200 rounded-lg p-4 mb-6">
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="font-medium">Ngân hàng:</span>
@@ -252,7 +251,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
                 📋
               </button>
             </div>
-          </div>
+          </div> 
           
           <div className="flex justify-between items-center">
             <span className="font-medium">Tên tài khoản:</span>
@@ -278,7 +277,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
           <div className="flex justify-between items-center">
             <span className="font-medium">Nội dung CK:</span>
             <div className="flex items-center">
-              <span className="font-mono bg-yellow-100 px-2 py-1 rounded">
+              <span className="font-mono  px-2 py-1 rounded">
                 {bankInfo.transfer_content}
               </span>
               <button
@@ -295,7 +294,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
 
       {bankInfo.qr_code && (
         <div className="text-center mb-6">
-          <div className="font-medium mb-2">Quét mã QR để chuyển khoản</div>
+          <div className="font-medium mb-2">Hoặc quét mã QR để chuyển khoản</div>
           <img 
             src={bankInfo.qr_code} 
             alt="QR Code" 

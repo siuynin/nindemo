@@ -211,9 +211,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
                       Available
                     </div>
                   </div>
-                </div>
+                </div>  
               </div>
-
               {/* Change Plan Button */}
               <div className="w-full">
                 <Link

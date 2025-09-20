@@ -147,7 +147,7 @@
             </nav>
             
             <!-- Main content -->
-            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+            <main class="col-md-9 ms-sm-auto col-lg-10 main-content">
                 <!-- Top navbar -->
                 <nav class="navbar navbar-expand-lg navbar-light mb-4">
                     <div class="container-fluid">
