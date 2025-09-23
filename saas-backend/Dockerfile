@@ -13,8 +13,7 @@ WORKDIR /var/www/html
 COPY . .
 
 # Cài dependency
-RUN composer install --no-dev --optimize-autoloader
-    npm start
+RUN composer install --no-dev --optimize-autoloader 
 RUN php artisan key:generate --force \
     && php artisan config:cache \
     && php artisan route:cache
