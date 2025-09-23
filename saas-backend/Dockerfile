@@ -14,7 +14,10 @@ COPY . .
 
 # Cài dependency
 RUN composer install --no-dev --optimize-autoloader
-
+    npm start
+RUN php artisan key:generate --force \
+    && php artisan config:cache \
+    && php artisan route:cache
 # Enable mod_rewrite và chỉnh DocumentRoot về /public
 RUN a2enmod rewrite \
     && sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
