@@ -5,6 +5,7 @@ import { LanguageProvider, useLanguage } from '../contexts/LanguageContext';
 import { AuthProvider } from '../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import BubbleChatbot from './BubbleChatbot';
 
 // Helper function to load state from localStorage
 const loadState = <T,>(key: string, defaultValue: T): T => {
@@ -94,6 +95,8 @@ const LayoutContent: React.FC = () => {
           <Outlet />
         </div>
       </div>
+      {/* Bubble Chatbot - Fixed position, independent of other components */}
+      <BubbleChatbot />
     </div>
   );
 };

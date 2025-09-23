@@ -232,76 +232,91 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
         )}
       </div>
 
-      <div className=" border border-gray-200 rounded-lg p-4 mb-6">
-        <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Ngân hàng:</span>
-            <span>{bankInfo.bank_name}</span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Số tài khoản:</span>
-            <div className="flex items-center">
-              <span className="font-mono">{bankInfo.account_number}</span>
-              <button
-                onClick={() => copyToClipboard(bankInfo.account_number)}
-                className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
-                title="Sao chép"
-              >
-                📋
-              </button>
+      {/* Layout 2 cột: Thông tin chuyển khoản + QR Code */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Cột trái: Thông tin chuyển khoản */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <h4 className="font-semibold mb-4 text-center">Chi tiết chuyển khoản</h4>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Ngân hàng:</span>
+              <span>{bankInfo.bank_name}</span>
             </div>
-          </div> 
-          
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Tên tài khoản:</span>
-            <span>{bankInfo.account_name}</span>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Số tiền:</span>
-            <div className="flex items-center">
-              <span className="font-mono text-red-600 font-bold">
-                {bankInfo.amount.toLocaleString()} VND
-              </span>
-              <button
-                onClick={() => copyToClipboard(bankInfo.amount.toString())}
-                className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
-                title="Sao chép"
-              >
-                📋
-              </button>
+            
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Số tài khoản:</span>
+              <div className="flex items-center">
+                <span className="font-mono">{bankInfo.account_number}</span>
+                <button
+                  onClick={() => copyToClipboard(bankInfo.account_number)}
+                  className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
+                  title="Sao chép"
+                >
+                  📋
+                </button>
+              </div>
+            </div> 
+            
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Tên tài khoản:</span>
+              <span>{bankInfo.account_name}</span>
             </div>
-          </div>
-          
-          <div className="flex justify-between items-center">
-            <span className="font-medium">Nội dung CK:</span>
-            <div className="flex items-center">
-              <span className="font-mono  px-2 py-1 rounded">
-                {bankInfo.transfer_content}
-              </span>
-              <button
-                onClick={() => copyToClipboard(bankInfo.transfer_content)}
-                className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
-                title="Sao chép"
-              >
-                📋
-              </button>
+            
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Số tiền:</span>
+              <div className="flex items-center">
+                <span className="font-mono text-red-600 font-bold">
+                  {bankInfo.amount.toLocaleString()} VND
+                </span>
+                <button
+                  onClick={() => copyToClipboard(bankInfo.amount.toString())}
+                  className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
+                  title="Sao chép"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex justify-between items-center">
+              <span className="font-medium">Nội dung CK:</span>
+              <div className="flex items-center">
+                <span className="font-mono bg-gray-100 px-2 py-1 rounded">
+                  {bankInfo.transfer_content}
+                </span>
+                <button
+                  onClick={() => copyToClipboard(bankInfo.transfer_content)}
+                  className="ml-2 p-1 text-blue-600 hover:bg-blue-100 rounded"
+                  title="Sao chép"
+                >
+                  📋
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {bankInfo.qr_code && (
-        <div className="text-center mb-6">
-          <div className="font-medium mb-2">Hoặc quét mã QR để chuyển khoản</div>
-          <img 
-            src={bankInfo.qr_code} 
-            alt="QR Code" 
-            className="mx-auto border border-gray-300 rounded"
-          />
-        </div>
-      )}
+        {/* Cột phải: QR Code */}
+        {bankInfo.qr_code && (
+          <div className="border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold mb-4 text-center">Quét mã QR</h4>
+            <div className="text-center">
+              <div className="mb-3 text-sm text-gray-600">
+                Quét mã QR để chuyển khoản nhanh
+              </div>
+              <img 
+                src={`https://img.vietqr.io/image/vcb-${bankInfo.account_number}-compact2.png?amount=${bankInfo.amount}&addInfo=${bankInfo.transfer_content}&accountName=${bankInfo.account_name}`} 
+                alt="QR Code" 
+                className="mx-auto border border-gray-300 rounded max-w-full h-auto"
+                style={{ maxWidth: '250px' }}
+              />
+              <div className="mt-3 text-xs text-gray-500">
+                Mã QR đã bao gồm đầy đủ thông tin chuyển khoản
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
         <div className="flex items-start">
