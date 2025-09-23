@@ -1,4 +1,3 @@
-# Base PHP + Apache
 FROM php:8.2-apache
 
 # Cài extension cần cho Laravel
@@ -15,11 +14,6 @@ COPY . .
 
 # Cài dependency
 RUN composer install --no-dev --optimize-autoloader
-
-# Laravel optimize
-RUN php artisan key:generate && \
-    php artisan config:cache && \
-    php artisan route:cache
 
 # Expose port
 EXPOSE 80
