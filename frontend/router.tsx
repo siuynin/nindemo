@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import Layout from './components/Layout';
+import AdminLayout from './components/AdminLayout';
 import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
 import TextToSpeech from './pages/TextToSpeech';
@@ -37,7 +38,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/app',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         path: 'image-canvas',
@@ -72,7 +73,7 @@ export const router = createBrowserRouter([
   // Legacy routes for backward compatibility
   {
     path: '/image-canvas',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,
@@ -82,7 +83,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/write-assistant',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,
@@ -92,7 +93,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/image-creator',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,
@@ -102,7 +103,7 @@ export const router = createBrowserRouter([
   },
   {
     path: '/text-to-speech',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,
@@ -111,8 +112,28 @@ export const router = createBrowserRouter([
     ],
   },
   {
+    path: '/document',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Document />,
+      },
+    ],
+  },
+  {
+    path: '/elevenlabs',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <ElevenLabs />,
+      },
+    ],
+  },
+  {
     path: '/price',
-    element: <Layout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,

@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface ModalProps {
   isOpen: boolean;
@@ -21,6 +22,7 @@ export const Modal: React.FC<ModalProps> = ({
   title,
   size = "md",
 }) => {
+  const { actualTheme } = useTheme();
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,7 +65,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   const contentClasses = isFullscreen
     ? "w-full h-full"
-    : `relative w-full ${sizeClasses[size]} rounded-xl bg-white shadow-theme-lg dark:bg-gray-800`;
+    : `relative w-full ${sizeClasses[size]} rounded-xl shadow-theme-lg ${actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'}`;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center overflow-y-auto z-[99999] p-4">
@@ -80,16 +82,16 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className={`flex items-center justify-between p-6 border-b ${actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             {title && (
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h3 className={`text-lg font-semibold ${actualTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {title}
               </h3>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                className={`flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-colors ${actualTheme === 'dark' ? 'hover:bg-gray-700 hover:text-gray-300' : 'hover:bg-gray-100 hover:text-gray-600'}`}
               >
                 <svg
                   width="20"

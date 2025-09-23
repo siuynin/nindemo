@@ -1,5 +1,6 @@
 import type React from "react";
 import type { FC } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface InputProps {
   type?: "text" | "number" | "email" | "password" | "date" | "time" | "url" | "tel" | "search";
@@ -46,7 +47,9 @@ const Input: FC<InputProps> = ({
   startIcon,
   endIcon,
 }) => {
-  let inputClasses = `h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-400 ${className}`;
+  const { actualTheme } = useTheme();
+
+  let inputClasses = `h-11 w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-none focus:ring-4 transition-all duration-200 ${actualTheme === 'dark' ? 'bg-gray-800 text-white placeholder:text-gray-400' : 'bg-white text-gray-900'} ${className}`;
 
   // Add padding for icons
   if (startIcon) {
@@ -57,13 +60,13 @@ const Input: FC<InputProps> = ({
   }
 
   if (disabled) {
-    inputClasses += " text-gray-500 border-gray-300 bg-gray-100 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600";
+    inputClasses += ` ${actualTheme === 'dark' ? 'bg-gray-700 text-gray-400 border-gray-600' : 'text-gray-500 border-gray-300 bg-gray-100'} cursor-not-allowed`;
   } else if (error) {
-    inputClasses += " border-error-500 focus:border-error-300 focus:ring-error-100 dark:border-error-500 dark:focus:border-error-400";
+    inputClasses += ` border-error-500 focus:border-error-300 focus:ring-error-100 ${actualTheme === 'dark' ? 'border-error-500 focus:border-error-400' : ''}`;
   } else if (success) {
-    inputClasses += " border-success-500 focus:border-success-300 focus:ring-success-100 dark:border-success-500 dark:focus:border-success-400";
+    inputClasses += ` border-success-500 focus:border-success-300 focus:ring-success-100 ${actualTheme === 'dark' ? 'border-success-500 focus:border-success-400' : ''}`;
   } else {
-    inputClasses += " bg-white text-gray-900 border-gray-300 focus:border-brand-500 focus:ring-brand-100 dark:border-gray-600 dark:text-white dark:focus:border-brand-400";
+    inputClasses += ` ${actualTheme === 'dark' ? 'border-gray-600 focus:border-brand-400' : 'border-gray-300 focus:border-brand-500'} focus:ring-brand-100`;
   }
 
   return (
@@ -71,7 +74,7 @@ const Input: FC<InputProps> = ({
       {label && (
         <label
           htmlFor={id}
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          className={`block text-sm font-medium ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'} mb-2`}
         >
           {label}
           {required && <span className="text-error-500 ml-1">*</span>}
@@ -81,7 +84,7 @@ const Input: FC<InputProps> = ({
       <div className="relative">
         {startIcon && (
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="text-gray-400 dark:text-gray-500">
+            <span className={`${actualTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               {startIcon}
             </span>
           </div>
@@ -106,7 +109,7 @@ const Input: FC<InputProps> = ({
         
         {endIcon && (
           <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <span className="text-gray-400 dark:text-gray-500">
+            <span className={`${actualTheme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>
               {endIcon}
             </span>
           </div>
@@ -120,7 +123,7 @@ const Input: FC<InputProps> = ({
               ? "text-error-500"
               : success
               ? "text-success-500"
-              : "text-gray-500 dark:text-gray-400"
+              : actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'
           }`}
         >
           {hint}

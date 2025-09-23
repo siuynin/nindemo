@@ -80,7 +80,7 @@ export const vi = {
 
   // Text to Speech
   textToSpeech: {
-    title: 'Chuyển Văn Bản Thành Giọng Nói',
+    title: 'Văn Bản Thành Giọng Nói',
     subtitle: 'Chuyển đổi văn bản thành giọng nói tự nhiên với công nghệ AI tiên tiến',
     cloneVoiceDesc: 'Sao chép và tái tạo bất kỳ giọng nói nào bằng AI',
     ndhubDesc: 'Dịch vụ TTS tiếng Việt chuyên nghiệp',
@@ -115,7 +115,7 @@ export const vi = {
       description: 'Tạo ảnh bằng AI với Runware'
     },
     textToSpeech: {
-      title: 'Chuyển Văn Bản Thành Giọng Nói',
+      title: 'Văn Bản -> Giọng Nói',
       description: 'Chuyển đổi văn bản thành giọng nói AI'
     },
     documents: {

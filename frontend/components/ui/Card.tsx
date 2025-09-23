@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface CardProps {
   children: ReactNode;
@@ -17,6 +18,8 @@ const Card: React.FC<CardProps> = ({
   border = true,
   hover = false,
 }) => {
+  const { actualTheme } = useTheme();
+
   // Padding classes
   const paddingClasses = {
     none: "",
@@ -33,8 +36,8 @@ const Card: React.FC<CardProps> = ({
     lg: "shadow-theme-lg",
   };
 
-  const baseClasses = "bg-white dark:bg-gray-800 rounded-xl transition-all duration-200";
-  const borderClasses = border ? "border border-gray-200 dark:border-gray-700" : "";
+  const baseClasses = `${actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl transition-all duration-200`;
+  const borderClasses = border ? `border ${actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'}` : "";
   const hoverClasses = hover ? "hover:shadow-theme-md hover:-translate-y-1" : "";
 
   return (

@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { useTheme } from "../../contexts/ThemeContext";
 
 interface ButtonProps {
   children: ReactNode; // Button text or content
@@ -23,6 +24,8 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   type = "button",
 }) => {
+  const { actualTheme } = useTheme();
+
   // Size Classes
   const sizeClasses = {
     sm: "px-4 py-3 text-sm",
@@ -33,10 +36,8 @@ const Button: React.FC<ButtonProps> = ({
   const variantClasses = {
     primary:
       "bg-brand-500 text-white shadow-theme-xs hover:bg-brand-600 disabled:bg-brand-300 focus:ring-4 focus:ring-brand-100",
-    secondary:
-      "bg-white text-gray-700 border border-gray-300 shadow-theme-xs hover:bg-gray-50 disabled:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700",
-    outline:
-      "bg-white text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 disabled:bg-gray-100 focus:ring-4 focus:ring-gray-100 dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700 dark:hover:bg-white/[0.03] dark:hover:text-gray-300",
+    secondary: `${actualTheme === 'dark' ? 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'} border shadow-theme-xs disabled:bg-gray-100 focus:ring-4 focus:ring-gray-100`,
+    outline: `${actualTheme === 'dark' ? 'bg-gray-800 text-gray-400 ring-gray-700 hover:bg-white/[0.03] hover:text-gray-300' : 'bg-white text-gray-700 ring-gray-300 hover:bg-gray-50'} ring-1 ring-inset disabled:bg-gray-100 focus:ring-4 focus:ring-gray-100`,
   };
 
   return (
