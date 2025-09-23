@@ -59,9 +59,9 @@
                                 <div class="mb-3">
                                     <label for="platform" class="form-label">Platform <span class="text-danger">*</span></label>
                                     <select class="form-select @error('platform') is-invalid @enderror" 
-                                            id="platform" 
-                                            name="platform" 
-                                            required>
+                                        id="platform" 
+                                        name="platform" 
+                                        required>
                                         <option value="">Select Platform</option>
                                         <option value="OpenAI" {{ old('platform', $model->platform) == 'OpenAI' ? 'selected' : '' }}>OpenAI</option>
                                         <option value="Google" {{ old('platform', $model->platform) == 'Google' ? 'selected' : '' }}>Google</option>

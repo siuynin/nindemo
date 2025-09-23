@@ -12,10 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('pricing_plans', function (Blueprint $table) {
-            // Rename columns and change their types
-            $table->dropColumn(['max_file_size', 'max_files_per_month']);
-            $table->boolean('max_voice_clone')->default(false)->comment('Maximum voice clone allowed');
-            $table->boolean('is_premium')->default(false)->comment('Premium plan indicator');
+            // Check if columns exist before dropping them
+            if (Schema::hasColumn('pricing_plans', 'max_file_size')) {
+                $table->dropColumn('max_file_size');
+            }
+            if (Schema::hasColumn('pricing_plans', 'max_files_per_month')) {
+                $table->dropColumn('max_files_per_month');
+            }
+            
+            // Add new columns only if they don't exist
+            if (!Schema::hasColumn('pricing_plans', 'max_voice_clone')) {
+                $table->boolean('max_voice_clone')->default(false)->comment('Maximum voice clone allowed');
+            }
+            if (!Schema::hasColumn('pricing_plans', 'is_premium')) {
+                $table->boolean('is_premium')->default(false)->comment('Premium plan indicator');
+            }
         });
     }
 

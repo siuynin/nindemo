@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('avatar')->nullable(); // Ảnh đại diện
             $table->enum('role', ['user', 'admin'])->default('user'); // Vai trò
             $table->enum('status', ['active', 'inactive', 'suspended'])->default('active'); // Trạng thái
-            $table->foreignId('current_pricing_plan_id')->nullable()->constrained('pricing_plans')->onDelete('set null'); // Gói hiện tại
+            $table->unsignedBigInteger('current_pricing_plan_id')->nullable(); // Gói hiện tại
             $table->timestamp('plan_expires_at')->nullable(); // Ngày hết hạn gói
             $table->json('preferences')->nullable(); // Tùy chọn cá nhân (JSON)
             $table->timestamp('last_login_at')->nullable(); // Lần đăng nhập cuối
