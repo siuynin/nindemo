@@ -68,7 +68,7 @@ export const Modal: React.FC<ModalProps> = ({
     : `relative w-full ${sizeClasses[size]} rounded-xl shadow-theme-lg ${actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'}`;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center overflow-y-auto z-[99999] p-4">
+    <div className={`fixed inset-0 flex items-center justify-center overflow-y-auto p-4 ${className?.includes('z-') ? className.split(' ').find(c => c.startsWith('z-')) : 'z-[99999]'}`}>
       {!isFullscreen && (
         <div
           className="fixed inset-0 h-full w-full bg-gray-900/50 backdrop-blur-sm"
@@ -77,7 +77,7 @@ export const Modal: React.FC<ModalProps> = ({
       )}
       <div
         ref={modalRef}
-        className={`${contentClasses} ${className}`}
+        className={`${contentClasses} ${className?.replace(/z-\S+/g, '').trim()}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

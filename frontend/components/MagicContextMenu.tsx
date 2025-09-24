@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { runwareApi } from '../services/runwareApi';
 import AIService from '../services/AIService';
 import { useTheme } from '../contexts/ThemeContext';
+import Input from './ui/Input';
+import Button from './ui/Button';
 
 interface MagicContextMenuProps {
   x: number;
@@ -55,14 +57,13 @@ const PromptModal: React.FC<PromptModalProps> = ({ type, onSubmit, onClose }) =>
         
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <input
+            <Input
               ref={inputRef}
               type="text"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={type === 'text' ? 'Enter your text prompt...' : 'Describe the image you want to generate...'}
-              className="w-full px-3  border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               disabled={isLoading}
             />
           </div>
@@ -88,24 +89,24 @@ const PromptModal: React.FC<PromptModalProps> = ({ type, onSubmit, onClose }) =>
           )}
           
           <div className="flex justify-end space-x-3">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
+              variant="outline"
               disabled={isLoading}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
               disabled={!prompt.trim() || isLoading}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              {isLoading && (
+              variant="primary"
+              startIcon={isLoading ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              )}
-              <span>{isLoading ? 'Generating...' : 'Generate'}</span>
-            </button>
+              ) : undefined}
+            >
+              {isLoading ? 'Generating...' : 'Generate'}
+            </Button>
           </div>
         </form>
       </div>

@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
+import AuthModal from '../components/AuthModal';
 
 interface FilterState {
   search: string;
@@ -41,7 +42,14 @@ const Document: React.FC = () => {
   const [templates, setTemplates] = useState<OpenAITemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'my-documents' | 'templates'>('templates');
+  
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
+  
+  // Auth modal state
+  const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' as 'login' | 'register' });
   
   // Modal state
   const [templateModal, setTemplateModal] = useState<TemplateModalState>({
@@ -238,11 +246,132 @@ const Document: React.FC = () => {
     }));
   };
 
+  // Toast notification function
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 3000);
+  };
+
   // Handle form submit
-  const handleFormSubmit = () => {
-    // TODO: Implement form submission logic
-    console.log('Form data:', templateModal.formData);
-    handleModalClose();
+  const handleFormSubmit = async () => {
+    if (!templateModal.template) return;
+
+    // Check authentication first
+    if (!isAuthenticated) {
+      setAuthModal({ isOpen: true, mode: 'login' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Combine template prompt with form data
+      let finalPrompt = templateModal.template.prompt;
+      
+      // Replace placeholders in template prompt with form data
+      const formData = templateModal.formData;
+      
+      // Replace **title** placeholder
+      if (formData.title) {
+        finalPrompt = finalPrompt.replace(/\*\*title\*\*/g, formData.title);
+      }
+      
+      // Add additional instructions based on form settings
+      let additionalInstructions = '';
+      
+      if (formData.language && formData.language !== 'vi') {
+        additionalInstructions += `\nPlease respond in ${formData.language === 'en' ? 'English' : formData.language}.`;
+      }
+      
+      if (formData.maxLength && formData.maxLength !== 'unlimited') {
+        additionalInstructions += `\nMaximum length: ${formData.maxLength} words.`;
+      }
+      
+      if (formData.creativity) {
+        const creativityMap = {
+          'low': 'Focus on accuracy and factual information.',
+          'balanced': 'Balance accuracy with creative expression.',
+          'high': 'Maximize creativity and original thinking.'
+        };
+        additionalInstructions += `\n${creativityMap[formData.creativity as keyof typeof creativityMap]}`;
+      }
+      
+      if (formData.toneOfVoice) {
+        const toneMap = {
+          'professional': 'Use a professional tone.',
+          'friendly': 'Use a friendly and approachable tone.',
+          'casual': 'Use a casual and relaxed tone.',
+          'formal': 'Use a formal and respectful tone.',
+          'enthusiastic': 'Use an enthusiastic and energetic tone.',
+          'informative': 'Use an informative and educational tone.',
+          'persuasive': 'Use a persuasive and convincing tone.',
+          'humorous': 'Use a humorous and entertaining tone.'
+        };
+        additionalInstructions += `\n${toneMap[formData.toneOfVoice as keyof typeof toneMap]}`;
+      }
+      
+      const fullContent = finalPrompt + additionalInstructions;
+      
+      // Create generate record
+      const generateData = {
+        name: formData.title || templateModal.template.title,
+        content: fullContent,
+        type: 'text',
+        status: 'pending'
+      };
+      
+      const response = await generateService.createGenerate(generateData);
+      
+      if (response.success) {
+        const generateId = response.data.id;
+        
+        try {
+          // Call AI service to generate content
+          const aiService = await import('../services/AIService');
+          const aiInstance = aiService.default;
+          
+          // Generate content using AI
+          const generatedContent = await aiInstance.processText(fullContent, 'generate_content');
+          
+          // Update the generate record with the AI response
+          await generateService.updateGenerate(generateId, {
+            content: generatedContent,
+            status: 'completed'
+          });
+          
+          // Close modal
+          handleModalClose();
+          
+          // Navigate to WriteAssistant with the generated content
+          // Store the generate ID for loading in WriteAssistant
+          localStorage.setItem('currentGenerateId', generateId.toString());
+          
+          // Navigate to WriteAssistant page
+          window.location.href = '/write-assistant';
+          
+          showToast('Nội dung đã được tạo thành công!', 'success');
+          
+        } catch (aiError) {
+          console.error('Error generating AI content:', aiError);
+          
+          // Update status to failed if AI generation fails
+          await generateService.updateGenerate(generateId, {
+            status: 'failed'
+          });
+          
+          showToast('Có lỗi xảy ra khi tạo nội dung AI', 'error');
+        }
+      } else {
+        showToast('Có lỗi xảy ra khi tạo nội dung', 'error');
+      }
+    } catch (error) {
+      console.error('Error creating content:', error);
+      showToast('Có lỗi xảy ra khi tạo nội dung', 'error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -594,13 +723,7 @@ const Document: React.FC = () => {
               </div>
               
               {/* Filter Tabs */}
-              <div className="mb-4">
-                <p className={`text-sm font-medium mb-3 ${
-                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                }`}>
-                  <span className="mr-2">🏷️</span>
-                  Filters
-                </p>
+              <div className="mb-4"> 
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setTemplateFilters({ ...templateFilters, filters: '' })}
@@ -712,6 +835,7 @@ const Document: React.FC = () => {
          onClose={handleModalClose}
          title={templateModal.template?.title || 'Template'}
          size="lg"
+         className="z-40"
        >
          <div className="p-6 space-y-6">
            {/* Title */}
@@ -741,7 +865,15 @@ const Document: React.FC = () => {
                    { value: "ko", label: "한국어" },
                    { value: "fr", label: "Français" },
                    { value: "de", label: "Deutsch" },
-                   { value: "es", label: "Español" }
+                   { value: "es", label: "Español" },
+                   { value: "hi", label: "हिन्दी" },
+                   { value: "ar", label: "العربية" },
+                   { value: "pt", label: "Português" },
+                   { value: "ru", label: "Русский" },
+                   { value: "id", label: "Bahasa Indonesia" },
+                   { value: "th", label: "ไทย" },
+                   { value: "it", label: "Italiano" },
+                   { value: "nl", label: "Nederlands" }
                  ]}
                />
              </div>
@@ -808,12 +940,37 @@ const Document: React.FC = () => {
              <Button
                variant="primary"
                onClick={handleFormSubmit}
+               disabled={isLoading}
              >
-               Tạo nội dung
+               {isLoading ? 'Đang tạo...' : 'Tạo nội dung'}
              </Button>
            </div>
          </div>
-       </Modal>
+         </Modal>
+
+       {/* Toast Notification */}
+       {toast.visible && (
+         <div className={`fixed top-4 right-4 z-[100000] px-6 py-3 rounded-lg shadow-lg ${
+           toast.type === 'success' ? 'bg-green-500 text-white' :
+           toast.type === 'error' ? 'bg-red-500 text-white' :
+           'bg-yellow-500 text-white'
+         }`}>
+           <span>{toast.message}</span>
+           <button
+             onClick={() => setToast(prev => ({ ...prev, visible: false }))}
+             className="ml-4 text-white hover:text-gray-200"
+           >
+             ×
+           </button>
+         </div>
+       )}
+
+       {/* Auth Modal */}
+       <AuthModal
+         isOpen={authModal.isOpen}
+         onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
+         initialMode={authModal.mode}
+       />
      </div>
    );
  };

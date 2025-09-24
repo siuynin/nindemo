@@ -111,7 +111,7 @@
                                                id="credit_price" 
                                                name="credit_price" 
                                                value="{{ old('credit_price', '0.00') }}" 
-                                               step="0.01" 
+                                               step="0.001" 
                                                min="0" 
                                                required>
                                     </div>

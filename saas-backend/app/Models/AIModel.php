@@ -20,7 +20,7 @@ class AIModel extends Model
     ];
     
     protected $casts = [
-        'credit_price' => 'decimal:2'
+        'credit_price' => 'decimal:3'
     ];
     
     /**

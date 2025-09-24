@@ -90,7 +90,7 @@ class AIService {
       
       creative_style: `Rewrite the following text in a more creative and engaging style. Return only the rewritten text without any labels or explanations:\n\n"${text}"`,
       
-      generate_content: `Based on this request, generate content directly without any introductions, explanations, or labels. Just provide the actual content:\n\n"${text}"`
+      generate_content: `Generate detailed content based on this request. Do not use placeholders like "**topic**", "**pro 1**", "**con 1**" etc. Provide actual, specific, real content. Be creative and informative. Return only the actual content without any introductions, explanations, or labels:\n\n"${text}"`
     };
 
     // Handle specific language translations
@@ -139,7 +139,7 @@ class AIService {
     // Try Gemini first
     if (this.gemini) {
       try {
-        const model = this.gemini.getGenerativeModel({ model: 'gemini-pro' });
+        const model = this.gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const prompt = this.getPrompt(text, action);
         
         const result = await model.generateContent(prompt);

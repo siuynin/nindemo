@@ -1,10 +1,11 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import AIContextMenu from './AIContextMenu';
 import MagicContextMenu from './MagicContextMenu';
 import AIService from '../services/AIService';
+import { generateService } from '../services/generateService';
 import { LoadingSpinner } from './icons';
 
 const WriteAssistant: React.FC = () => {
@@ -33,8 +34,104 @@ const WriteAssistant: React.FC = () => {
     };
   }, []);
 
+  // Load content from generate ID if available
+  useEffect(() => {
+    const loadGeneratedContent = async () => {
+      const generateId = localStorage.getItem('currentGenerateId');
+      if (generateId && editorRef.current) {
+        try {
+          setIsLoading(true);
+          const response = await generateService.getGenerate(parseInt(generateId));
+          
+          if (response.success && response.data.content) {
+            // Set the content in the editor
+            editorRef.current.setContent(response.data.content);
+            
+            // Clear the localStorage to prevent reloading on refresh
+            localStorage.removeItem('currentGenerateId');
+            
+            // Show success toast
+            setToast({
+              message: 'Nội dung đã được tải thành công!',
+              type: 'success',
+              visible: true
+            });
+            
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+              setToast(prev => ({ ...prev, visible: false }));
+            }, 3000);
+          }
+        } catch (error) {
+          console.error('Error loading generated content:', error);
+          setToast({
+            message: 'Có lỗi xảy ra khi tải nội dung',
+            type: 'error',
+            visible: true
+          });
+          
+          // Hide toast after 3 seconds
+          setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+          }, 3000);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadGeneratedContent();
+  }, []); // Run once on mount
+
   const handleEditorInit = (evt: any, editor: any) => {
     editorRef.current = editor;
+    
+    // Load content after editor is initialized
+    const loadGeneratedContent = async () => {
+      const generateId = localStorage.getItem('currentGenerateId');
+      if (generateId) {
+        try {
+          setIsLoading(true);
+          const response = await generateService.getGenerate(parseInt(generateId));
+          
+          if (response.success && response.data.content) {
+            // Set the content in the editor
+            editor.setContent(response.data.content);
+            
+            // Clear the localStorage to prevent reloading on refresh
+            localStorage.removeItem('currentGenerateId');
+            
+            // Show success toast
+            setToast({
+              message: 'Nội dung đã được tải thành công!',
+              type: 'success',
+              visible: true
+            });
+            
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+              setToast(prev => ({ ...prev, visible: false }));
+            }, 3000);
+          }
+        } catch (error) {
+          console.error('Error loading generated content:', error);
+          setToast({
+            message: 'Có lỗi xảy ra khi tải nội dung',
+            type: 'error',
+            visible: true
+          });
+          
+          // Hide toast after 3 seconds
+          setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+          }, 3000);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadGeneratedContent();
     
     // Add click event listener to show magic context menu with 3 second delay
     editor.on('click', (e: any) => {

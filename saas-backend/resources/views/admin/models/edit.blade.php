@@ -108,11 +108,10 @@
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
                                         <input type="number" 
-                                               class="form-control @error('credit_price') is-invalid @enderror" 
-                                               id="credit_price" 
+                                               class="form-control @error('credit_price') is-invalid @enderror"  
                                                name="credit_price" 
                                                value="{{ old('credit_price', $model->credit_price) }}" 
-                                               step="0.01" 
+                                               step="0.001" 
                                                min="0" 
                                                required>
                                     </div>
