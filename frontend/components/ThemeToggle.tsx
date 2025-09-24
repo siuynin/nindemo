@@ -2,16 +2,10 @@ import React from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 
 const ThemeToggle: React.FC = () => {
-  const { theme, actualTheme, toggleTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
 
   const getThemeIcon = () => {
-    if (theme === 'system') {
-      return (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-        </svg>
-      );
-    } else if (actualTheme === 'dark') {
+    if (theme === 'dark') {
       return (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
@@ -27,19 +21,14 @@ const ThemeToggle: React.FC = () => {
   };
 
   const getThemeLabel = () => {
-    switch (theme) {
-      case 'light': return 'Light';
-      case 'dark': return 'Dark';
-      case 'system': return 'System';
-      default: return 'Theme';
-    }
+    return theme === 'dark' ? 'Dark' : 'Light';
   };
 
   return (
     <button
       onClick={toggleTheme}
       className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200 text-gray-700 dark:text-gray-300"
-      title={`Current theme: ${getThemeLabel()} (Click to cycle)`}
+      title={`Current theme: ${getThemeLabel()} (Click to toggle)`}
     >
       {getThemeIcon()}
       <span className="hidden sm:inline text-sm font-medium">{getThemeLabel()}</span>

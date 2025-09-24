@@ -3,8 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
-// import { toast } from 'react-toastify';
-// import { FiEdit, FiTrash2, FiSearch, FiFilter, FiPlus, FiEye } from 'react-icons/fi';
+import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
 
 interface FilterState {
   search: string;
@@ -18,9 +17,21 @@ interface TemplateFilterState {
   filters: string;
 }
 
+interface TemplateModalState {
+  isOpen: boolean;
+  template: OpenAITemplate | null;
+  formData: {
+    title: string;
+    language: string;
+    maxLength: string;
+    creativity: string;
+    toneOfVoice: string;
+  };
+}
+
 const Document: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
-  const { actualTheme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
 
   // Set page title
   useEffect(() => {
@@ -32,6 +43,19 @@ const Document: React.FC = () => {
   const [templatesLoading, setTemplatesLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'my-documents' | 'templates'>('templates');
   
+  // Modal state
+  const [templateModal, setTemplateModal] = useState<TemplateModalState>({
+    isOpen: false,
+    template: null,
+    formData: {
+      title: '',
+      language: 'vi',
+      maxLength: '500',
+      creativity: 'balanced',
+      toneOfVoice: 'professional'
+    }
+  });
+
   // My Documents filters
   const [filters, setFilters] = useState<FilterState>({
     search: '',
@@ -139,12 +163,12 @@ const Document: React.FC = () => {
   };
 
   // Get status badge color
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = (status: string): "success" | "warning" | "error" | "primary" => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'processing': return 'bg-yellow-100 text-yellow-800';
-      case 'failed': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'success';
+      case 'processing': return 'warning';
+      case 'failed': return 'error';
+      default: return 'primary';
     }
   };
 
@@ -173,21 +197,67 @@ const Document: React.FC = () => {
     }
   }, [templateFilters.search, templateFilters.filters, activeTab]);
 
+  // Handle template click
+  const handleTemplateClick = (template: OpenAITemplate) => {
+    setTemplateModal({
+      isOpen: true,
+      template,
+      formData: {
+        title: template.title,
+        language: 'vi',
+        maxLength: '500',
+        creativity: 'balanced',
+        toneOfVoice: 'professional'
+      }
+    });
+  };
 
+  // Handle modal close
+  const handleModalClose = () => {
+    setTemplateModal({
+      isOpen: false,
+      template: null,
+      formData: {
+        title: '',
+        language: 'vi',
+        maxLength: '500',
+        creativity: 'balanced',
+        toneOfVoice: 'professional'
+      }
+    });
+  };
+
+  // Handle form data change
+  const handleFormDataChange = (field: keyof typeof templateModal.formData, value: string) => {
+    setTemplateModal(prev => ({
+      ...prev,
+      formData: {
+        ...prev.formData,
+        [field]: value
+      }
+    }));
+  };
+
+  // Handle form submit
+  const handleFormSubmit = () => {
+    // TODO: Implement form submission logic
+    console.log('Form data:', templateModal.formData);
+    handleModalClose();
+  };
 
   return (
     <div className={`min-h-screen transition-colors duration-200 ${
-      actualTheme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
+      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
     }`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
             <h1 className={`text-3xl font-bold ${
-              actualTheme === 'dark' ? 'text-white' : 'text-gray-900'
+              theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>Documents</h1>
             <p className={`mt-2 ${
-              actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
             }`}>Quản lý documents và templates của bạn</p>
           </div> 
         </div>
@@ -195,7 +265,7 @@ const Document: React.FC = () => {
         {/* Tabs */}
         <div className="mb-6">
           <div className={`border-b ${
-             actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'
+             theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
            }`}>
              <nav className="-mb-px flex space-x-8">
                {isAuthenticated && (
@@ -205,7 +275,7 @@ const Document: React.FC = () => {
                      activeTab === 'my-documents'
                        ? 'border-blue-500 text-blue-600'
                        : `border-transparent ${
-                         actualTheme === 'dark'
+                         theme === 'dark'
                            ? 'text-gray-400 hover:text-gray-200 hover:border-gray-600'
                            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                        }`
@@ -220,7 +290,7 @@ const Document: React.FC = () => {
                    activeTab === 'templates'
                      ? 'border-blue-500 text-blue-600'
                      : `border-transparent ${
-                       actualTheme === 'dark'
+                       theme === 'dark'
                          ? 'text-gray-400 hover:text-gray-200 hover:border-gray-600'
                          : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                      }`
@@ -236,40 +306,48 @@ const Document: React.FC = () => {
         {isAuthenticated && activeTab === 'my-documents' && (
           <div>
             {/* Header with Search */}
-            <div className={`p-6 rounded-lg shadow mb-6 ${
-               actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'
+            <div className={`rounded-2xl border shadow-theme-sm p-6 mb-6 ${
+               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
              }`}>
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between mb-6">
                 <div className="flex items-center gap-4">
-                  <h3 className={`text-lg font-semibold ${
-                     actualTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                  <h3 className={`font-semibold text-title-md ${
+                     theme === 'dark' ? 'text-white' : 'text-gray-900'
                    }`}>My Documents</h3>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Tìm theo tên..."
-                      value={filters.search}
-                      onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                      className="w-64 pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
+                  <Input
+                    type="search"
+                    placeholder="Tìm theo tên..."
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    className="w-64"
+                    startIcon={
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    }
+                  />
                 </div>
-                <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                <Button variant="primary" size="md">
                   Create New
-                </button>
+                </Button>
               </div>
               
               {/* Filters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
+                  <label className={`block font-medium text-sm mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                     Loại
                   </label>
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
+                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
+                    }`}
                   >
                     <option value="">Tất cả</option>
                     <option value="text">Text</option>
@@ -279,13 +357,19 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
+                  <label className={`block font-medium text-sm mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                     Trạng thái
                   </label>
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
+                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
+                    }`}
                   >
                     <option value="">Tất cả</option>
                     <option value="pending">Pending</option>
@@ -295,13 +379,19 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-700'} mb-2`}>
+                  <label className={`block font-medium text-sm mb-2 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                     Chia sẻ
                   </label>
                   <select
                     value={filters.share}
                     onChange={(e) => setFilters({ ...filters, share: e.target.value })}
-                    className={`w-full px-3 py-2 border border-${actualTheme === 'dark' ? 'gray-600' : 'gray-300'} rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                      theme === 'dark'
+                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
+                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
+                    }`}
                   >
                     <option value="">Tất cả</option>
                     <option value="private">Private</option>
@@ -312,99 +402,162 @@ const Document: React.FC = () => {
             </div>
 
             {/* Documents List */}
-            <div className={`rounded-lg shadow ${
-               actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'
-             }`}>
+            <div className={`overflow-hidden rounded-xl border shadow ${
+              theme === 'dark' 
+                ? 'border-white/[0.05] bg-white/[0.03]' 
+                : 'border-gray-200 bg-white'
+            }`}>
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className="mt-4 text-gray-600">Đang tải...</p>
+                  <p className={`mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Đang tải...</p>
                 </div>
               ) : generates.length === 0 ? (
                 <div className="p-8 text-center">
-                  <p className="text-gray-600">Không có documents nào</p>
+                  <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>Không có documents nào</p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className={`min-w-full divide-y divide-${actualTheme === 'dark' ? 'gray-700' : 'gray-200'}`}>
-                    <thead className={`bg-${actualTheme === 'dark' ? 'gray-700' : 'gray-50'}`}>
-                      <tr>
-                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
-                          Tên
-                        </th>
-                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
+                <div className="max-w-full overflow-x-auto">
+                  <Table>
+                    {/* Table Header */}
+                    <TableHeader className={`border-b ${
+                      theme === 'dark' ? 'border-white/[0.05]' : 'border-gray-100'
+                    }`}>
+                      <TableRow>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
+                          Document
+                        </TableCell>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
                           Loại
-                        </th>
-                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
+                        </TableCell>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
                           Trạng thái
-                        </th>
-                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
+                        </TableCell>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
                           Ngày tạo
-                        </th>
-                        <th className={`px-6 py-3 text-left text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
+                        </TableCell>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
                           Chi phí
-                        </th>
-                        <th className={`px-6 py-3 text-right text-xs font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'} uppercase tracking-wider`}>
+                        </TableCell>
+                        <TableCell
+                          isHeader
+                          className={`px-5 py-3 font-medium text-right text-sm uppercase tracking-wider ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}
+                        >
                           Thao tác
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className={`bg-${actualTheme === 'dark' ? 'gray-800' : 'white'} divide-y divide-gray-200`}>
+                        </TableCell>
+                      </TableRow>
+                    </TableHeader>
+
+                    {/* Table Body */}
+                    <TableBody className={`divide-y ${
+                      theme === 'dark' ? 'divide-white/[0.05]' : 'divide-gray-100'
+                    }`}>
                       {generates.map((generate) => (
-                        <tr key={generate.id} className={`hover:bg-${actualTheme === 'dark' ? 'gray-700' : 'gray-50'}`}>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-900'}`}>
-                            <div className="text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-900'}">
-                              {generate.name}
-                            </div>
-                            {generate.content && (
-                              <div className={`text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'} truncate max-w-xs`}>
-                                {generate.content}
+                        <TableRow key={generate.id}>
+                          <TableCell className="px-5 py-4 sm:px-6 text-start">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
+                              }`}>
+                                📄
                               </div>
-                            )}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${actualTheme === 'dark' ? 'blue-900' : 'blue-100'} text-${actualTheme === 'dark' ? 'blue-200' : 'blue-800'}`}>
+                              <div>
+                                <span className={`block font-medium text-sm ${
+                                  theme === 'dark' ? 'text-white/90' : 'text-gray-800'
+                                }`}>
+                                  {generate.name}
+                                </span>
+                                {generate.content && (
+                                  <span className={`block text-sm truncate max-w-xs ${
+                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                                  }`}>
+                                    {generate.content}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className={`px-4 py-3 text-start text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            <Badge size="sm" color="primary">
                               {generate.type}
-                            </span>
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(generate.status, actualTheme)}`}>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`px-4 py-3 text-start text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
+                            <Badge
+                              size="sm"
+                              color={getStatusBadgeColor(generate.status)}
+                            >
                               {generate.status}
-                            </span>
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
+                            </Badge>
+                          </TableCell>
+                          <TableCell className={`px-4 py-3 text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
                             {formatDate(generate.created_at)}
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-sm text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
+                          </TableCell>
+                          <TableCell className={`px-4 py-3 text-sm ${
+                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+                          }`}>
                             {generate.credit_cost} credits
-                          </td>
-                          <td className={`px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-${actualTheme === 'dark' ? 'white' : 'gray-500'}`}>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-gray-400">
                             <div className="flex items-center justify-end space-x-2">
                               <button
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 hover:text-blue-900 p-1"
                                 title="Xem"
                               >
-                                <span>👁️</span>
+                                👁️
                               </button>
                               <button
-                                className="text-indigo-600 hover:text-indigo-900"
+                                className="text-indigo-600 hover:text-indigo-900 p-1"
                                 title="Sửa"
                               >
-                                <span>✏️</span>
+                                ✏️
                               </button>
                               <button
                                 onClick={() => handleDeleteGenerate(generate.id)}
-                                className="text-red-600 hover:text-red-900"
+                                className="text-red-600 hover:text-red-900 p-1"
                                 title="Xóa"
                               >
-                                <span>🗑️</span>
+                                🗑️
                               </button>
                             </div>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </div>
@@ -416,12 +569,12 @@ const Document: React.FC = () => {
           <div>
             {/* Header with Search */}
             <div className={`p-6 rounded-lg shadow mb-6 ${
-              actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'
+              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
             }`}>
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
                   <h3 className={`text-lg font-semibold ${
-                    actualTheme === 'dark' ? 'text-white' : 'text-gray-900'
+                    theme === 'dark' ? 'text-white' : 'text-gray-900'
                   }`}>OpenAI Templates</h3>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
@@ -431,7 +584,7 @@ const Document: React.FC = () => {
                       value={templateFilters.search}
                       onChange={(e) => setTemplateFilters({ ...templateFilters, search: e.target.value })}
                       className={`w-64 pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        actualTheme === 'dark'
+                        theme === 'dark'
                           ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                           : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
                       }`}
@@ -443,7 +596,7 @@ const Document: React.FC = () => {
               {/* Filter Tabs */}
               <div className="mb-4">
                 <p className={`text-sm font-medium mb-3 ${
-                  actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
                 }`}>
                   <span className="mr-2">🏷️</span>
                   Filters
@@ -451,29 +604,29 @@ const Document: React.FC = () => {
                 <div className="flex flex-wrap gap-2">
                   <button
                     onClick={() => setTemplateFilters({ ...templateFilters, filters: '' })}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       templateFilters.filters === ''
                         ? 'bg-blue-600 text-white'
-                        : actualTheme === 'dark'
+                        : theme === 'dark'
                         ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                         : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                     }`}
                   >
-                    Tất cả
+                    Tất Cả
                   </button>
                   {filterOptions.filters.map((filter) => (
                     <button
                       key={filter}
                       onClick={() => setTemplateFilters({ ...templateFilters, filters: filter })}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         templateFilters.filters === filter
                           ? 'bg-blue-600 text-white'
-                          : actualTheme === 'dark'
+                          : theme === 'dark'
                           ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                           : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                       }`}
                     >
-                      {filter}
+                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -481,53 +634,69 @@ const Document: React.FC = () => {
             </div>
 
             {/* Templates Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
               {templatesLoading ? (
-                <div className="col-span-full text-center py-8">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className={`mt-4 ${
-                    actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                  }`}>Đang tải templates...</p>
+                <div className="col-span-full flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
               ) : templates.length === 0 ? (
-                <div className="col-span-full text-center py-8">
-                  <p className={actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                    Không có templates nào
+                <div className="col-span-full text-center py-12">
+                  <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
+                    Không tìm thấy template nào
                   </p>
                 </div>
               ) : (
-                templates.map((template) => (
-                  <div key={template.id} className={`rounded-lg shadow hover:shadow-md transition-shadow ${
-                    actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'
-                  }`}>
-                    <div className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <h3 className={`text-lg font-semibold truncate ${
-                          actualTheme === 'dark' ? 'text-white' : 'text-gray-900'
-                        }`}>
-                          {template.title}
-                        </h3>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {template.type}
-                        </span>
-                      </div>
-                      
-                      {template.description && (
-                        <p className={`text-sm mb-4 line-clamp-2 ${
-                          actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                 templates.map((template) => (
+                   <div
+                     key={template.id}
+                     onClick={() => handleTemplateClick(template)}
+                     className={`p-6 hover:shadow-md transition-shadow cursor-pointer ${
+                       theme === 'dark'
+                         ? 'bg-gray-800 hover:bg-gray-750'
+                         : 'bg-white hover:bg-gray-50'
+                     }`}
+                   >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center mb-3">
+                          {template.image && (
+                            <div 
+                              className="w-10 h-10 rounded-lg flex items-center justify-center mr-3"
+                              style={{ backgroundColor: template.color || '#6366f1' }}
+                            >
+                              <div 
+                                className="w-5 h-5 image-svg" 
+                                dangerouslySetInnerHTML={{ __html: template.image }}
+                              />
+                            </div>
+                          )}
+                          <h4 className={`font-semibold text-lg ${
+                            theme === 'dark' ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {template.title}
+                          </h4>
+                        </div>
+                        <p className={`text-sm mb-3 line-clamp-2 ${
+                          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
                         }`}>
                           {template.description}
                         </p>
-                      )}
-                        
-                      
-                      <div className={`mt-4 pt-4 border-t ${
-                        actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-                      }`}>
-                        <button className="w-full bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors text-sm font-medium">
-                          Sử dụng Template
-                        </button>
                       </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap gap-1">
+                        {template.filters && (
+                          <Badge size="sm" color="light">
+                            {template.filters}
+                          </Badge>
+                        )}
+                        {template.category && (
+                          <Badge size="sm" color="info">
+                            {template.category}
+                          </Badge>
+                        )}
+                      </div> 
                     </div>
                   </div>
                 ))
@@ -535,9 +704,118 @@ const Document: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
-    </div>
-  );
-};
+       </div>
 
-export default Document;
+       {/* Template Modal */}
+       <Modal
+         isOpen={templateModal.isOpen}
+         onClose={handleModalClose}
+         title={templateModal.template?.title || 'Template'}
+         size="lg"
+       >
+         <div className="p-6 space-y-6">
+           {/* Title */}
+           <div>
+             <TextArea
+               label="Title"
+               value={templateModal.formData.title}
+               onChange={(e) => handleFormDataChange('title', e.target.value)}
+               rows={3}
+               placeholder="Nhập tiêu đề..."
+             />
+           </div>
+
+           {/* Form Fields in 2 columns */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             {/* Language */}
+             <div>
+               <Select
+                 label="Language"
+                 value={templateModal.formData.language}
+                 onChange={(value) => handleFormDataChange('language', value)}
+                 options={[
+                   { value: "vi", label: "Tiếng Việt" },
+                   { value: "en", label: "English" },
+                   { value: "zh", label: "中文" },
+                   { value: "ja", label: "日本語" },
+                   { value: "ko", label: "한국어" },
+                   { value: "fr", label: "Français" },
+                   { value: "de", label: "Deutsch" },
+                   { value: "es", label: "Español" }
+                 ]}
+               />
+             </div>
+
+             {/* Maximum Length */}
+             <div>
+               <Select
+                 label="Maximum Length"
+                 value={templateModal.formData.maxLength}
+                 onChange={(value) => handleFormDataChange('maxLength', value)}
+                 options={[
+                   { value: "100", label: "100 từ" },
+                   { value: "250", label: "250 từ" },
+                   { value: "500", label: "500 từ" },
+                   { value: "1000", label: "1000 từ" },
+                   { value: "2000", label: "2000 từ" },
+                   { value: "unlimited", label: "Không giới hạn" }
+                 ]}
+               />
+             </div>
+
+             {/* Creativity */}
+             <div>
+               <Select
+                 label="Creativity"
+                 value={templateModal.formData.creativity}
+                 onChange={(value) => handleFormDataChange('creativity', value)}
+                 options={[
+                   { value: "low", label: "Thấp - Tập trung vào độ chính xác" },
+                   { value: "balanced", label: "Cân bằng - Kết hợp chính xác và sáng tạo" },
+                   { value: "high", label: "Cao - Tối đa hóa sự sáng tạo" }
+                 ]}
+               />
+             </div>
+
+             {/* Tone of Voice */}
+             <div>
+               <Select
+                 label="Tone of Voice"
+                 value={templateModal.formData.toneOfVoice}
+                 onChange={(value) => handleFormDataChange('toneOfVoice', value)}
+                 options={[
+                   { value: "professional", label: "Chuyên nghiệp" },
+                   { value: "friendly", label: "Thân thiện" },
+                   { value: "casual", label: "Thoải mái" },
+                   { value: "formal", label: "Trang trọng" },
+                   { value: "enthusiastic", label: "Nhiệt tình" },
+                   { value: "informative", label: "Thông tin" },
+                   { value: "persuasive", label: "Thuyết phục" },
+                   { value: "humorous", label: "Hài hước" }
+                 ]}
+               />
+             </div>
+           </div>
+
+           {/* Action Buttons */}
+           <div className="flex justify-end space-x-3 pt-4">
+             <Button
+               variant="outline"
+               onClick={handleModalClose}
+             >
+               Hủy
+             </Button>
+             <Button
+               variant="primary"
+               onClick={handleFormSubmit}
+             >
+               Tạo nội dung
+             </Button>
+           </div>
+         </div>
+       </Modal>
+     </div>
+   );
+ };
+
+ export default Document;

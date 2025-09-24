@@ -126,7 +126,7 @@ const AdminLayoutContent: React.FC = () => {
         {/* Header */}
         <AdminTopBar
           onToggleSidebar={toggleSidebar}
-          isSidebarOpen={isMobileOpen || isExpanded}
+          isSidebarOpen={isMobile ? isMobileOpen : isExpanded}
         />
 
         {/* Page Content */}

@@ -357,7 +357,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 {totalCredits || 0}
               </div>
               <Link
-                to="/pricing"
+                to="/price"
                 className="inline-block mt-2 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
               >
                 {t.sidebar?.buy_more || 'Buy More'}

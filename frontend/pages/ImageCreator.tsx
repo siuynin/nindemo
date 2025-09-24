@@ -55,7 +55,8 @@ const ImageCreator: React.FC = () => {
     model: '',
     width: 1024,
     height: 1024,
-    numberResults: 1
+    numberResults: 1,
+    imageStyle: '' as string // Thêm field cho thể loại hình ảnh
   });
 
   const aspectRatios = [
@@ -76,13 +77,20 @@ const ImageCreator: React.FC = () => {
 
   const fetchModels = async () => {
     try {
-      const response = await fetch('/api/models');
+      const response = await fetch('/api/models/type/image');
       if (response.ok) {
-        const data = await response.json();
-        setModels(data);
+        const result = await response.json();
+        // API trả về format { success: true, data: [...] }
+        const data = result.success && result.data ? result.data : result;
+        // Ensure data is an array before setting models
+        setModels(Array.isArray(data) ? data : []);
+      } else {
+        console.error('Failed to fetch models:', response.status);
+        setModels([]);
       }
     } catch (error) {
       console.error('Error fetching models:', error);
+      setModels([]);
     }
   };
 
@@ -139,10 +147,25 @@ const ImageCreator: React.FC = () => {
 
     setLoading(true);
     try {
+      // Tạo prompt với imageStyle nếu có
+      let finalPrompt = formData.prompt;
+      if (formData.imageStyle) {
+        const styleMap: { [key: string]: string } = {
+          'realistic': 'realistic, photorealistic, high quality',
+          'anime': 'anime style, manga style, japanese animation',
+          'cinematic': 'cinematic, movie scene, dramatic lighting',
+          'abstract': 'abstract art, artistic, creative',
+          'pixel': 'pixel art, 8-bit style, retro gaming',
+          'minimal': 'minimalist, clean, simple design'
+        };
+        const stylePrompt = styleMap[formData.imageStyle] || '';
+        finalPrompt = `${formData.prompt}, ${stylePrompt}`;
+      }
+
       const request: ImageGenerationRequest = {
         taskType: 'imageInference',
         taskUUID: `task_${Date.now()}`,
-        positivePrompt: formData.prompt,
+        positivePrompt: finalPrompt,
         width: formData.width,
         height: formData.height,
         model: formData.model,
@@ -183,6 +206,10 @@ const ImageCreator: React.FC = () => {
   };
 
   const getSelectedModel = () => {
+    // Ensure models is an array before calling find
+    if (!Array.isArray(models)) {
+      return null;
+    }
     return models.find(model => model.slug === formData.model);
   };
 
@@ -222,28 +249,26 @@ const ImageCreator: React.FC = () => {
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     Prompt
                   </label>
-                  <TextArea
-                    name="prompt"
-                    value={formData.prompt}
-                    onChange={handleInputChange}
-                    placeholder={t.imageCreator?.promptPlaceholder || "Describe the image you want to create..."}
-                    rows={4}
-                    className="w-full"
-                  />
-                  <Button
-                    type="button"
-                    onClick={optimizePrompt}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    startIcon={
+                  <div className="relative">
+                    <TextArea
+                      name="prompt"
+                      value={formData.prompt}
+                      onChange={handleInputChange}
+                      placeholder={t.imageCreator?.promptPlaceholder || "Describe the image you want to create..."}
+                      rows={4}
+                      className="w-full pr-12"
+                    />
+                    <button
+                      type="button"
+                      onClick={optimizePrompt}
+                      title={t.imageCreator?.optimizePrompt || 'Optimize Prompt'}
+                      className="absolute bottom-2 right-2 p-2 text-gray-500 hover:text-brand-500 dark:text-gray-400 dark:hover:text-brand-400 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
-                    }
-                  >
-                    {t.imageCreator?.optimizePrompt || 'Optimize Prompt'}
-                  </Button>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Model Selection */}
@@ -264,6 +289,49 @@ const ImageCreator: React.FC = () => {
                   >
                     {getSelectedModel()?.name || t.imageCreator?.selectModel || 'Select Model'}
                   </Button>
+                </div>
+                 
+                {/* Image Style Selection */}
+                <div className="space-y-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Thể loại hình ảnh
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: 'realistic', label: 'Thực tế' },
+                      { id: 'anime', label: 'Anime' },
+                      { id: 'cinematic', label: 'Điện ảnh' },
+                      { id: 'abstract', label: 'Trừu tượng' },
+                      { id: 'pixel', label: 'Pixel Art' },
+                      { id: 'minimal', label: 'Tối giản' }
+                    ].map((style) => (
+                      <label
+                        key={style.id}
+                        className={`flex items-center justify-center p-1.5 rounded border cursor-pointer transition-colors text-xs ${
+                          formData.imageStyle === style.id
+                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="imageStyle"
+                          value={style.id}
+                          checked={formData.imageStyle === style.id}
+                          onChange={(e) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              imageStyle: e.target.value
+                            }));
+                          }}
+                          className="sr-only style-checkbox"
+                        />
+                        <span className="font-medium">
+                          {style.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Size Selection */}
@@ -301,9 +369,24 @@ const ImageCreator: React.FC = () => {
                           >
                             <div className="flex justify-between items-center">
                               <span className="font-medium">{ratio.label}</span>
-                              <span className="text-sm text-gray-500 dark:text-gray-400">
-                                {ratio.width}×{ratio.height}
-                              </span>
+                              <div className="flex items-center space-x-2">
+                                <div 
+                                  className="w-8 h-6 border-2 border-gray-400 dark:border-gray-500 rounded-sm flex items-center justify-center bg-gray-100 dark:bg-gray-700"
+                                  style={{
+                                    aspectRatio: `${ratio.width}/${ratio.height}`,
+                                    width: ratio.ratio === '1:1' ? '24px' : 
+                                           ratio.ratio === '16:9' || ratio.ratio === '21:9' ? '32px' :
+                                           ratio.ratio === '9:16' || ratio.ratio === '3:4' ? '16px' : '24px',
+                                    height: ratio.ratio === '1:1' ? '24px' :
+                                            ratio.ratio === '16:9' || ratio.ratio === '21:9' ? '18px' :
+                                            ratio.ratio === '9:16' || ratio.ratio === '3:4' ? '28px' : '18px'
+                                  }}
+                                >
+                                </div>
+                                <span className="text-sm text-gray-500 dark:text-gray-400">
+                                  {ratio.ratio}
+                                </span>
+                              </div>
                             </div>
                           </button>
                         ))}
@@ -318,8 +401,7 @@ const ImageCreator: React.FC = () => {
                     Number of Images
                   </label>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Quantity</span>
+                    <div className="flex justify-between items-center"> 
                       <span className="text-sm font-medium text-gray-800 dark:text-white">{formData.numberResults}</span>
                     </div>
                     <div className="px-3">
@@ -346,6 +428,7 @@ const ImageCreator: React.FC = () => {
                 <div className="pt-2">
                   <Button
                     type="submit"
+                    variant="primary"
                     disabled={loading || !formData.prompt.trim() || !formData.model}
                     className="w-full h-11 text-sm font-medium"
                     size="md"
@@ -353,7 +436,7 @@ const ImageCreator: React.FC = () => {
                       loading ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ maxWidth: '100%', height: 'auto' }}>
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       )
@@ -373,7 +456,7 @@ const ImageCreator: React.FC = () => {
           <div className="xl:col-span-8">
             <Card className="shadow-2xl backdrop-blur-sm h-full" padding="lg" shadow="lg">
               <div className="flex items-center mb-8">
-                <div className={`w-12 h-12 rounded-xl ${actualTheme === 'dark' ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-gradient-to-r from-green-600 to-blue-600'} flex items-center justify-center mr-4 shadow-lg`}>
+                <div className={`w-12 h-12 rounded-xl  ${actualTheme === 'dark' ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-gradient-to-r from-green-600 to-blue-600'} flex items-center justify-center mr-4 shadow-lg`}>
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
@@ -456,10 +539,10 @@ const ImageCreator: React.FC = () => {
             <button
               key={model.id}
               onClick={() => handleModelSelect(model)}
-              className={`p-4 border rounded-lg text-left hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors ${
+              className={`p-4 border rounded-lg text-left transition-colors ${
                 formData.model === model.slug
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                  : 'border-gray-300 dark:border-gray-600'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                  : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}
             >
               <div className="flex items-start space-x-3">

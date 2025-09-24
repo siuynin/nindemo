@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'light' | 'dark' | 'system';
+type Theme = 'light' | 'dark';
 
 interface ThemeContextType {
   theme: Theme;
@@ -22,46 +22,18 @@ export const useTheme = () => {
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
-    return savedTheme || 'system';
+    return savedTheme || 'dark';
   });
 
-  const [actualTheme, setActualTheme] = useState<'light' | 'dark'>('light');
-
-  // Detect system theme
-  const getSystemTheme = (): 'light' | 'dark' => {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  };
-
-  // Update actual theme based on current theme setting
+  // Apply theme to html element
   useEffect(() => {
-    const updateActualTheme = () => {
-      if (theme === 'system') {
-        setActualTheme(getSystemTheme());
-      } else {
-        setActualTheme(theme);
-      }
-    };
-
-    updateActualTheme();
-
-    // Listen for system theme changes
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      const handleChange = () => updateActualTheme();
-      mediaQuery.addEventListener('change', handleChange);
-      return () => mediaQuery.removeEventListener('change', handleChange);
+    const htmlElement = document.documentElement;
+    if (theme === 'dark') {
+      htmlElement.classList.add('dark');
+    } else {
+      htmlElement.classList.remove('dark');
     }
   }, [theme]);
-
-  // Apply theme to document
-  useEffect(() => {
-    const root = document.documentElement;
-    if (actualTheme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-  }, [actualTheme]);
 
   // Save theme to localStorage
   useEffect(() => {
@@ -69,17 +41,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [theme]);
 
   const toggleTheme = () => {
-    if (theme === 'light') {
-      setTheme('dark');
-    } else if (theme === 'dark') {
-      setTheme('system');
-    } else {
-      setTheme('light');
-    }
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, actualTheme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ 
+      theme, 
+      actualTheme: theme, 
+      setTheme, 
+      toggleTheme 
+    }}>
       {children}
     </ThemeContext.Provider>
   );

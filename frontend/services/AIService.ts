@@ -291,6 +291,25 @@ class AIService {
     return cleaned;
   }
 
+  // Optimize prompt for better image generation
+  async optimizePrompt(prompt: string): Promise<string> {
+    if (!prompt.trim()) {
+      throw new Error('Prompt cannot be empty');
+    }
+
+    const optimizationPrompt = `Optimize this image generation prompt to be more detailed and effective for AI image generation. Keep the core concept but enhance it with better descriptive words, artistic styles, and technical details. Return only the optimized prompt without any explanation:
+
+Original prompt: "${prompt}"`;
+
+    try {
+      const result = await this.processText(optimizationPrompt, 'optimize');
+      return result || prompt; // Return original if optimization fails
+    } catch (error) {
+      console.error('Failed to optimize prompt:', error);
+      throw new Error('Failed to optimize prompt. Please try again.');
+    }
+  }
+
   // Check if AI service is available
   isAvailable(): boolean {
     return this.gemini !== null || this.openaiApiKey !== null;
