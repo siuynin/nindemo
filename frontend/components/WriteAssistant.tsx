@@ -1,15 +1,17 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
+import { useParams } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import AIContextMenu from './AIContextMenu';
 import MagicContextMenu from './MagicContextMenu';
 import AIService from '../services/AIService';
 import { generateService } from '../services/generateService';
-import { LoadingSpinner } from './icons';
+import { LoadingSpinner, PencilIcon, DownloadIcon } from './icons';
 
 const WriteAssistant: React.FC = () => {
   const editorRef = useRef<any>(null);
+  const { name } = useParams<{ name: string }>();
   const [selectedText, setSelectedText] = useState('');
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0 });
   const [magicContextMenu, setMagicContextMenu] = useState({ visible: false, x: 0, y: 0 });
@@ -21,6 +23,15 @@ const WriteAssistant: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const keydownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Document state
+  const [documentName, setDocumentName] = useState('Untitled');
+  const [currentGenerateId, setCurrentGenerateId] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [tempDocumentName, setTempDocumentName] = useState('');
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Cleanup timeouts on unmount
   React.useEffect(() => {
@@ -31,28 +42,66 @@ const WriteAssistant: React.FC = () => {
       if (keydownTimeoutRef.current) {
         clearTimeout(keydownTimeoutRef.current);
       }
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
     };
   }, []);
 
-  // Load content from generate ID if available
-  useEffect(() => {
-    const loadGeneratedContent = async () => {
-      const generateId = localStorage.getItem('currentGenerateId');
-      if (generateId && editorRef.current) {
-        try {
-          setIsLoading(true);
-          const response = await generateService.getGenerate(parseInt(generateId));
+  // Load content function - will be called after editor is ready
+  const loadGeneratedContent = async () => {
+    console.log('🔍 loadGeneratedContent called, name:', name);
+    
+    // First check if there's a name parameter from URL
+    if (name) {
+      try {
+        setIsLoading(true);
+        console.log('📡 Searching for content with name:', name);
+        
+        // Try to find generate by name first, then by ID
+        const response = await generateService.getGenerates({
+          search: name,
+          per_page: 1
+        });
+        
+        console.log('📥 Search response:', response);
+        
+        let generateData = null;
+        
+        if (response.success && response.data.length > 0) {
+          // Found by name
+          generateData = response.data[0];
+          console.log('✅ Found by name:', generateData);
+        } else {
+          // Try to get by ID if name is numeric
+          const numericId = parseInt(name);
+          if (!isNaN(numericId)) {
+            console.log('🔢 Trying to get by ID:', numericId);
+            const idResponse = await generateService.getGenerate(numericId);
+            console.log('📥 ID response:', idResponse);
+            if (idResponse.success) {
+              generateData = idResponse.data;
+              console.log('✅ Found by ID:', generateData);
+            }
+          }
+        }
+        
+        if (generateData && generateData.content) {
+          // Set document name and ID
+          setDocumentName(generateData.name || 'Untitled');
+          setCurrentGenerateId(generateData.id);
           
-          if (response.success && response.data.content) {
-            // Set the content in the editor
-            editorRef.current.setContent(response.data.content);
-            
-            // Clear the localStorage to prevent reloading on refresh
-            localStorage.removeItem('currentGenerateId');
+          console.log('📝 Setting content in editor, editorRef.current:', !!editorRef.current);
+          console.log('📄 Content length:', generateData.content.length);
+          
+          // Set the content in the editor (editor is guaranteed to be ready)
+          if (editorRef.current) {
+            editorRef.current.setContent(generateData.content);
+            console.log('✅ Content set successfully');
             
             // Show success toast
             setToast({
-              message: 'Nội dung đã được tải thành công!',
+              message: `Đã tải nội dung: ${generateData.name}`,
               type: 'success',
               visible: true
             });
@@ -61,9 +110,83 @@ const WriteAssistant: React.FC = () => {
             setTimeout(() => {
               setToast(prev => ({ ...prev, visible: false }));
             }, 3000);
+          } else {
+            console.error('❌ Editor ref is null!');
+          }
+        } else {
+          console.log('⚠️ No content found');
+          setToast({
+            message: 'Không tìm thấy nội dung để tải',
+            type: 'warning',
+            visible: true
+          });
+          
+          setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('❌ Error loading content by name:', error);
+        setToast({
+          message: 'Có lỗi xảy ra khi tải nội dung',
+          type: 'error',
+          visible: true
+        });
+        
+        setTimeout(() => {
+          setToast(prev => ({ ...prev, visible: false }));
+        }, 3000);
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      console.log('📦 Checking localStorage for generateId');
+      // Fallback to localStorage method for backward compatibility
+      const generateId = localStorage.getItem('currentGenerateId');
+      console.log('🗄️ localStorage generateId:', generateId);
+      
+      if (generateId) {
+        try {
+          setIsLoading(true);
+          console.log('📡 Getting content by ID:', generateId);
+          const response = await generateService.getGenerate(parseInt(generateId));
+          console.log('📥 Response:', response);
+          
+          if (response.success && response.data.content) {
+            // Set document name and ID
+            setDocumentName(response.data.name || 'Untitled');
+            setCurrentGenerateId(response.data.id);
+            
+            console.log('📝 Setting content in editor, editorRef.current:', !!editorRef.current);
+            console.log('📄 Content length:', response.data.content.length);
+            
+            // Set the content in the editor (editor is guaranteed to be ready)
+            if (editorRef.current) {
+              editorRef.current.setContent(response.data.content);
+              console.log('✅ Content set successfully');
+              
+              // Clear the localStorage to prevent reloading on refresh
+              localStorage.removeItem('currentGenerateId');
+              
+              // Show success toast
+              setToast({
+                message: 'Nội dung đã được tải thành công!',
+                type: 'success',
+                visible: true
+              });
+              
+              // Hide toast after 3 seconds
+              setTimeout(() => {
+                setToast(prev => ({ ...prev, visible: false }));
+              }, 3000);
+            } else {
+              console.error('❌ Editor ref is null!');
+            }
+          } else {
+            console.log('⚠️ No content in response');
           }
         } catch (error) {
-          console.error('Error loading generated content:', error);
+          console.error('❌ Error loading generated content:', error);
           setToast({
             message: 'Có lỗi xảy ra khi tải nội dung',
             type: 'error',
@@ -77,60 +200,16 @@ const WriteAssistant: React.FC = () => {
         } finally {
           setIsLoading(false);
         }
+      } else {
+        console.log('ℹ️ No generateId in localStorage');
       }
-    };
-
-    loadGeneratedContent();
-  }, []); // Run once on mount
+    }
+  };
 
   const handleEditorInit = (evt: any, editor: any) => {
     editorRef.current = editor;
     
     // Load content after editor is initialized
-    const loadGeneratedContent = async () => {
-      const generateId = localStorage.getItem('currentGenerateId');
-      if (generateId) {
-        try {
-          setIsLoading(true);
-          const response = await generateService.getGenerate(parseInt(generateId));
-          
-          if (response.success && response.data.content) {
-            // Set the content in the editor
-            editor.setContent(response.data.content);
-            
-            // Clear the localStorage to prevent reloading on refresh
-            localStorage.removeItem('currentGenerateId');
-            
-            // Show success toast
-            setToast({
-              message: 'Nội dung đã được tải thành công!',
-              type: 'success',
-              visible: true
-            });
-            
-            // Hide toast after 3 seconds
-            setTimeout(() => {
-              setToast(prev => ({ ...prev, visible: false }));
-            }, 3000);
-          }
-        } catch (error) {
-          console.error('Error loading generated content:', error);
-          setToast({
-            message: 'Có lỗi xảy ra khi tải nội dung',
-            type: 'error',
-            visible: true
-          });
-          
-          // Hide toast after 3 seconds
-          setTimeout(() => {
-            setToast(prev => ({ ...prev, visible: false }));
-          }, 3000);
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
     loadGeneratedContent();
     
     // Add click event listener to show magic context menu with 3 second delay
@@ -364,6 +443,315 @@ const WriteAssistant: React.FC = () => {
     }
   };
 
+  // Auto-save function
+  const autoSaveDocument = useCallback(async () => {
+    if (!editorRef.current) return;
+    
+    try {
+      const content = editorRef.current.getContent();
+      
+      // Only save if there's actual content
+      if (!content || content.trim() === '<p></p>' || content.trim() === '') return;
+      
+      let response;
+      
+      if (currentGenerateId) {
+        // Update existing document
+        response = await generateService.updateGenerate(currentGenerateId, {
+          content: content,
+          name: documentName,
+          status: 'completed'
+        });
+      } else {
+        // Create new document if no ID exists
+        response = await generateService.createGenerate({
+          name: documentName,
+          content: content,
+          type: 'text',
+          status: 'completed'
+        });
+        
+        if (response.success && response.data) {
+          setCurrentGenerateId(response.data.id);
+        }
+      }
+      
+      if (response.success) {
+        showToast('Đã tự động lưu', 'success');
+      }
+    } catch (error) {
+      console.error('Auto-save error:', error);
+    }
+  }, [currentGenerateId, documentName]);
+
+  // Handle editor content change for auto-save
+  const handleEditorChange = useCallback((content: string) => {
+    // Clear existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Set new timeout for 20 seconds
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      autoSaveDocument();
+    }, 60000);
+  }, [autoSaveDocument]);
+
+  // Handle save document
+  const handleSaveDocument = async () => {
+    if (!editorRef.current) return;
+    
+    try {
+      setIsSaving(true);
+      const content = editorRef.current.getContent();
+      
+      let response;
+      
+      if (currentGenerateId) {
+        // Update existing document
+        response = await generateService.updateGenerate(currentGenerateId, {
+          content: content,
+          name: documentName,
+          status: 'completed' // Change status from pending to completed
+        });
+      } else {
+        // Create new document if no ID exists
+        response = await generateService.createGenerate({
+          name: documentName,
+          content: content,
+          type: 'text',
+          status: 'completed'
+        });
+        
+        if (response.success && response.data) {
+          setCurrentGenerateId(response.data.id);
+        }
+      }
+      
+      if (response.success) {
+        setToast({
+          message: 'Đã lưu bài viết thành công!',
+          type: 'success',
+          visible: true
+        });
+        
+        setTimeout(() => {
+          setToast(prev => ({ ...prev, visible: false }));
+        }, 3000);
+      } else {
+        throw new Error('Save failed');
+      }
+    } catch (error) {
+      console.error('Error saving document:', error);
+      setToast({
+        message: 'Có lỗi xảy ra khi lưu bài viết',
+        type: 'error',
+        visible: true
+      });
+      
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, visible: false }));
+      }, 3000);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Handle title editing
+  const handleTitleClick = () => {
+    setIsEditingTitle(true);
+    setTempDocumentName(documentName);
+  };
+
+  const handleTitleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleTitleSave();
+    } else if (e.key === 'Escape') {
+      setIsEditingTitle(false);
+      setTempDocumentName('');
+    }
+  };
+
+  const handleTitleSave = async () => {
+    if (tempDocumentName.trim() && tempDocumentName !== documentName) {
+      setDocumentName(tempDocumentName.trim());
+      
+      // Auto-save the title change if document exists
+      if (currentGenerateId) {
+        try {
+          await generateService.updateGenerate(currentGenerateId, {
+            name: tempDocumentName.trim()
+          });
+        } catch (error) {
+          console.error('Error updating document name:', error);
+        }
+      }
+    }
+    setIsEditingTitle(false);
+    setTempDocumentName('');
+  };
+
+  const handleTitleBlur = () => {
+    handleTitleSave();
+  };
+  const handleShareDocument = async () => {
+    if (!currentGenerateId) return;
+    
+    try {
+      // Update document to be shareable
+      const response = await generateService.updateGenerate(currentGenerateId, {
+        share: 'public'
+      });
+      
+      if (response.success) {
+        // Copy share link to clipboard with fallback
+        const shareUrl = `${window.location.origin}/docs/${currentGenerateId}`;
+        
+        try {
+          // Try modern clipboard API first
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(shareUrl);
+          } else {
+            // Fallback for older browsers or non-secure contexts
+            const textArea = document.createElement('textarea');
+            textArea.value = shareUrl;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+          }
+          
+          setToast({
+            message: 'Link chia sẻ đã được sao chép vào clipboard!',
+            type: 'success',
+            visible: true
+          });
+        } catch (clipboardError) {
+          console.warn('Clipboard copy failed:', clipboardError);
+          // Show the URL to user if clipboard fails
+          setToast({
+            message: `Link chia sẻ: ${shareUrl}`,
+            type: 'success',
+            visible: true
+          });
+        }
+        
+        setTimeout(() => {
+          setToast(prev => ({ ...prev, visible: false }));
+        }, 5000); // Longer timeout for manual copy
+      } else {
+        throw new Error('Share failed');
+      }
+    } catch (error) {
+      console.error('Error sharing document:', error);
+      setToast({
+        message: 'Có lỗi xảy ra khi chia sẻ bài viết',
+        type: 'error',
+        visible: true
+      });
+      
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, visible: false }));
+      }, 3000);
+    }
+  };
+
+  // Export functions
+  const handleExportHTML = () => {
+    if (!editorRef.current) return;
+    
+    const content = editorRef.current.getContent();
+    const blob = new Blob([content], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${documentName}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowExportDropdown(false);
+  };
+
+  const handleExportWord = () => {
+    if (!editorRef.current) return;
+    
+    const content = editorRef.current.getContent();
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>${documentName}</title>
+      </head>
+      <body>
+        ${content}
+      </body>
+      </html>
+    `;
+    
+    const blob = new Blob([htmlContent], { 
+      type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' 
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${documentName}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    setShowExportDropdown(false);
+  };
+
+  const handleExportPDF = () => {
+    if (!editorRef.current) return;
+    
+    const content = editorRef.current.getContent();
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${documentName}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              line-height: 1.6; 
+              margin: 20px; 
+            }
+            .mce-pagebreak { 
+              page-break-before: always; 
+              border: none; 
+              height: 0; 
+            }
+            @media print {
+              .mce-pagebreak { border: none; }
+            }
+          </style>
+        </head>
+        <body>
+          ${content}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+    setShowExportDropdown(false);
+  };
+
   return (
     <div className={`h-full flex flex-col ${
       theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
@@ -371,15 +759,133 @@ const WriteAssistant: React.FC = () => {
       {/* Header */}
       <div className={`p-4`}>
         <div className="flex items-center justify-between mb-3">
-          <h3 className={`font-medium ${
-             theme === 'dark' ? 'text-white' : 'text-gray-800'
-           }`}>{t.writeAssistant.title}</h3>
-          {(isLoading || isGenerating) && (
-            <div className="flex items-center gap-2 text-sm text-blue-600">
-              <LoadingSpinner className="w-4 h-4" />
-              {isGenerating ? 'Generating Content...' : 'AI Processing...'}
-            </div>
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={tempDocumentName}
+              onChange={(e) => setTempDocumentName(e.target.value)}
+              onKeyDown={handleTitleKeyPress}
+              onBlur={handleTitleBlur}
+              autoFocus
+              className={`font-medium bg-transparent border-b-2 border-blue-500 outline-none px-1 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-800'
+              }`}
+            />
+          ) : (
+            <h3 
+              className={`font-medium cursor-pointer hover:bg-opacity-10 hover:bg-gray-500 px-1 py-1 rounded transition-colors flex items-center gap-2 ${
+                theme === 'dark' ? 'text-white' : 'text-gray-800'
+              }`}
+              onClick={handleTitleClick}
+              title="Click để chỉnh sửa tên tài liệu"
+            >
+              <span>{documentName}</span>
+              <PencilIcon className="w-4 h-4 opacity-60 hover:opacity-100 transition-opacity" />
+            </h3>
           )}
+          
+          <div className="flex items-center gap-3">
+            {(isLoading || isGenerating) && (
+              <div className="flex items-center gap-2 text-sm text-blue-600">
+                <LoadingSpinner className="w-4 h-4" />
+                {isGenerating ? 'Generating Content...' : 'Loading content...'}
+              </div>
+            )}
+            
+            {/* Save Button */}
+            <button
+              onClick={handleSaveDocument}
+              disabled={isSaving}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                theme === 'dark'
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:text-gray-400'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:text-gray-500'
+              }`}
+            >
+              {isSaving ? (
+                <>
+                  <LoadingSpinner className="w-4 h-4" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Save
+                </>
+              )}
+            </button>
+            
+            {/* Export Button */}
+            <div className="relative">
+              <button
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+                disabled={!currentGenerateId}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                  theme === 'dark'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600 disabled:text-gray-400'
+                    : 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:text-gray-500'
+                }`}
+              >
+                <DownloadIcon className="w-4 h-4" />
+                Export
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Export Dropdown */}
+              {showExportDropdown && (
+                <div className={`absolute top-full left-0 mt-1 w-48 rounded-lg shadow-lg z-50 ${
+                  theme === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'
+                }`}>
+                  <div className="py-1">
+                    <button
+                      onClick={handleExportHTML}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 hover:bg-gray-500 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      📄 Export as HTML
+                    </button>
+                    <button
+                      onClick={handleExportWord}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 hover:bg-gray-500 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      📝 Export as Word
+                    </button>
+                    <button
+                      onClick={handleExportPDF}
+                      className={`w-full text-left px-4 py-2 text-sm hover:bg-opacity-10 hover:bg-gray-500 transition-colors ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-700'
+                      }`}
+                    >
+                      📋 Export as PDF
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {/* Share Button */}
+            <button
+              onClick={handleShareDocument}
+              disabled={!currentGenerateId}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 ${
+                theme === 'dark'
+                  ? 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-600 disabled:text-gray-400'
+                  : 'bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:text-gray-500'
+              }`}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+              Share
+            </button>
+          </div>
         </div>
       </div>
       
@@ -393,6 +899,7 @@ const WriteAssistant: React.FC = () => {
           <Editor
             tinymceScriptSrc="/tinymce/tinymce.min.js"
             onInit={handleEditorInit}
+            onEditorChange={handleEditorChange}
             initialValue={`<p>${t.writeAssistant.placeholder}</p>`}
             init={{
               height: '100%',
@@ -405,13 +912,13 @@ const WriteAssistant: React.FC = () => {
               plugins: [
                 'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
                 'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                'insertdatetime', 'media', 'table', 'help', 'wordcount'
+                'insertdatetime', 'media', 'table', 'help', 'wordcount', 'pagebreak'
               ],
               toolbar: 'undo redo | blocks fontfamily fontsize | ' +
                 'bold italic underline strikethrough | forecolor backcolor | ' +
                 'alignleft aligncenter alignright alignjustify | ' +
                 'bullist numlist outdent indent | link image media table | ' +
-                'aiassistant | code preview fullscreen | removeformat help',
+                'pagebreak | aiassistant | code preview fullscreen | removeformat help',
               content_style: `
                 body { 
                   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
@@ -428,6 +935,21 @@ const WriteAssistant: React.FC = () => {
                 .mce-content-body-light {
                   background-color: #ffffff !important;
                   color: #111827 !important;
+                }
+                .mce-pagebreak {
+                  cursor: default;
+                  display: block;
+                  border: 0;
+                  width: 100%;
+                  height: 5px;
+                  border: 1px dashed #ccc;
+                  margin: 20px 0;
+                  page-break-before: always;
+                }
+                @media print {
+                  .mce-pagebreak {
+                    border: 0;
+                  }
                 }
               `,
               contextmenu: false, // Disable default context menu
@@ -578,6 +1100,24 @@ const WriteAssistant: React.FC = () => {
                 
                 // Add context menu event listener
                 editor.on('contextmenu', handleContextMenu);
+                
+                // Auto pagebreak functionality
+                editor.on('NodeChange', () => {
+                  const content = editor.getContent();
+                  const wordCount = editor.plugins.wordcount.getCount();
+                  
+                  // Auto insert pagebreak every 500 words approximately
+                  if (wordCount > 0 && wordCount % 500 === 0) {
+                    const lastPageBreak = content.lastIndexOf('<div class="mce-pagebreak">');
+                    const currentContent = editor.getContent({ format: 'text' });
+                    const wordsAfterLastBreak = currentContent.split(' ').length;
+                    
+                    // Only add pagebreak if there isn't one recently added
+                    if (lastPageBreak === -1 || wordsAfterLastBreak > 450) {
+                      editor.insertContent('<div class="mce-pagebreak" contenteditable="false"></div>');
+                    }
+                  }
+                });
               }
             }}
           />

@@ -11,6 +11,9 @@ export interface Generate {
   file_patch?: string;
   task_id?: string;
   credit_cost: number;
+  result_url?: string;
+  error_message?: string;
+  completed_at?: string;
   created_at: string;
   updated_at: string;
   user?: {

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
 import AuthModal from '../components/AuthModal';
+import ModernAudioPlayer from '../components/ModernAudioPlayer';
 
 interface FilterState {
   search: string;
@@ -33,6 +35,7 @@ interface TemplateModalState {
 const Document: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const { theme } = useTheme();
+  const navigate = useNavigate();
 
   // Set page title
   useEffect(() => {
@@ -76,6 +79,19 @@ const Document: React.FC = () => {
   const [templateFilters, setTemplateFilters] = useState<TemplateFilterState>({
     search: '',
     filters: ''
+  });
+  
+  // Audio player state
+  const [audioPlayer, setAudioPlayer] = useState<{
+    isVisible: boolean;
+    audioUrl: string;
+    title: string;
+    isPlaying: boolean;
+  }>({
+    isVisible: false,
+    audioUrl: '',
+    title: '',
+    isPlaying: false
   });
   
   const [filterOptions, setFilterOptions] = useState<{
@@ -156,6 +172,84 @@ const Document: React.FC = () => {
     } catch (error) {
       console.error('Error deleting generate:', error);
       alert('Không thể xóa document');
+    }
+  };
+
+  // Handle edit generate
+  const handleEditGenerate = (generate: Generate) => {
+    // Navigate to write-assistant with the document name/id
+    navigate(`/write-assistant/${generate.name || generate.id}`);
+  };
+
+  // Handle play audio
+  const handlePlayAudio = (generate: Generate) => {
+    console.log('Playing audio:', generate); // Debug log
+    if (generate.result_url) {
+      setAudioPlayer({
+        isVisible: true,
+        audioUrl: generate.result_url,
+        title: generate.name || 'Audio',
+        isPlaying: false
+      });
+    } else {
+      console.log('No audio URL found:', generate.result_url);
+      // Show error message to user
+      alert('Không tìm thấy file audio để phát');
+    }
+  };
+
+  // Handle download audio
+  const handleDownloadAudio = (generate: Generate) => {
+    if (generate.result_url) {
+      const link = document.createElement('a');
+      link.href = generate.result_url;
+      link.download = `${generate.name || 'audio'}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      alert('Không tìm thấy file audio để tải xuống');
+    }
+  };
+
+  // Handle create new document
+  const handleCreateNew = async () => {
+    // Check authentication first
+    if (!isAuthenticated) {
+      setAuthModal({ isOpen: true, mode: 'login' });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      
+      // Create generate record with default values
+      const generateData = {
+        name: 'Untitled',
+        content: '',
+        type: 'text',
+        status: 'pending'
+      };
+      
+      const response = await generateService.createGenerate(generateData);
+      
+      if (response.success) {
+        const generateId = response.data.id;
+        
+        // Navigate to WriteAssistant with the new document
+        localStorage.setItem('currentGenerateId', generateId.toString());
+        navigate('/write-assistant');
+        
+        showToast('Document mới đã được tạo thành công!', 'success');
+      } else {
+        showToast('Không thể tạo document mới', 'error');
+      }
+      
+    } catch (error) {
+      console.error('Error creating new document:', error);
+      showToast('Có lỗi xảy ra khi tạo document mới', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -448,7 +542,7 @@ const Document: React.FC = () => {
                     placeholder="Tìm theo tên..."
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                    className="w-64"
+                    className="w-56 h-9"
                     startIcon={
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -456,8 +550,13 @@ const Document: React.FC = () => {
                     }
                   />
                 </div>
-                <Button variant="primary" size="md">
-                  Create New
+                <Button 
+                  variant="primary" 
+                  size="md"
+                  onClick={handleCreateNew}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Creating...' : 'Create New'}
                 </Button>
               </div>
               
@@ -472,7 +571,7 @@ const Document: React.FC = () => {
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
                         : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
@@ -494,7 +593,7 @@ const Document: React.FC = () => {
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
                         : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
@@ -516,7 +615,7 @@ const Document: React.FC = () => {
                   <select
                     value={filters.share}
                     onChange={(e) => setFilters({ ...filters, share: e.target.value })}
-                    className={`h-11 w-full rounded-lg border px-4 py-2.5 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
                       theme === 'dark'
                         ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
                         : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
@@ -622,14 +721,7 @@ const Document: React.FC = () => {
                                   theme === 'dark' ? 'text-white/90' : 'text-gray-800'
                                 }`}>
                                   {generate.name}
-                                </span>
-                                {generate.content && (
-                                  <span className={`block text-sm truncate max-w-xs ${
-                                    theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                                  }`}>
-                                    {generate.content}
-                                  </span>
-                                )}
+                                </span> 
                               </div>
                             </div>
                           </TableCell>
@@ -662,18 +754,40 @@ const Document: React.FC = () => {
                           </TableCell>
                           <TableCell className="px-4 py-3 text-gray-400">
                             <div className="flex items-center justify-end space-x-2">
-                              <button
-                                className="text-blue-600 hover:text-blue-900 p-1"
-                                title="Xem"
-                              >
-                                👁️
-                              </button>
-                              <button
-                                className="text-indigo-600 hover:text-indigo-900 p-1"
-                                title="Sửa"
-                              >
-                                ✏️
-                              </button>
+                              {generate.type === 'audio' ? (
+                                <>
+                                  <button
+                                    onClick={() => handleDownloadAudio(generate)}
+                                    className="text-blue-600 hover:text-blue-900 p-1"
+                                    title="Tải xuống"
+                                  >
+                                    📥
+                                  </button>
+                                  <button
+                                    onClick={() => handlePlayAudio(generate)}
+                                    className="text-green-600 hover:text-green-900 p-1"
+                                    title="Play"
+                                  >
+                                    ▶️
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    className="text-blue-600 hover:text-blue-900 p-1"
+                                    title="Xem"
+                                  >
+                                    👁️
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditGenerate(generate)}
+                                    className="text-indigo-600 hover:text-indigo-900 p-1"
+                                    title="Sửa"
+                                  >
+                                    ✏️
+                                  </button>
+                                </>
+                              )}
                               <button
                                 onClick={() => handleDeleteGenerate(generate.id)}
                                 className="text-red-600 hover:text-red-900 p-1"
@@ -712,7 +826,7 @@ const Document: React.FC = () => {
                       placeholder="Tìm theo tên..."
                       value={templateFilters.search}
                       onChange={(e) => setTemplateFilters({ ...templateFilters, search: e.target.value })}
-                      className={`w-64 pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      className={`w-56 pl-10 pr-4 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                         theme === 'dark'
                           ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
                           : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
@@ -971,6 +1085,16 @@ const Document: React.FC = () => {
          onClose={() => setAuthModal({ isOpen: false, mode: 'login' })}
          initialMode={authModal.mode}
        />
+
+       {/* Modern Audio Player */}
+       <ModernAudioPlayer
+            title={audioPlayer.title}
+            audioUrl={audioPlayer.audioUrl}
+            isVisible={audioPlayer.isVisible}
+            onClose={() => setAudioPlayer(prev => ({ ...prev, isVisible: false }))}
+            onDownload={() => handleDownloadAudio({ result_url: audioPlayer.audioUrl })}
+            autoPlay={true}
+          />
      </div>
    );
  };

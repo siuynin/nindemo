@@ -6,6 +6,7 @@ import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
 import TextToSpeech from './pages/TextToSpeech';
 import Document from './pages/Document';
+import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
 import Price from './pages/Price';
 import App from './App';
@@ -36,6 +37,11 @@ export const router = createBrowserRouter([
       },
     ],
   },
+  // Public document route (no layout)
+  {
+    path: '/docs/:id',
+    element: <PublicDocument />,
+  },
   {
     path: '/app',
     element: <AdminLayout />,
@@ -46,6 +52,10 @@ export const router = createBrowserRouter([
       },
       {
         path: 'write-assistant',
+        element: <WriteAssistantPage />,
+      },
+      {
+        path: 'write-assistant/:name',
         element: <WriteAssistantPage />,
       },
       {
@@ -87,6 +97,10 @@ export const router = createBrowserRouter([
     children: [
       {
         index: true,
+        element: <WriteAssistantPage />,
+      },
+      {
+        path: ':name',
         element: <WriteAssistantPage />,
       },
     ],
