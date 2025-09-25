@@ -83,7 +83,7 @@ export const vi = {
     title: 'Văn Bản Thành Giọng Nói',
     subtitle: 'Chuyển đổi văn bản thành giọng nói tự nhiên với công nghệ AI tiên tiến',
     cloneVoiceDesc: 'Sao chép và tái tạo bất kỳ giọng nói nào bằng AI',
-    ndhubDesc: 'Dịch vụ TTS tiếng Việt chuyên nghiệp',
+    ndhubDesc: 'Dịch vụ TTS Realtime',
     elevenlabsDesc: 'Tạo giọng nói AI chất lượng cao',
     minmaxDesc: 'Công nghệ tổng hợp giọng nói tiên tiến',
     inputTitle: 'Nhập Văn Bản',

@@ -7,6 +7,38 @@ import AdminSidebar from './AdminSidebar';
 import AdminTopBar from './AdminTopBar';
 import BubbleChatbot from './BubbleChatbot';
 
+// Custom CSS for smooth animations
+const backgroundAnimationStyles = `
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33% { transform: translateY(-20px) rotate(120deg); }
+    66% { transform: translateY(10px) rotate(240deg); }
+  }
+  
+  @keyframes floatReverse {
+    0%, 100% { transform: translateX(0px) rotate(0deg); }
+    50% { transform: translateX(-15px) rotate(180deg); }
+  }
+  
+  .float-animation {
+    animation: float 8s ease-in-out infinite;
+  }
+  
+  .float-reverse-animation {
+    animation: floatReverse 10s ease-in-out infinite;
+  }
+`;
+
+// Inject styles
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = backgroundAnimationStyles;
+  if (!document.head.querySelector('style[data-admin-bg]')) {
+    styleElement.setAttribute('data-admin-bg', 'true');
+    document.head.appendChild(styleElement);
+  }
+}
+
 // Helper function to load state from localStorage
 const loadState = <T,>(key: string, defaultValue: T): T => {
   try {
@@ -97,9 +129,18 @@ const AdminLayoutContent: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative overflow-hidden">
+      {/* Background Circles */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        {/* Circle 1 - Top Right */}
+        <div className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-gradient-to-br from-blue-400/20 via-purple-400/15 to-pink-400/10 float-animation"></div>
+        
+        {/* Circle 2 - Bottom Left */}
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-gradient-to-tr from-green-400/15 via-blue-400/10 to-purple-400/20 float-reverse-animation"></div>
+      </div>
+
       {/* Sidebar */}
-      <div>
+      <div className="relative z-10">
         <AdminSidebar
           isExpanded={isMobile ? false : isExpanded}
           isMobileOpen={isMobileOpen}
@@ -119,7 +160,7 @@ const AdminLayoutContent: React.FC = () => {
 
       {/* Main Content */}
       <div
-        className={`flex-1 flex flex-col transition-all duration-300 ease-in-out ${
+        className={`flex-1 flex flex-col transition-all duration-300 ease-in-out relative z-10 ${
           isExpanded || isHovered ? "lg:ml-[290px]" : "lg:ml-[90px]"
         } ${isMobileOpen ? "ml-0" : ""}`}
       >

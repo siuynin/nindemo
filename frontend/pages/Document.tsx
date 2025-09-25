@@ -5,6 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
+import { DownloadIcon, TrashIcon, PlusIcon } from '../components/icons';
 import AuthModal from '../components/AuthModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
 
@@ -556,6 +557,7 @@ const Document: React.FC = () => {
                   onClick={handleCreateNew}
                   disabled={isLoading}
                 >
+                   <PlusIcon className="w-4 h-4" />
                   {isLoading ? 'Creating...' : 'Create New'}
                 </Button>
               </div>
@@ -761,7 +763,7 @@ const Document: React.FC = () => {
                                     className="text-blue-600 hover:text-blue-900 p-1"
                                     title="Tải xuống"
                                   >
-                                    📥
+                                    <DownloadIcon className="w-4 h-4" />
                                   </button>
                                   <button
                                     onClick={() => handlePlayAudio(generate)}
@@ -793,7 +795,7 @@ const Document: React.FC = () => {
                                 className="text-red-600 hover:text-red-900 p-1"
                                 title="Xóa"
                               >
-                                🗑️
+                                <TrashIcon className="w-4 h-4" />
                               </button>
                             </div>
                           </TableCell>

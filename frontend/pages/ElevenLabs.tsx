@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -8,6 +9,7 @@ import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon } from '../components/ic
 import AuthModal from '../components/AuthModal';
 import VoiceSelectionModal from '../components/VoiceSelectionModal';
 import { ElevenLabsVoice } from '../types';
+import { Card, Button, Badge, Input, TextArea } from '../components/ui';
 
 interface Generate {
   id: number;
@@ -23,11 +25,21 @@ const ElevenLabs: React.FC = () => {
   const { theme } = useTheme();
   const { t } = useLanguage();
   const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
   
   // Set page title
   useEffect(() => {
     document.title = 'ElevenLabs - AI App';
   }, []);
+
+  // Check for selected voice from navigation state
+  useEffect(() => {
+    if (location.state && location.state.selectedVoice) {
+      setSelectedVoice(location.state.selectedVoice);
+      // Clear the state to prevent re-setting on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -214,74 +226,70 @@ const ElevenLabs: React.FC = () => {
         ? 'bg-gray-900 text-white' 
         : 'bg-gray-50 text-gray-900'
     }`}>
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl">
+        {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center mb-4">
-            <div className="inline-flex p-3 rounded-lg bg-gradient-to-r from-blue-500 to-indigo-500 text-white mr-4">
-              <SpeakerIcon className="w-8 h-8" />
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg">
+                <SpeakerIcon className="w-8 h-8" />
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold">ElevenLabs</h1>
-              <p className={`text-lg ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
-                High-quality AI voice generation
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                ElevenLabs
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                High-quality AI voice generation with natural speech synthesis
               </p>
             </div>
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-[70%_30%] gap-8">
-            {/* Left Column - Form */}
-            <div className="space-y-6">
-              {/* Project Information */}
-              <div className={`p-6 rounded-xl ${
-                theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-              } shadow-lg`}>
-                <h2 className="text-xl font-semibold mb-4">Project Information</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Project Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="name"
-                      value={formData.name}
-                      onChange={handleInputChange}
-                      placeholder="Enter project name..."
-                      className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                      required
-                    />
-                  </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Main Form - Takes 2 columns on xl screens */}
+            <div className="xl:col-span-2 space-y-6">
+              {/* Project Information Card */}
+              <Card className="space-y-6">
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Project Information
+                  </h2> 
+                </div>
+
+                <div className="space-y-6">
+                  {/* Project Name */}
+                  <Input
+                    label="Project Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter a descriptive name for your project..."
+                    className="w-full"
+                  />
 
                   {/* Voice Selection */}
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Select Voice *
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Voice Selection
+                      <span className="text-red-500 ml-1">*</span>
                     </label>
                     
                     {/* Selected Voice Display */}
                     {selectedVoice ? (
-                      <div className={`p-4 rounded-lg border mb-2 ${
-                        theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-                      }`}>
+                      <Card padding="sm" className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
                         <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h4 className="font-medium text-sm mb-1">{selectedVoice.name}</h4>
-                            <p className={`text-xs ${
-                              theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                            }`}>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <h4 className="font-medium text-gray-900 dark:text-white truncate">
+                                {selectedVoice.name}
+                              </h4>
+                              <Badge variant="solid" color="primary" size="sm">
+                                Selected
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                               {Array.isArray(selectedVoice.language) 
                                 ? selectedVoice.language.map(lang => 
                                     typeof lang === 'object' && lang.language ? lang.language : lang
@@ -289,199 +297,173 @@ const ElevenLabs: React.FC = () => {
                                 : (typeof selectedVoice.language === 'string' ? selectedVoice.language.toUpperCase() : 'N/A')
                               } • {selectedVoice.gender} • {selectedVoice.age}
                             </p>
-                            <p className={`text-xs mt-1 ${
-                              theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
-                            }`}>
+                            <p className="text-xs text-gray-500 dark:text-gray-500 line-clamp-2">
                               {selectedVoice.description}
                             </p>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              type="button"
+                          <div className="flex items-center space-x-2 ml-4">
+                            <Button
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleVoicePreview(selectedVoice.voice_id)}
-                              className={`p-2 rounded-full transition-colors ${
-                                theme === 'dark'
-                                  ? 'hover:bg-gray-600 text-gray-300'
-                                  : 'hover:bg-gray-200 text-gray-600'
-                              }`}
-                            >
-                              {isPlaying === selectedVoice.voice_id ? (
-                                <PauseIcon className="w-4 h-4" />
-                              ) : (
+                              startIcon={isPlaying === selectedVoice.voice_id ? 
+                                <PauseIcon className="w-4 h-4" /> : 
                                 <PlayIcon className="w-4 h-4" />
-                              )}
-                            </button>
+                              }
+                            >
+                              {isPlaying === selectedVoice.voice_id ? 'Pause' : 'Preview'}
+                            </Button>
                           </div>
                         </div>
-                      </div>
+                      </Card>
                     ) : (
-                      <div className={`p-4 rounded-lg border mb-2 text-center ${
-                        theme === 'dark' ? 'bg-gray-700 border-gray-600 text-gray-400' : 'bg-gray-50 border-gray-200 text-gray-500'
-                      }`}>
-                        <p className="text-sm">Chưa chọn voice nào</p>
-                      </div>
+                      <Card padding="sm" className="border-2 border-dashed border-gray-300 dark:border-gray-600">
+                        <div className="text-center py-4">
+                          <SpeakerIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            No voice selected
+                          </p>
+                        </div>
+                      </Card>
                     )}
                     
                     {/* Voice Selection Button */}
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
                       onClick={() => setIsVoiceModalOpen(true)}
-                      className={`w-full p-3 rounded-lg border-2 border-dashed transition-colors ${
-                        theme === 'dark'
-                          ? 'border-gray-600 hover:border-gray-500 text-gray-300 hover:bg-gray-700'
-                          : 'border-gray-300 hover:border-gray-400 text-gray-600 hover:bg-gray-50'
-                      }`}
+                      startIcon={<SpeakerIcon className="w-5 h-5" />}
+                      className="w-full"
                     >
-                      <div className="flex items-center justify-center space-x-2">
-                        <SpeakerIcon className="w-5 h-5" />
-                        <span>{selectedVoice ? 'Thay đổi Voice' : 'Chọn Voice'}</span>
-                      </div>
-                    </button>
+                      {selectedVoice ? 'Change Voice' : 'Select Voice'}
+                    </Button>
                   </div>
                   
-                  <div>
-                    <label className={`block text-sm font-medium mb-2 ${
-                      theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                    }`}>
-                      Text Content *
-                    </label>
-                    <textarea
-                      name="content"
-                      value={formData.content}
-                      onChange={handleInputChange}
-                      placeholder="Enter the text you want to convert to speech..."
-                      rows={6}
-                      className={`w-full px-4 py-3 rounded-lg border focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors resize-none ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
-                      required
-                    />
-                    <p className={`text-sm mt-2 ${
-                      theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                    }`}>
-                      {formData.content.length} characters
-                    </p>
-                  </div>
+                  {/* Text Content */}
+                  <TextArea
+                    label="Text Content"
+                    name="content"
+                    value={formData.content}
+                    onChange={handleInputChange}
+                    placeholder="Enter the text you want to convert to speech..."
+                    rows={6}
+                    hint={`${formData.content.length} characters`}
+                    className="w-full"
+                  />
                   
                   {/* Generate Button */}
-                  <div className="flex justify-center mt-6">
-                    <button
+                  <div className="flex justify-center pt-4">
+                    <Button
                       type="submit"
+                      size="md"
                       disabled={isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice}
-                      className={`px-8 py-4 rounded-lg font-semibold text-white transition-all ${
-                        isLoading || !formData.name.trim() || !formData.content.trim() || !selectedVoice
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 transform hover:scale-105'
-                      }`}
+                      className="px-8 py-4 min-w-[200px]"
                     >
                       {isLoading ? (
-                        <div className="flex items-center space-x-2">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          <span>Generating...</span>
-                        </div>
+                        <>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                          Generating...
+                        </>
                       ) : (
                         'Generate Speech'
                       )}
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
-
-
+              </Card>
             </div>
 
-            {/* Right Column - Recent Audio Generates */}
-            <div className={`p-6 rounded-xl ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            } shadow-lg`}>
-              <h2 className="text-xl font-semibold mb-4">Recent Audio Generates</h2>
-              
-              {!isAuthenticated || !user ? (
-                <div className={`p-8 text-center ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  <SpeakerIcon className={`w-12 h-12 mx-auto mb-3 ${
-                    theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
-                  }`} />
-                  <p className="text-sm">Vui lòng đăng nhập để xem lịch sử</p>
-                  <button
-                    onClick={() => setIsAuthModalOpen(true)}
-                    className={`mt-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                        : 'bg-blue-500 hover:bg-blue-600 text-white'
-                    }`}
-                  >
-                    Đăng nhập
-                  </button>
+            {/* Sidebar - Recent Audio Generates */}
+            <div className="xl:col-span-1">
+              <Card className="sticky top-6">
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4 mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Recent Audio
+                  </h2> 
                 </div>
-              ) : userGenerates.length > 0 ? (
-                <div className="space-y-3">
-                  {userGenerates.map((generate) => (
-                    <div key={generate.id} className={`p-4 rounded-lg border ${
-                      theme === 'dark' ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'
-                    }`}>
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm mb-1 truncate">{generate.name}</h4>
-                          <p className={`text-xs mb-2 ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
-                          }`}>
-                            {new Date(generate.created_at).toLocaleDateString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              year: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                            generate.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                            generate.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                            generate.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                            'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                          }`}>
-                            {generate.status === 'processing' ? 'Đang xử lý' :
-                             generate.status === 'completed' ? 'Hoàn thành' :
-                             generate.status === 'failed' ? 'Thất bại' :
-                             generate.status}
-                          </span>
-                        </div>
-                        <div className="flex items-center space-x-2 ml-2">
+                
+                {!isAuthenticated || !user ? (
+                  <div className="text-center py-8">
+                    <div className="inline-flex p-3 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                      <SpeakerIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Sign in to view your generation history
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAuthModalOpen(true)}
+                    >
+                      Sign In
+                    </Button>
+                  </div>
+                ) : userGenerates.length > 0 ? (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {userGenerates.map((generate) => (
+                      <Card key={generate.id} padding="sm" className="hover:shadow-md transition-shadow">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                                {generate.name}
+                              </h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {new Date(generate.created_at).toLocaleDateString('vi-VN', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="light"
+                              color={
+                                generate.status === 'processing' ? 'warning' :
+                                generate.status === 'completed' ? 'success' :
+                                generate.status === 'failed' ? 'error' : 'light'
+                              }
+                              size="sm"
+                            >
+                              {generate.status === 'processing' ? 'Processing' :
+                               generate.status === 'completed' ? 'Completed' :
+                               generate.status === 'failed' ? 'Failed' :
+                               generate.status}
+                            </Badge>
+                          </div>
+                          
                           {generate.status === 'completed' && (
-                            <>
-                              <button
-                                type="button"
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={async () => {
                                   try {
-                                    // Use blob URL for better compatibility and authentication
                                     const audioBlob = await generateService.downloadGenerate(generate.id);
                                     const audioUrl = URL.createObjectURL(audioBlob);
                                     const audio = new Audio(audioUrl);
                                     
                                     audio.onended = () => {
-                                      URL.revokeObjectURL(audioUrl); // Clean up blob URL
+                                      URL.revokeObjectURL(audioUrl);
                                     };
                                     
-                                    await audio.play();
+                                    audio.play().catch(error => {
+                                      console.error('Error playing audio:', error);
+                                      showToast('Không thể phát audio', 'error');
+                                    });
                                   } catch (error) {
-                                    console.error('Error playing audio:', error);
-                                    showToast('Không thể phát audio', 'error');
+                                    console.error('Error loading audio:', error);
+                                    showToast('Không thể tải audio', 'error');
                                   }
                                 }}
-                                className={`p-2 rounded-full transition-colors ${
-                                  theme === 'dark'
-                                    ? 'hover:bg-gray-600 text-gray-300'
-                                    : 'hover:bg-gray-200 text-gray-600'
-                                }`}
-                                title="Play audio"
+                                startIcon={<PlayIcon className="w-3 h-3" />}
+                                className="flex-1"
                               >
-                                <PlayIcon className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
+                                Play
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
                                 onClick={async () => {
                                   try {
                                     const audioBlob = await generateService.downloadGenerate(generate.id);
@@ -493,123 +475,98 @@ const ElevenLabs: React.FC = () => {
                                     a.click();
                                     document.body.removeChild(a);
                                     URL.revokeObjectURL(url);
+                                    showToast('Tải xuống thành công!', 'success');
                                   } catch (error) {
-                                    console.error('Error downloading audio:', error);
-                                    showToast('Không thể tải xuống audio', 'error');
+                                    console.error('Error downloading:', error);
+                                    showToast('Lỗi khi tải xuống', 'error');
                                   }
                                 }}
-                                className={`p-2 rounded-full transition-colors ${
-                                  theme === 'dark'
-                                    ? 'hover:bg-gray-600 text-gray-300'
-                                    : 'hover:bg-gray-200 text-gray-600'
-                                }`}
-                                title="Download audio"
+                                startIcon={<DownloadIcon className="w-3 h-3" />}
+                                className="flex-1"
                               >
-                                <DownloadIcon className="w-4 h-4" />
-                              </button>
-                            </>
+                                Download
+                              </Button>
+                            </div>
                           )}
                         </div>
-                      </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="inline-flex p-3 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                      <SpeakerIcon className="w-6 h-6 text-gray-400" />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className={`p-8 text-center ${
-                  theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                }`}>
-                  <SpeakerIcon className={`w-12 h-12 mx-auto mb-3 ${
-                    theme === 'dark' ? 'text-gray-600' : 'text-gray-300'
-                  }`} />
-                  <p className="text-sm">Chưa có audio generates nào</p>
-                  <p className="text-xs mt-1">Tạo audio đầu tiên của bạn!</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Generate Result Display */}
-          {lastGenerateResult && (
-            <div className={`p-6 rounded-xl ${theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border shadow-lg`}>
-              <h3 className="text-lg font-semibold mb-4 text-green-600 dark:text-green-400">✅ Yêu cầu đã được tạo thành công!</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Tên dự án:</label>
-                  <p className={`text-base ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{lastGenerateResult.name}</p>
-                </div>
-                <div>
-                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Trạng thái:</label>
-                  <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
-                    lastGenerateResult.status === 'processing' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                    lastGenerateResult.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                    lastGenerateResult.status === 'failed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                    'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
-                  }`}>
-                    {lastGenerateResult.status === 'processing' ? 'Đang xử lý' :
-                     lastGenerateResult.status === 'completed' ? 'Hoàn thành' :
-                     lastGenerateResult.status === 'failed' ? 'Thất bại' :
-                     lastGenerateResult.status}
-                  </span>
-                </div>
-                <div>
-                   <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Chi phí Credits:</label>
-                   <p className={`text-base font-semibold ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`}>{typeof lastGenerateResult.credit_cost === 'number' ? lastGenerateResult.credit_cost.toFixed(2) : '0.00'}</p>
-                 </div>
-                {lastGenerateResult.task_id && (
-                  <div>
-                    <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>Task ID:</label>
-                    <p className={`text-sm font-mono ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>{lastGenerateResult.task_id}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      No audio generations yet
+                    </p>
                   </div>
                 )}
+              </Card>
+            </div>
+          </div>
+        </form>
+
+        {/* Toast Notification */}
+        {toast.visible && (
+          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
+            toast.type === 'success' ? 'bg-green-500 text-white' :
+            toast.type === 'error' ? 'bg-red-500 text-white' :
+            'bg-yellow-500 text-white'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium">{toast.message}</span>
+              <button
+                onClick={closeToast}
+                className="ml-4 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Last Generate Result Display */}
+        {lastGenerateResult && (
+          <Card className="mt-6 border-l-4 border-l-blue-500">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="inline-flex p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
+                  <SpeakerIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
               </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  onClick={() => setLastGenerateResult(null)}
-                  className={`px-4 py-2 text-sm rounded-lg transition-colors ${
-                    theme === 'dark'
-                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  Đóng
-                </button>
+              <div className="flex-1">
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Generation Request Submitted
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <p><span className="font-medium">Project:</span> {lastGenerateResult.name}</p>
+                  <p><span className="font-medium">Status:</span> 
+                    <Badge variant="light" color="warning" size="sm" className="ml-2">
+                      {lastGenerateResult.status}
+                    </Badge>
+                  </p>
+                  <p><span className="font-medium">Credit Cost:</span> {lastGenerateResult.credit_cost}</p>
+                  {lastGenerateResult.task_id && (
+                    <p><span className="font-medium">Task ID:</span> {lastGenerateResult.task_id}</p>
+                  )}
+                </div>
               </div>
             </div>
-          )}
-        </form>
+          </Card>
+        )}
       </div>
 
-      {/* Toast Notification */}
-      {toast.visible && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg transition-all duration-300 ${
-          toast.type === 'success' ? 'bg-green-500 text-white' :
-          toast.type === 'error' ? 'bg-red-500 text-white' :
-          'bg-yellow-500 text-black'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span>{toast.message}</span>
-            <button
-              onClick={closeToast}
-              className="ml-4 text-lg font-bold hover:opacity-70"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Auth Modal */}
+      {/* Modals */}
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
       />
       
-      {/* Voice Selection Modal */}
       <VoiceSelectionModal
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
         onSelectVoice={handleVoiceSelect}
-        selectedVoiceId={selectedVoice?.voice_id}
       />
     </div>
   );
