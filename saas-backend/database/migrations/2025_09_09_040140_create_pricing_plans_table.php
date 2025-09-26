@@ -18,8 +18,8 @@ return new class extends Migration
             $table->decimal('price', 10, 2); // Giá gói (0 cho free plan)
             $table->string('billing_cycle'); // monthly, yearly, lifetime
             $table->integer('credits_included'); // Số credit được cung cấp
-            $table->json('features')->nullable(); // Các tính năng (JSON format)
-            $table->boolean('max_voice_clone')->default(false); // Cho phép clone giọng nói
+            $table->boolean('features')->default(false); // Tính năng đặc biệt
+            $table->integer('max_voice_clone')->default(0); // Số lượng giọng nói tối đa có thể clone
             $table->boolean('is_premium')->default(false); // Gói premium
             $table->boolean('is_active')->default(true); // Trạng thái kích hoạt
             $table->integer('sort_order')->default(0); // Thứ tự hiển thị

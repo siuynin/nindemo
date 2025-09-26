@@ -38,7 +38,19 @@ const Price: React.FC = () => {
     }).format(price);
   };
 
-  const formatDuration = (days: number) => {
+  const formatDuration = (billingCycle: string, days?: number) => {
+    // Sử dụng billing_cycle nếu có, ngược lại fallback về duration_days
+    if (billingCycle) {
+      switch (billingCycle) {
+        case 'monthly': return 'tháng';
+        case 'yearly': return 'năm';
+        case 'lifetime': return 'trọn đời';
+        case 'weekly': return 'tuần';
+        default: return billingCycle;
+      }
+    }
+    
+    // Fallback cho duration_days (giữ lại để tương thích ngược)
     if (days === 30) return '1 tháng';
     if (days === 365) return '1 năm';
     if (days === 7) return '1 tuần';
@@ -122,15 +134,15 @@ const Price: React.FC = () => {
             <div
               key={plan.id}
               className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
-                plan.is_premium
-                  ? 'border-gradient-to-r from-purple-500 to-pink-500 ring-2 ring-purple-500 ring-opacity-50'
+                plan.features === 1
+                  ? 'border-gradient-to-r from-blue-500 via-purple-500 to-pink-500 ring-2 ring-blue-500 ring-opacity-30 hover:ring-opacity-50'
                   : 'border-gray-200 dark:border-gray-700 hover:border-blue-500'
               }`}
-            >
-              {plan.is_premium && (
+            > 
+              {plan.features === 1 && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold">
-                    Phổ biến nhất
+                  <span className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white px-4 py-1 rounded-full text-sm font-semibold shadow-lg">
+                    ✨ Có tính năng đặc biệt
                   </span>
                 </div>
               )}
@@ -153,7 +165,7 @@ const Price: React.FC = () => {
                       {formatPrice(plan.price, plan.currency)}
                     </span>
                     <span className="text-gray-600 dark:text-gray-400 ml-2">
-                      / {formatDuration(plan.duration_days)}
+                      / {formatDuration(plan.billing_cycle, plan.duration_days)}
                     </span>
                   </div>
                 </div>
@@ -165,7 +177,7 @@ const Price: React.FC = () => {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span className="text-gray-700 dark:text-gray-300">
-                      {plan.max_voice_clone ? 'Hỗ trợ Voice Clone' : 'Không hỗ trợ Voice Clone'}
+                      {plan.max_voice_clone > 0 ? `Hỗ trợ Voice Clone (${plan.max_voice_clone} giọng)` : 'Không hỗ trợ Voice Clone'}
                     </span>
                   </div>
                   

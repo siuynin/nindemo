@@ -40,7 +40,7 @@ class PricingPlan extends Model
         'duration_days' => 'integer',
         'is_active' => 'boolean',
         'features' => 'array',
-        'max_voice_clone' => 'boolean',
+        'max_voice_clone' => 'integer',
         'is_premium' => 'boolean',
         'sort_order' => 'integer',
     ];

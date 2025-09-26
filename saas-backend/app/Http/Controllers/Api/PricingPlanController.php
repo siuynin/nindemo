@@ -14,7 +14,7 @@ class PricingPlanController extends Controller
      */
     public function index()
     {
-        $plans = PricingPlan::active()->ordered()->get();
+        $plans = PricingPlan::active()->orderBy('sort_order', 'asc')->get();
         
         return response()->json([
             'success' => true,

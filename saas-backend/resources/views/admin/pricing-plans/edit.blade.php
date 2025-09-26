@@ -76,14 +76,27 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="max_voice_clone">Số lượng voice clone tối đa</label>
+                                    <label for="max_voice_clone">Số lượng voice clone tối đa <span class="text-danger">*</span></label>
                                     <input type="number" class="form-control @error('max_voice_clone') is-invalid @enderror" 
-                                           id="max_voice_clone" name="max_voice_clone" value="{{ old('max_voice_clone', $pricingPlan->max_voice_clone ?? 0) }}" min="0">
+                                           id="max_voice_clone" name="max_voice_clone" value="{{ old('max_voice_clone', $pricingPlan->max_voice_clone ?? 0) }}" min="0" required>
                                     @error('max_voice_clone')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="sort_order">Thứ tự sắp xếp <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control @error('sort_order') is-invalid @enderror" 
+                                           id="sort_order" name="sort_order" value="{{ old('sort_order', $pricingPlan->sort_order ?? 0) }}" min="0" required>
+                                    @error('sort_order')
+                                        <div class="invalid-feedback">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="status">Trạng thái</label>
@@ -94,6 +107,17 @@
                                     @error('status')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <div class="form-check mt-4">
+                                        <input type="checkbox" class="form-check-input" id="features" name="features" value="1" 
+                                               {{ old('features', $pricingPlan->features) ? 'checked' : '' }}>
+                                        <label class="form-check-label" for="features">
+                                            Tính năng đặc biệt
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

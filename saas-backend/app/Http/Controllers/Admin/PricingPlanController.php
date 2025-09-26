@@ -37,7 +37,10 @@ class PricingPlanController extends Controller
             'price' => 'required|numeric|min:0',
             'credits' => 'required|integer|min:1',
             'status' => 'required|in:active,inactive',
-            'is_popular' => 'boolean'
+            'is_popular' => 'boolean',
+            'features' => 'boolean',
+            'max_voice_clone' => 'required|integer|min:0',
+            'sort_order' => 'required|integer|min:0'
         ]);
 
         if ($validator->fails()) {
@@ -52,7 +55,10 @@ class PricingPlanController extends Controller
             'price' => $request->price,
             'credits' => $request->credits,
             'status' => $request->status,
-            'is_popular' => $request->has('is_popular')
+            'is_popular' => $request->has('is_popular'),
+            'features' => $request->has('features'),
+            'max_voice_clone' => $request->max_voice_clone,
+            'sort_order' => $request->sort_order
         ]);
 
         return redirect()->route('admin.pricing-plans.index')
@@ -104,7 +110,10 @@ class PricingPlanController extends Controller
             'price' => 'required|numeric|min:0',
             'credits' => 'required|integer|min:1',
             'status' => 'required|in:active,inactive',
-            'is_popular' => 'boolean'
+            'is_popular' => 'boolean',
+            'features' => 'boolean',
+            'max_voice_clone' => 'required|integer|min:0',
+            'sort_order' => 'required|integer|min:0'
         ]);
 
         if ($validator->fails()) {
@@ -119,7 +128,10 @@ class PricingPlanController extends Controller
             'price' => $request->price,
             'credits' => $request->credits,
             'status' => $request->status,
-            'is_popular' => $request->has('is_popular')
+            'is_popular' => $request->has('is_popular'),
+            'features' => $request->has('features'),
+            'max_voice_clone' => $request->max_voice_clone,
+            'sort_order' => $request->sort_order
         ]);
 
         return redirect()->route('admin.pricing-plans.index')

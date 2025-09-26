@@ -6,8 +6,10 @@ export interface PricingPlan {
   description: string;
   price: number;
   currency: string;
-  duration_days: number;
-  max_voice_clone: boolean;
+  billing_cycle: string;
+  duration_days?: number;
+  max_voice_clone: number;
+  features: number; // 0 or 1
   is_premium: boolean;
   is_active: boolean;
   created_at: string;
@@ -15,7 +17,7 @@ export interface PricingPlan {
 }
 
 class PricingService {
-  private baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+  private baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api';
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     const token = authService.getToken();
