@@ -34,13 +34,15 @@ const PayPalButtonsWrapper: React.FC<{
         throw new Error('Bạn cần đăng nhập để thực hiện thanh toán');
       }
 
-      // Convert VND to USD if needed (approximate rate: 1 USD = 24,000 VND)
+      // Convert VND to USD if needed (approximate rate: 1 USD = 25,000 VND)
       const paymentCurrency = plan.currency === 'VND' ? 'USD' : (plan.currency || 'USD');
-      const paymentAmount = plan.currency === 'VND' ? Math.ceil(plan.price / 24000) : plan.price;
+      const paymentAmount = plan.currency === 'VND' ? Math.round(Number(plan.price) / 25000) : plan.price;
 
       console.log('PayPal createOrder - Payment details:', {
-        amount: paymentAmount,
-        currency: paymentCurrency,
+        original_price: plan.price,
+        original_currency: plan.currency,
+        payment_amount: paymentAmount,
+        payment_currency: paymentCurrency,
         plan_id: plan.id
       });
 
@@ -208,7 +210,7 @@ const PayPalButtonsWrapper: React.FC<{
       
       <div className="text-sm text-gray-600 mt-2 text-center">
         <p>Thanh toán an toàn với PayPal</p>
-        <p>Số tiền: {plan.currency === 'VND' ? `$${Math.ceil(plan.price / 24000)}` : `${plan.price} ${plan.currency}`}</p>
+        <p>Số tiền: {plan.currency === 'VND' && plan.price ? `$${Math.round(Number(plan.price) / 25000)}` : `${plan.price || 0} ${plan.currency || 'USD'}`}</p>
       </div>
     </div>
   );
@@ -256,6 +258,10 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
   console.log('PayPal initialOptions:', initialOptions);
   console.log('Component mounted:', componentMounted.current);
   console.log('Plan details:', plan);
+  console.log('Plan price type:', typeof plan.price);
+  console.log('Plan price value:', plan.price);
+  console.log('Plan currency:', plan.currency);
+  console.log('Calculated USD amount:', plan.currency === 'VND' && plan.price ? Math.round(Number(plan.price) / 25000) : 'Not VND');
 
   return (
     <div className="w-full max-w-md mx-auto">
@@ -268,9 +274,9 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
             Gói: {plan.name}
           </p>
           <p className="text-xl font-bold text-blue-600">
-            {plan.currency === 'VND' 
-              ? `$${Math.ceil(plan.price / 24000)} USD` 
-              : `${plan.price} ${plan.currency}`
+            {plan.currency === 'VND' && plan.price
+              ? `$${Math.round(Number(plan.price) / 25000)} USD` 
+              : `${plan.price || 0} ${plan.currency || 'USD'}`
             }
           </p>
         </div>

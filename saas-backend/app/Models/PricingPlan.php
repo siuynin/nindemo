@@ -18,6 +18,7 @@ class PricingPlan extends Model
         'name',
         'description',
         'price',
+        'currency',
         'billing_cycle',
         'credits',
         'status',

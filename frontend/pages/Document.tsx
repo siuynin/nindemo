@@ -42,6 +42,24 @@ const Document: React.FC = () => {
   useEffect(() => {
     document.title = 'Documents - AI App';
   }, []);
+
+  // Set up AIService toast callback
+  useEffect(() => {
+    const setupToastCallback = async () => {
+      try {
+        const aiService = await import('../services/AIService');
+        const aiInstance = aiService.default;
+        
+        aiInstance.setToastCallback((message: string, type: 'success' | 'error' | 'warning') => {
+          showToast(message, type);
+        });
+      } catch (error) {
+        console.error('Error setting up AIService toast callback:', error);
+      }
+    };
+    
+    setupToastCallback();
+  }, []);
   const [generates, setGenerates] = useState<Generate[]>([]);
   const [templates, setTemplates] = useState<OpenAITemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -342,11 +360,20 @@ const Document: React.FC = () => {
   };
 
   // Toast notification function
-  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
-    setToast({ message, type, visible: true });
+  const showToast = (message: string, type: 'success' | 'error' ) => {
+    // Clear any existing toast first
+    setToast(prev => ({ ...prev, visible: false }));
+    
+    // Set new toast
+    setTimeout(() => {
+      setToast({ message, type, visible: true });
+    }, 100);
+    
+    // Set timeout based on type - longer for errors so users can read them
+    const timeout = type === 'error' ? 6000 : 3000;
     setTimeout(() => {
       setToast(prev => ({ ...prev, visible: false }));
-    }, 3000);
+    }, timeout);
   };
 
   // Handle form submit
@@ -449,14 +476,17 @@ const Document: React.FC = () => {
           showToast('Nội dung đã được tạo thành công!', 'success');
           
         } catch (aiError) {
-          console.error('Error generating AI content:', aiError);
-          
           // Update status to failed if AI generation fails
           await generateService.updateGenerate(generateId, {
             status: 'failed'
           });
           
-          showToast('Có lỗi xảy ra khi tạo nội dung AI', 'error');
+          // Hiển thị thông báo lỗi chi tiết từ AIService
+          if (aiError instanceof Error) {
+            showToast(aiError.message, 'error');
+          } else {
+            showToast('Có lỗi xảy ra khi tạo nội dung AI', 'error');
+          }
         }
       } else {
         showToast('Có lỗi xảy ra khi tạo nội dung', 'error');

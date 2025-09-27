@@ -3,8 +3,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { runwareApi, RunwareImageResponse } from '../services/runwareApi';
 import AIService from '../services/AIService';
-import Button from '../components/ui/Button';
-import InputField from '../components/ui/InputField';
+import { generateService } from '../services/generateService';
+import { userCreditService } from '../services/userCreditService';
+import Button from '../components/ui/Button'; 
 import TextArea from '../components/ui/TextArea';
 import Alert from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
@@ -73,6 +74,13 @@ const ImageCreator: React.FC = () => {
 
   useEffect(() => {
     fetchModels();
+  }, []);
+
+  // Set up AIService toast callback
+  useEffect(() => {
+    AIService.setToastCallback((message: string, type: 'success' | 'error' | 'warning') => {
+      showToast(type, message);
+    });
   }, []);
 
   const fetchModels = async () => {
@@ -147,6 +155,52 @@ const ImageCreator: React.FC = () => {
 
     setLoading(true);
     try {
+      // Kiểm tra credit trước khi tạo ảnh
+      console.log('Checking credits for model:', formData.model);
+      let modelCreditResponse;
+      try {
+        modelCreditResponse = await fetch(`/api/models/${formData.model}/credit-price`);
+        console.log('Model credit response status:', modelCreditResponse.status);
+        if (!modelCreditResponse.ok) {
+          console.error('Failed to fetch model credit price:', modelCreditResponse.statusText);
+          throw new Error(`Failed to fetch model credit price: ${modelCreditResponse.status} ${modelCreditResponse.statusText}`);
+        }
+      } catch (fetchError) {
+        console.error('Error fetching model credit price:', fetchError);
+        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+          throw new Error('Network error: Unable to connect to backend API. Please check if the server is running.');
+        }
+        throw fetchError;
+      }
+      
+      const creditData = await modelCreditResponse.json();
+      console.log('Model credit data:', creditData);
+      const creditPrice = creditData.credit_price || 0;
+      const totalCreditsNeeded = creditPrice * formData.numberResults;
+      console.log('Total credits needed:', totalCreditsNeeded, '(price:', creditPrice, 'x quantity:', formData.numberResults, ')');
+
+      // Lấy credit hiện tại của người dùng
+      console.log('Fetching user credits via userCreditService...');
+      const userCreditResponse = await userCreditService.getUserCredits();
+      console.log('User credit service response:', userCreditResponse);
+      
+      if (!userCreditResponse.success || !userCreditResponse.data) {
+        console.error('Failed to get user credits:', userCreditResponse.message);
+        throw new Error(`Failed to get user credits: ${userCreditResponse.message}`);
+      }
+      
+      const currentCredits = userCreditResponse.data.total_credits || 0;
+      console.log('Current user credits:', currentCredits);
+
+      // Kiểm tra xem có đủ credit không
+      if (currentCredits < totalCreditsNeeded) {
+        showToast('error', `Insufficient credits. You need ${totalCreditsNeeded} credits but only have ${currentCredits} credits.`);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('Credit check passed:', currentCredits, '>=', totalCreditsNeeded);
+
       // Tạo prompt với imageStyle nếu có
       let finalPrompt = formData.prompt;
       if (formData.imageStyle) {
@@ -172,7 +226,25 @@ const ImageCreator: React.FC = () => {
         numberResults: formData.numberResults
       };
 
-      const response = await runwareApi.generateImage(request);
+      // Kiểm tra API key trước khi gọi API
+      const apiKey = import.meta.env.VITE_RUNWARE_API_KEY;
+      console.log('Runware API Key configured:', !!apiKey);
+      if (!apiKey || apiKey === 'your_runware_key_here') {
+        throw new Error('Runware API key is not configured. Please add VITE_RUNWARE_API_KEY to your .env.local file.');
+      }
+
+      console.log('Calling runwareApi.generateImage with request:', request);
+      let response;
+      try {
+        response = await runwareApi.generateImage(request);
+        console.log('Runware API response:', response);
+      } catch (apiError) {
+        console.error('Runware API call failed:', apiError);
+        if (apiError instanceof TypeError && apiError.message.includes('Failed to fetch')) {
+          throw new Error('Network error: Unable to connect to Runware API. Please check your internet connection and API configuration.');
+        }
+        throw apiError;
+      }
       
       if (response.data && response.data.length > 0) {
         const newImages: GeneratedImage[] = response.data.map((img: RunwareImageResponse, index: number) => ({
@@ -186,6 +258,22 @@ const ImageCreator: React.FC = () => {
         }));
 
         setGeneratedImages(prev => [...newImages, ...prev]);
+        
+        // Tạo generate record để lưu lịch sử sau khi tạo ảnh thành công
+        try {
+          const generateResponse = await generateService.createGenerate({
+            name: `Image: ${formData.prompt.substring(0, 50)}${formData.prompt.length > 50 ? '...' : ''}`,
+            content: formData.prompt,
+            type: 'image',
+            status: 'completed',
+            model: formData.model,
+            credit_cost: totalCreditsNeeded
+          });
+          console.log('Generate record created:', generateResponse);
+        } catch (generateError) {
+          console.error('Failed to create generate record:', generateError);
+        }
+        
         showToast('success', `Generated ${newImages.length} image(s) successfully!`);
       }
     } catch (error) {

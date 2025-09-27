@@ -49,7 +49,10 @@ class PricingService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      return data.data?.pricing_plans || [];
+      return (data.data?.pricing_plans || []).map((plan: PricingPlan) => ({
+        ...plan,
+        currency: plan.currency || 'VND'
+      }));
     } catch (error) {
       console.error('Error fetching public pricing plans:', error);
       throw error;
@@ -60,7 +63,10 @@ class PricingService {
   async getAllPricingPlans(): Promise<PricingPlan[]> {
     try {
       const data = await this.makeRequest('/pricing-plans');
-      return data.data?.pricing_plans || [];
+      return (data.data?.pricing_plans || []).map((plan: PricingPlan) => ({
+        ...plan,
+        currency: plan.currency || 'VND'
+      }));
     } catch (error) {
       console.error('Error fetching pricing plans:', error);
       throw error;

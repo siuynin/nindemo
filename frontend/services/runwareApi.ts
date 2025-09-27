@@ -58,6 +58,9 @@ class RunwareApiService {
       ...request
     }];
 
+    console.log('Runware API Key exists:', !!this.apiKey);
+    console.log('Runware request data:', requestData);
+
     try {
       const response = await fetch(this.baseUrl, {
         method: 'POST',
@@ -68,14 +71,19 @@ class RunwareApiService {
         body: JSON.stringify(requestData)
       });
 
+      console.log('Runware API response status:', response.status);
+
       if (!response.ok) {
         const errorText = await response.text();
+        console.error('Runware API error response:', errorText);
         throw new Error(`Runware API error: ${response.status} - ${errorText}`);
       }
 
       const result: RunwareApiResponse = await response.json();
+      console.log('Runware API result:', result);
       
       if (result.errors && result.errors.length > 0) {
+        console.error('Runware API errors:', result.errors);
         throw new Error(`Runware API errors: ${JSON.stringify(result.errors)}`);
       }
 

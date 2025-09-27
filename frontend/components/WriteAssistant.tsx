@@ -48,6 +48,22 @@ const WriteAssistant: React.FC = () => {
     };
   }, []);
 
+  // Set up AIService toast callback
+  React.useEffect(() => {
+    AIService.setToastCallback((message: string, type: 'success' | 'error' | 'warning') => {
+      setToast({
+        message,
+        type,
+        visible: true
+      });
+      
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, visible: false }));
+      }, 3000);
+    });
+  }, []);
+
   // Load content function - will be called after editor is ready
   const loadGeneratedContent = async () => {
     console.log('🔍 loadGeneratedContent called, name:', name);

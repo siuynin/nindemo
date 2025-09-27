@@ -92,6 +92,8 @@ Route::prefix('models')->group(function () {
     Route::get('/platform/{platform}', [App\Http\Controllers\Api\ModelController::class, 'byPlatform']);
     Route::get('/type/{type}', [App\Http\Controllers\Api\ModelController::class, 'byType']);
     Route::get('/{slug}', [App\Http\Controllers\Api\ModelController::class, 'show']);
+    Route::get('/{slug}/credit-price', [App\Http\Controllers\Api\ModelController::class, 'getCreditPrice']);
+
 });
 
 // Public OpenAI Templates routes (for viewing templates without authentication)
@@ -113,6 +115,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // User credits
     Route::get('/user/credits', [App\Http\Controllers\Api\UserCreditController::class, 'index']);
     Route::get('/user/credits/summary', [App\Http\Controllers\Api\UserCreditController::class, 'summary']);
+    Route::post('/user/credits/deduct', [App\Http\Controllers\Api\UserCreditController::class, 'deductCredits']);
+    Route::post('/user/credits/add', [App\Http\Controllers\Api\UserCreditController::class, 'addCredits']);
+    Route::post('/user/credits/refund', [App\Http\Controllers\Api\UserCreditController::class, 'refundCredits']);
     
     // Pricing Plans Management (Admin only)
     Route::apiResource('pricing-plans', App\Http\Controllers\Api\PricingPlanController::class)->except(['index']);

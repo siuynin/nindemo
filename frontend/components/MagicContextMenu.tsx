@@ -4,6 +4,7 @@ import AIService from '../services/AIService';
 import { useTheme } from '../contexts/ThemeContext';
 import Input from './ui/Input';
 import Button from './ui/Button';
+import Alert from './ui/Alert';
 
 interface MagicContextMenuProps {
   x: number;
@@ -117,7 +118,24 @@ const PromptModal: React.FC<PromptModalProps> = ({ type, onSubmit, onClose }) =>
 const MagicContextMenu: React.FC<MagicContextMenuProps> = ({ x, y, onClose, onInsertText, onInsertImage }) => {
   const { theme } = useTheme();
   const [showPromptModal, setShowPromptModal] = useState<'text' | 'image' | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Set up AIService toast callback
+  React.useEffect(() => {
+    AIService.setToastCallback((message: string, type: 'success' | 'error' | 'warning') => {
+      setToast({
+        message,
+        type,
+        visible: true
+      });
+      
+      // Hide toast after 3 seconds
+      setTimeout(() => {
+        setToast(prev => ({ ...prev, visible: false }));
+      }, 4000);
+    });
+  }, []);
 
   const getSmartPosition = () => {
     const menuWidth = 160; // min-w-[160px]
@@ -262,6 +280,18 @@ const MagicContextMenu: React.FC<MagicContextMenuProps> = ({ x, y, onClose, onIn
           onSubmit={showPromptModal === 'text' ? handleTextGeneration : handleImageGeneration}
           onClose={() => setShowPromptModal(null)}
         />
+      )}
+
+      {/* Toast Notification */}
+      {toast.visible && (
+        <div className="fixed top-4 right-4 z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+          <Alert
+            variant={toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'warning'}
+            message={toast.message}
+            onClose={() => setToast(prev => ({ ...prev, visible: false }))}
+            showCloseButton
+          />
+        </div>
       )}
     </>
   );

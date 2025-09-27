@@ -97,8 +97,12 @@ class PayPalController extends Controller
             $user = Auth::user();
             $plan = PricingPlan::findOrFail($request->plan_id);
 
-            // Verify amount matches plan price
-            if ($request->amount != $plan->price) {
+            // Verify amount matches plan price considering currency conversion
+            $expectedAmount = $plan->price;
+            if ($plan->currency === 'VND' && $request->currency === 'USD') {
+                $expectedAmount = round($plan->price / 25000);
+            }
+            if ((float)$request->amount != (float)$expectedAmount) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Amount does not match plan price'

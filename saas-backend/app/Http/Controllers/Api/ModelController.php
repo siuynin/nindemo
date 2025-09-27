@@ -143,4 +143,15 @@ class ModelController extends Controller
             'data' => $models
         ]);
     }
+
+    public function getCreditPrice(string $slug): JsonResponse
+    {
+        $model = AIModel::where('slug', $slug)->firstOrFail();
+        
+        return response()->json([
+            'success' => true,
+            'credit_price' => $model->credit_price
+        ]);
+    }
+
 }
