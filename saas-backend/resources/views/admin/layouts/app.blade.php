@@ -86,6 +86,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.generates.*') ? 'active' : '' }}" href="{{ route('admin.generates.index') }}">
+                                <i class="fas fa-file-alt me-2"></i>
+                               Quản lý Generate
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.models.*') ? 'active' : '' }}" href="{{ route('admin.models.index') }}">
                                 <i class="fas fa-file-alt me-2"></i>
                                Model
@@ -98,7 +104,12 @@
                                 OpenAI Templates
                             </a>
                         </li>
-                        
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.voices.*') ? 'active' : '' }}" href="{{ route('admin.voices.index') }}">
+                                <i class="fas fa-coins me-2"></i>
+                                Quản lý Voice
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.pricing-plans.*') ? 'active' : '' }}" href="{{ route('admin.pricing-plans.index') }}">
                                 <i class="fas fa-tags me-2"></i>
@@ -209,5 +220,6 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     @yield('scripts')
+    @stack('scripts')
 </body>
 </html>

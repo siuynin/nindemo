@@ -2,9 +2,19 @@ interface CreditResponse {
   success: boolean;
   message: string;
   data?: {
-    total_credits: number;
-    used_credits?: number;
-    remaining_credits?: number;
+    credits: Array<{
+      id: number;
+      user_id: number;
+      pricing_plan_id?: number;
+      total_credits: number;
+      used_credits: number;
+      remaining_credits: number;
+      expires_at?: string;
+      credit_type: 'free' | 'purchased' | 'bonus';
+      created_at: string;
+      updated_at: string;
+    }>;
+    total_remaining: number;
   };
   errors?: any;
 }
@@ -56,6 +66,9 @@ interface CreditHistoryResponse {
 class UserCreditService {
   private baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
   private tokenKey = 'auth_token';
+  private creditCache: CreditResponse | null = null;
+  private cacheExpiry = 5 * 60 * 1000; // 5 minutes
+  private lastFetch = 0;
 
   // Get stored token
   private getToken(): string | null {
@@ -77,7 +90,7 @@ class UserCreditService {
     try {
       const creditInfo = await this.getUserCredits();
       if (creditInfo.success && creditInfo.data) {
-        return creditInfo.data.total_credits >= requiredAmount;
+        return creditInfo.data.total_remaining >= requiredAmount;
       }
       return false;
     } catch (error) {
@@ -87,25 +100,70 @@ class UserCreditService {
   }
 
   // Get user's current credit balance
-  async getUserCredits(): Promise<CreditResponse> {
+  async getUserCredits(useCache: boolean = true): Promise<CreditResponse> {
     try {
+      // Check cache validity
+      const now = Date.now();
+      if (useCache && this.creditCache && (now - this.lastFetch) < this.cacheExpiry) {
+        console.log('Using cached credits:', this.creditCache.data?.total_remaining);
+        return this.creditCache;
+      }
+
       const response = await fetch(`${this.baseUrl}/user/credits`, {
         method: 'GET',
         headers: this.getAuthHeaders(),
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       });
 
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        console.error('Unauthorized access - clearing token and redirecting to login');
+        localStorage.removeItem(this.tokenKey);
+        // Dispatch custom event for auth required
+        window.dispatchEvent(new CustomEvent('auth-required'));
+        return {
+          success: false,
+          message: 'Authentication required - please login again',
+        };
+      }
+
       const data = await response.json();
+      console.log('Credit API Response:', data); // Debug log
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to fetch user credits');
+        throw new Error(data.message || `HTTP ${response.status}: Failed to fetch user credits`);
       }
+
+      // Validate response structure
+      if (!data.success || !data.data || typeof data.data.total_remaining !== 'number') {
+        console.error('Invalid response structure:', data);
+        throw new Error('Invalid response format from credits API');
+      }
+
+      // Update cache
+      this.creditCache = data;
+      this.lastFetch = now;
 
       return data;
     } catch (error) {
       console.error('Get user credits error:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          return {
+            success: false,
+            message: 'Request timeout - please check your connection',
+          };
+        }
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+      
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: 'Unknown error occurred while fetching credits',
       };
     }
   }
@@ -113,7 +171,15 @@ class UserCreditService {
   // Deduct credits from user account
   async deductCredits(request: DeductCreditRequest): Promise<DeductCreditResponse> {
     try {
-      // First check if user has sufficient credits
+      // Validate request
+      if (!this.isValidCreditAmount(request.amount)) {
+        return {
+          success: false,
+          message: 'Invalid credit amount provided',
+        };
+      }
+
+      // First check if user has sufficient credits (force refresh cache)
       const hasSufficientCredits = await this.checkSufficientCredits(request.amount);
       if (!hasSufficientCredits) {
         return {
@@ -126,20 +192,50 @@ class UserCreditService {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify(request),
+        signal: AbortSignal.timeout(15000), // 15 second timeout for deduction
       });
+
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        console.error('Unauthorized access - clearing token and redirecting to login');
+        localStorage.removeItem(this.tokenKey);
+        // Dispatch custom event for auth required
+        window.dispatchEvent(new CustomEvent('auth-required'));
+        return {
+          success: false,
+          message: 'Authentication required - please login again',
+        };
+      }
 
       const data = await response.json();
       
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to deduct credits');
+        throw new Error(data.message || `HTTP ${response.status}: Failed to deduct credits`);
       }
+
+      // Clear cache after successful deduction to force refresh next time
+      this.creditCache = null;
 
       return data;
     } catch (error) {
       console.error('Deduct credits error:', error);
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          return {
+            success: false,
+            message: 'Request timeout - please check your connection and try again',
+          };
+        }
+        return {
+          success: false,
+          message: error.message,
+        };
+      }
+      
       return {
         success: false,
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: 'Unknown error occurred while deducting credits',
       };
     }
   }
@@ -230,6 +326,47 @@ class UserCreditService {
       minimumFractionDigits: 0,
       maximumFractionDigits: 3,
     });
+  }
+
+  // Clear credit cache (useful after payment or manual refresh)
+  clearCache(): void {
+    this.creditCache = null;
+    this.lastFetch = 0;
+  }
+
+  // Get detailed credit info for display
+  getCreditDisplayInfo(creditData: CreditResponse['data']) {
+    if (!creditData) return null;
+
+    const { credits, total_remaining } = creditData;
+    
+    // Group credits by type
+    const byType = credits.reduce((acc, credit) => {
+      if (!acc[credit.credit_type]) {
+        acc[credit.credit_type] = { count: 0, total: 0 };
+      }
+      acc[credit.credit_type].count++;
+      acc[credit.credit_type].total += credit.remaining_credits;
+      return acc;
+    }, {} as Record<string, { count: number; total: number }>);
+
+    // Check for expiring credits
+    const now = new Date();
+    const expiringSoon = credits.filter(credit => {
+      if (!credit.expires_at) return false;
+      const expires = new Date(credit.expires_at);
+      const daysUntilExpiry = (expires.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+      return daysUntilExpiry <= 7; // Expiring within 7 days
+    });
+
+    return {
+      totalRemaining: total_remaining,
+      byType,
+      expiringSoon: expiringSoon.length,
+      expiringCredits: expiringSoon,
+      hasCredits: total_remaining > 0,
+      creditTypes: Object.keys(byType),
+    };
   }
 
   // Utility method to validate credit amount

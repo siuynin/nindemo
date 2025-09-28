@@ -73,6 +73,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => clearInterval(interval);
   }, []);
 
+  // Listen for auth-required events
+  useEffect(() => {
+    const handleAuthRequired = () => {
+      console.log('Auth required event received');
+      logout();
+    };
+
+    window.addEventListener('auth-required', handleAuthRequired);
+    return () => window.removeEventListener('auth-required', handleAuthRequired);
+  }, []);
+
   const loadUser = async () => {
     try {
       setIsLoading(true);

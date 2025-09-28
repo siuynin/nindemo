@@ -103,6 +103,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the user's credit transactions.
+     */
+    public function creditTransactions()
+    {
+        return $this->hasMany(CreditTransaction::class);
+    }
+
+    /**
      * Get total remaining credits for the user.
      */
     public function getTotalRemainingCreditsAttribute()

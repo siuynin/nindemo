@@ -180,9 +180,18 @@ class AIService {
         // Try Gemini first
         if (this.gemini) {
           try {
-            const model = this.gemini.getGenerativeModel({ model: 'gemini-2.5-flash' });
+            const model = this.gemini.getGenerativeModel({ 
+              model: 'gemini-1.5-flash',  // Changed from gemini-2.5-flash to stable version
+              generationConfig: {
+                temperature: 0.7,
+                topK: 40,
+                topP: 0.95,
+                maxOutputTokens: 2048,
+              }
+            });
             const prompt = this.getPrompt(text, action);
             
+            console.log('Calling Gemini API with model: gemini-1.5-flash');
             const result = await model.generateContent(prompt);
             const response = await result.response;
             outputText = response.text();
@@ -199,6 +208,7 @@ class AIService {
             return cleanedText;
           } catch (error) {
             console.warn('Gemini API failed, trying OpenAI fallback:', error);
+            this.showToast('warning', 'Gemini API unavailable, using OpenAI fallback');
             
             // Try OpenAI as fallback
             if (this.openaiApiKey) {
@@ -406,15 +416,11 @@ class AIService {
 
     // Calculate credit cost based on token count
     private calculateCreditCost(inputText: string, outputText: string): number {
-      const inputTokens = this.estimateTokenCount(inputText);
-      const outputTokens = this.estimateTokenCount(outputText);
-      const totalTokens = inputTokens + outputTokens;
+      const totalTokens = inputText.length + outputText.length;
+      const creditCost = totalTokens * this.CREDIT_PER_TOKEN;
       
-      // Round up to nearest 10 tokens for billing
-      const roundedTokens = Math.ceil(totalTokens / this.TOKENS_PER_CREDIT) * this.TOKENS_PER_CREDIT;
-      const creditCost = roundedTokens * this.CREDIT_PER_TOKEN;
-      
-      return Math.max(creditCost, 0.01); // Minimum 0.01 credit
+      // Return decimal value with minimum of 0.01 credits
+      return Math.max(creditCost, 0.01);
     }
 
     // Check and deduct credits before processing
@@ -469,20 +475,27 @@ class AIService {
     // Deduct credits after successful processing
     private async deductCreditsForOperation(cost: number, action: string, inputLength: number, outputLength: number): Promise<boolean> {
       try {
+        console.log('Attempting to deduct credits:', { cost, action, inputLength, outputLength });
+        
         const result = await userCreditService.deductCredits({
           amount: cost,
           description: `AI ${action} operation (${inputLength} → ${outputLength} chars)`,
           operation_type: action
         });
   
+        console.log('Credit deduction result:', result);
+        
         if (!result.success) {
           console.error('Failed to deduct credits:', result.message);
+          this.showToast('error', `Credit deduction failed: ${result.message}`);
           return false;
         }
   
+        console.log('Credits deducted successfully');
         return true;
       } catch (error) {
         console.error('Error deducting credits:', error);
+        this.showToast('error', 'Failed to deduct credits. Please try again.');
         return false;
       }
     }

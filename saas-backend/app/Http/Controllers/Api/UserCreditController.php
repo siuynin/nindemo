@@ -92,7 +92,7 @@ class UserCreditController extends Controller
     /**
      * Use credits (Internal method for file operations)
      */
-    public function useCredits(User $user, int $amount)
+    public function useCredits(User $user, float $amount)
     {
         $activeCredits = $user->activeCredits()
             ->orderBy('expires_at', 'asc')
@@ -131,5 +131,161 @@ class UserCreditController extends Controller
             'used_credits' => $usedCredits,
             'total_used' => $amount
         ];
+    }
+
+    /**
+     * Deduct credits from user account
+     */
+    public function deductCredits(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:500',
+            'model_id' => 'nullable|integer',
+            'operation_type' => 'nullable|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $amount = $request->input('amount');
+        
+        // Use the useCredits method to handle deduction
+        $result = $this->useCredits($user, $amount);
+        
+        if (!$result['success']) {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message']
+            ], 400);
+        }
+
+        // Create transaction record
+        $transaction = $user->creditTransactions()->create([
+            'amount' => $amount,
+            'type' => 'deduct',
+            'description' => $request->input('description', 'Credits deducted'),
+            'model_id' => $request->input('model_id'),
+            'operation_type' => $request->input('operation_type'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Credits deducted successfully',
+            'data' => [
+                'deducted_amount' => $amount,
+                'remaining_credits' => $user->total_remaining_credits,
+                'transaction_id' => $transaction->id
+            ]
+        ]);
+    }
+
+    /**
+     * Add credits to user account
+     */
+    public function addCredits(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:500',
+            'credit_type' => 'nullable|string|in:purchase,bonus,refund,admin_grant',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $amount = $request->input('amount');
+        $creditType = $request->input('credit_type', 'bonus');
+        
+        // Create credit record
+        $credit = UserCredit::create([
+            'user_id' => $user->id,
+            'total_credits' => $amount,
+            'used_credits' => 0,
+            'remaining_credits' => $amount,
+            'credit_type' => $creditType,
+            'expires_at' => now()->addYear(), // Default 1 year expiry
+            'notes' => $request->input('description', 'Credits added'),
+        ]);
+
+        // Create transaction record
+        $transaction = $user->creditTransactions()->create([
+            'amount' => $amount,
+            'type' => 'add',
+            'description' => $request->input('description', 'Credits added'),
+            'operation_type' => $creditType,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Credits added successfully',
+            'data' => [
+                'added_amount' => $amount,
+                'remaining_credits' => $user->total_remaining_credits,
+                'transaction_id' => $transaction->id
+            ]
+        ]);
+    }
+
+    /**
+     * Refund credits to user account
+     */
+    public function refundCredits(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'amount' => 'required|numeric|min:0.01',
+            'description' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+        $amount = $request->input('amount');
+        
+        // Create credit record for refund
+        $credit = UserCredit::create([
+            'user_id' => $user->id,
+            'total_credits' => $amount,
+            'used_credits' => 0,
+            'remaining_credits' => $amount,
+            'credit_type' => 'refund',
+            'expires_at' => now()->addYear(), // Default 1 year expiry
+            'notes' => $request->input('description', 'Credits refunded'),
+        ]);
+
+        // Create transaction record
+        $transaction = $user->creditTransactions()->create([
+            'amount' => $amount,
+            'type' => 'refund',
+            'description' => $request->input('description', 'Credits refunded'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Credits refunded successfully',
+            'data' => [
+                'refunded_amount' => $amount,
+                'remaining_credits' => $user->total_remaining_credits,
+                'transaction_id' => $transaction->id
+            ]
+        ]);
     }
 }

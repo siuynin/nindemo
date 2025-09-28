@@ -53,7 +53,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     // Generate Management
     Route::resource('generates', GenerateController::class);
     
-    // Voice Management
+    // Voice Management 
     Route::resource('voices', VoiceController::class);
     
     // Bills Management

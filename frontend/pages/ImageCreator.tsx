@@ -62,8 +62,8 @@ const ImageCreator: React.FC = () => {
 
   const aspectRatios = [
     { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
-    { label: '16:9 (Landscape)', width: 1920, height: 1080, ratio: '16:9' },
-    { label: '9:16 (Portrait)', width: 1080, height: 1920, ratio: '9:16' },
+    { label: '16:9 (Landscape)', width: 1920, height: 1088, ratio: '16:9' },
+    { label: '9:16 (Portrait)', width:1088, height: 1920, ratio: '9:16' },
     { label: '4:3 (Standard)', width: 1024, height: 768, ratio: '4:3' },
     { label: '3:4 (Portrait)', width: 768, height: 1024, ratio: '3:4' },
     { label: '21:9 (Ultrawide)', width: 1344, height: 576, ratio: '21:9' }
@@ -189,7 +189,7 @@ const ImageCreator: React.FC = () => {
         throw new Error(`Failed to get user credits: ${userCreditResponse.message}`);
       }
       
-      const currentCredits = userCreditResponse.data.total_credits || 0;
+      const currentCredits = userCreditResponse.data.total_remaining || 0;
       console.log('Current user credits:', currentCredits);
 
       // Kiểm tra xem có đủ credit không
@@ -218,7 +218,7 @@ const ImageCreator: React.FC = () => {
 
       const request: ImageGenerationRequest = {
         taskType: 'imageInference',
-        taskUUID: `task_${Date.now()}`,
+        taskUUID: crypto.randomUUID(),
         positivePrompt: finalPrompt,
         width: formData.width,
         height: formData.height,
@@ -247,9 +247,10 @@ const ImageCreator: React.FC = () => {
       }
       
       if (response.data && response.data.length > 0) {
+        console.log('Processing image response data:', response.data);
         const newImages: GeneratedImage[] = response.data.map((img: RunwareImageResponse, index: number) => ({
           id: `${Date.now()}_${index}`,
-          url: img.imageURL,
+          url: img.imageURL.replace(/'/g, ''), // Loại bỏ dấu nháy đơn thừa trong URL
           prompt: formData.prompt,
           model: formData.model,
           width: formData.width,
@@ -257,10 +258,35 @@ const ImageCreator: React.FC = () => {
           createdAt: new Date()
         }));
 
+        console.log('New images to add:', newImages);
         setGeneratedImages(prev => [...newImages, ...prev]);
+        console.log('Generated images state updated');
+        
+        // Trừ credits sau khi tạo ảnh thành công
+        try {
+          console.log('Attempting to deduct credits:', totalCreditsNeeded);
+          const deductResult = await userCreditService.deductCredits({
+            amount: totalCreditsNeeded,
+            description: `Image generation: ${formData.model} (${formData.width}x${formData.height}) x${formData.numberResults}`,
+            operation_type: 'image_generation'
+          });
+          
+          console.log('Deduct credits result:', deductResult);
+          
+          if (!deductResult.success) {
+            console.error('Failed to deduct credits:', deductResult.message);
+            showToast('warning', 'Image generated but failed to deduct credits. Please contact support.');
+          } else {
+            console.log('Credits deducted successfully:', totalCreditsNeeded);
+          }
+        } catch (deductError) {
+          console.error('Error deducting credits:', deductError);
+          showToast('warning', 'Image generated but error occurred while deducting credits.');
+        }
         
         // Tạo generate record để lưu lịch sử sau khi tạo ảnh thành công
         try {
+          console.log('Creating generate history record...');
           const generateResponse = await generateService.createGenerate({
             name: `Image: ${formData.prompt.substring(0, 50)}${formData.prompt.length > 50 ? '...' : ''}`,
             content: formData.prompt,
@@ -269,12 +295,12 @@ const ImageCreator: React.FC = () => {
             model: formData.model,
             credit_cost: totalCreditsNeeded
           });
-          console.log('Generate record created:', generateResponse);
+          console.log('History record created:', generateResponse);
         } catch (generateError) {
-          console.error('Failed to create generate record:', generateError);
+          console.error('Error creating history record:', generateError);
         }
         
-        showToast('success', `Generated ${newImages.length} image(s) successfully!`);
+        showToast('success', `Generated ${newImages.length} image(s) successfully! Deducted ${totalCreditsNeeded} credits.`);
       }
     } catch (error) {
       console.error('Error generating image:', error);
