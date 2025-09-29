@@ -90,7 +90,8 @@ class UserGenerateController extends Controller
             'task_id' => 'nullable|string|max:255',
             'credit_cost' => 'nullable|numeric|min:0',
             'voice_id' => 'nullable|string|max:255',
-            'voice_settings' => 'nullable|array'
+            'voice_settings' => 'nullable|array',
+            'result_url' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -110,7 +111,8 @@ class UserGenerateController extends Controller
             'share' => $request->share ?? 'private',
             'file_patch' => $request->file_patch,
             'task_id' => $request->task_id,
-            'credit_cost' => $request->credit_cost ?? 0.0
+            'credit_cost' => $request->credit_cost ?? 0.0,
+            'result_url' => $request->result_url
         ]);
 
         // If this is an audio generation request, call ElevenLabs API
@@ -202,7 +204,8 @@ class UserGenerateController extends Controller
             'share' => 'nullable|string|in:private,public',
             'file_patch' => 'nullable|string|max:500',
             'task_id' => 'nullable|string|max:255',
-            'credit_cost' => 'nullable|numeric|min:0'
+            'credit_cost' => 'nullable|numeric|min:0',
+            'result_url' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -214,7 +217,7 @@ class UserGenerateController extends Controller
         }
 
         $generate->update($request->only([
-            'name', 'content', 'type', 'status', 'share', 'file_patch', 'task_id', 'credit_cost'
+            'name', 'content', 'type', 'status', 'share', 'file_patch', 'task_id', 'credit_cost', 'result_url'
         ]));
 
         $generate->load('user:id,name,email');

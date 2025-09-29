@@ -161,6 +161,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/create-order', [App\Http\Controllers\Api\PayPalController::class, 'createOrder']);
         Route::post('/capture-order', [App\Http\Controllers\Api\PayPalController::class, 'captureOrder']);
     });
+
+    // Image Generation Routes
+    Route::prefix('images')->group(function () {
+        Route::post('/create-image', [App\Http\Controllers\Api\ImageGenerationController::class, 'createImage']);
+        Route::get('/generation/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getGenerationStatus']);
+    });
+    
+    // AI Text Processing Routes
+    Route::prefix('ai')->group(function () {
+        Route::post('/process-text', [App\Http\Controllers\Api\AIProcessController::class, 'processText']);
+        Route::post('/process-text-gemini', [App\Http\Controllers\Api\AIProcessController::class, 'processTextGemini']);
+    });
     
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption
