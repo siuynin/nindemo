@@ -400,6 +400,11 @@ const Document: React.FC = () => {
         finalPrompt = finalPrompt.replace(/\*\*title\*\*/g, formData.title);
       }
       
+      // Replace **topic** placeholder with title content as well
+      if (formData.title) {
+        finalPrompt = finalPrompt.replace(/\*\*topic\*\*/g, formData.title);
+      }
+      
       // Add additional instructions based on form settings
       let additionalInstructions = '';
       

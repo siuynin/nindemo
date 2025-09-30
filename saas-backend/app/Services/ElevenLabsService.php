@@ -21,10 +21,12 @@ class ElevenLabsService
      *
      * @param string $text
      * @param string $voiceId
+     * @param string $model
+     * @param array $voiceSettings
      * @return array
      */
     
-    public function textToSpeech($text, $voiceId = 'pNInz6obpgDQGcFmaJgB')
+    public function textToSpeech($text, $voiceId = 'pNInz6obpgDQGcFmaJgB', $model = 'eleven_v3', $voiceSettings = null)
     {
         try {
             if (!$this->apiKey) {
@@ -33,11 +35,16 @@ class ElevenLabsService
 
             $requestData = [
                 'text' => $text,
-                'model_id' => 'eleven_v3',
+                'model_id' => $model,
                 'with_transcript' => false,
                 // 'receive_url' => config('app.url') . '/api/getaudio',
                 'receive_url' => 'http://myapp.loca.lt/api/getaudio'
             ];
+
+            // Add voice settings if provided
+            if ($voiceSettings) {
+                $requestData['voice_settings'] = $voiceSettings;
+            }
             
             $url = $this->baseUrl . '/text-to-speech/' . $voiceId . '?output_format=mp3_44100_128';
             

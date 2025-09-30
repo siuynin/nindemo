@@ -203,7 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, currentPage }) => {
                     <div className={`text-sm font-medium ${
                       theme === 'dark' ? 'text-white' : 'text-gray-900'
                     }`}>
-                      {totalCredits || 0} Credits
+                      {Math.floor(totalCredits || 0)} Credits
                     </div>
                     <div className={`text-xs ${
                       theme === 'dark' ? 'text-gray-400' : 'text-gray-500'

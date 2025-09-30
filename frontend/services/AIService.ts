@@ -134,34 +134,80 @@ class AIService {
       return prompts[action] || prompts.rewrite;
     }
 
-    // Process text with OpenAI
+    // Process text with OpenAI via backend
     private async processWithOpenAI(text: string, action: string): Promise<string> {
-      if (!this.openaiApiKey) {
-        throw new Error('OpenAI API key not configured.');
-      }
-  
       const prompt = this.getPrompt(text, action);
       
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in.');
+      }
+      
+      const response = await fetch('http://localhost:8001/api/ai/process-text', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.openaiApiKey}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
+          prompt: prompt,
           model: 'gpt-3.5-turbo',
-          messages: [{ role: 'user', content: prompt }],
           max_tokens: 1024,
           temperature: 0.7
         })
       });
   
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
   
       const data = await response.json();
-      return this.cleanResponse(data.choices[0].message.content, action);
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process text');
+      }
+      
+      return this.cleanResponse(data.data.text, action);
+    }
+
+    // Process text with Gemini via backend
+    private async processWithGemini(text: string, action: string): Promise<string> {
+      const prompt = this.getPrompt(text, action);
+      
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in.');
+      }
+      
+      const response = await fetch('http://localhost:8001/api/ai/process-text-gemini', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          model: 'gemini-pro',
+          max_tokens: 2048,
+          temperature: 0.7
+        })
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+  
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process text');
+      }
+      
+      return this.cleanResponse(data.data.text, action);
     }
 
     // Process text with AI using Gemini with OpenAI fallback
@@ -177,58 +223,34 @@ class AIService {
       let outputText = '';
   
       try {
-        // Try Gemini first
-        if (this.gemini) {
+        // Try Gemini first via backend
+        try {
+          outputText = await this.processWithGemini(text, action);
+          
+          // Calculate actual cost based on real output
+          const actualCost = this.calculateCreditCost(text, outputText);
+          
+          // Deduct credits for successful operation
+          await this.deductCreditsForOperation(actualCost, action, inputLength, outputText.length);
+          
+          return outputText;
+        } catch (error) {
+          // Gemini API failed, try OpenAI fallback silently without warning toast
+          
+          // Try OpenAI as fallback
           try {
-            const model = this.gemini.getGenerativeModel({ 
-              model: 'gemini-1.5-flash',  // Changed from gemini-2.5-flash to stable version
-              generationConfig: {
-                temperature: 0.7,
-                topK: 40,
-                topP: 0.95,
-                maxOutputTokens: 2048,
-              }
-            });
-            const prompt = this.getPrompt(text, action);
-            
-            console.log('Calling Gemini API with model: gemini-1.5-flash');
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            outputText = response.text();
-            
-            // Clean up the response
-            const cleanedText = this.cleanResponse(outputText, action);
+            outputText = await this.processWithOpenAI(text, action);
             
             // Calculate actual cost based on real output
-            const actualCost = this.calculateCreditCost(text, cleanedText);
+            const actualCost = this.calculateCreditCost(text, outputText);
             
             // Deduct credits for successful operation
-            await this.deductCreditsForOperation(actualCost, action, inputLength, cleanedText.length);
+            await this.deductCreditsForOperation(actualCost, action, inputLength, outputText.length);
             
-            return cleanedText;
-          } catch (error) {
-            console.warn('Gemini API failed, trying OpenAI fallback:', error);
-            this.showToast('warning', 'Gemini API unavailable, using OpenAI fallback');
-            
-            // Try OpenAI as fallback
-            if (this.openaiApiKey) {
-              try {
-                outputText = await this.processWithOpenAI(text, action);
-                
-                // Calculate actual cost based on real output
-                const actualCost = this.calculateCreditCost(text, outputText);
-                
-                // Deduct credits for successful operation
-                await this.deductCreditsForOperation(actualCost, action, inputLength, outputText.length);
-                
-                return outputText;
-              } catch (openaiError) {
-                console.error('OpenAI fallback also failed:', openaiError);
-                throw new Error('Both Gemini and OpenAI failed. Please check your API configurations.');
-              }
-            }
-            
-            throw new Error('Gemini failed and no OpenAI fallback available.');
+            return outputText;
+          } catch (openaiError) {
+            // Both services failed - only show user-friendly message
+            throw new Error('Both Gemini and OpenAI failed. Please check your API configurations.');
           }
         }
         
@@ -245,7 +267,7 @@ class AIService {
             
             return outputText;
           } catch (error) {
-            console.error('OpenAI API error:', error);
+            // OpenAI API error - only show user-friendly message
             throw new Error('Failed to process text with OpenAI. Please check your API key.');
           }
         }
@@ -396,7 +418,7 @@ class AIService {
         const result = await this.processText(optimizationPrompt, 'optimize');
         return result || prompt; // Return original if optimization fails
       } catch (error) {
-        console.error('Failed to optimize prompt:', error);
+        // Failed to optimize prompt - only show user-friendly message
         throw new Error('Failed to optimize prompt. Please try again.');
       }
     }
@@ -462,7 +484,7 @@ class AIService {
   
         return { success: true, estimatedCost };
       } catch (error) {
-        console.error('Error checking credits:', error);
+        // Error checking credits - only return user-friendly message
         const errorMessage = 'Lỗi khi kiểm tra credit. Vui lòng thử lại.';
         
         return {
@@ -486,7 +508,7 @@ class AIService {
         console.log('Credit deduction result:', result);
         
         if (!result.success) {
-          console.error('Failed to deduct credits:', result.message);
+          // Credit deduction failed - only show user-friendly message
           this.showToast('error', `Credit deduction failed: ${result.message}`);
           return false;
         }
@@ -494,7 +516,7 @@ class AIService {
         console.log('Credits deducted successfully');
         return true;
       } catch (error) {
-        console.error('Error deducting credits:', error);
+        // Error deducting credits - only show user-friendly message
         this.showToast('error', 'Failed to deduct credits. Please try again.');
         return false;
       }

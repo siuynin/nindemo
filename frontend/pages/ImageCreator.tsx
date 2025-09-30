@@ -1,15 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { runwareApi, RunwareImageResponse } from '../services/runwareApi';
+import { useAuth } from '../contexts/AuthContext';
+import { imageGenerationService, ImageGenerationRequest } from '../services/imageGenerationService';
 import AIService from '../services/AIService';
-import { generateService } from '../services/generateService';
-import { userCreditService } from '../services/userCreditService';
+import { generateService } from '../services/generateService'; 
 import Button from '../components/ui/Button'; 
 import TextArea from '../components/ui/TextArea';
 import Alert from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
+import AuthModal from '../components/AuthModal';
 import '../styles/slider.css';
 
 interface AIModel {
@@ -26,31 +27,27 @@ interface AIModel {
 interface GeneratedImage {
   id: string;
   url: string;
+  seed?: number; // Thêm seed từ Runware API
   prompt: string;
   model: string;
   width: number;
   height: number;
   createdAt: Date;
-}
-
-interface ImageGenerationRequest {
-  taskType: string;
-  taskUUID: string;
-  positivePrompt: string;
-  width: number;
-  height: number;
-  model: string;
-  numberResults: number;
+  generateId?: number; // Thêm ID từ bảng generates
+  resultData?: any; // Dữ liệu từ result_url
 }
 
 const ImageCreator: React.FC = () => {
   const { actualTheme } = useTheme();
   const { t } = useLanguage();
+  const { refreshUser } = useAuth();
   const [models, setModels] = useState<AIModel[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [loading, setLoading] = useState(false);
   const [showModelPopup, setShowModelPopup] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
+  const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
+  const [showImagePopup, setShowImagePopup] = useState(false);
   const [formData, setFormData] = useState({
     prompt: '',
     model: '',
@@ -62,8 +59,8 @@ const ImageCreator: React.FC = () => {
 
   const aspectRatios = [
     { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
-    { label: '16:9 (Landscape)', width: 1920, height: 1088, ratio: '16:9' },
-    { label: '9:16 (Portrait)', width:1088, height: 1920, ratio: '9:16' },
+    { label: '16:9 (Landscape)', width: 1536, height: 896, ratio: '16:9' },
+    { label: '9:16 (Portrait)', width: 896, height: 1536, ratio: '9:16' },
     { label: '4:3 (Standard)', width: 1024, height: 768, ratio: '4:3' },
     { label: '3:4 (Portrait)', width: 768, height: 1024, ratio: '3:4' },
     { label: '21:9 (Ultrawide)', width: 1344, height: 576, ratio: '21:9' }
@@ -71,9 +68,11 @@ const ImageCreator: React.FC = () => {
 
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   useEffect(() => {
     fetchModels();
+    fetchGeneratedImages(); // Tải ảnh từ database khi component mount
   }, []);
 
   // Set up AIService toast callback
@@ -83,39 +82,121 @@ const ImageCreator: React.FC = () => {
     });
   }, []);
 
+  // Set up auth required callback for imageGenerationService
+  useEffect(() => {
+    imageGenerationService.setAuthRequiredCallback(() => {
+      setShowAuthModal(true);
+    });
+  }, []);
+
   const fetchModels = async () => {
     try {
-      const response = await fetch('/api/models/type/image');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/models?type=image`);
       if (response.ok) {
-        const result = await response.json();
-        // API trả về format { success: true, data: [...] }
-        const data = result.success && result.data ? result.data : result;
-        // Ensure data is an array before setting models
-        setModels(Array.isArray(data) ? data : []);
-      } else {
-        console.error('Failed to fetch models:', response.status);
-        setModels([]);
+        const data = await response.json();
+        if (data.success && Array.isArray(data.data)) {
+          setModels(data.data);
+          // Set default model if none selected
+          if (!formData.model && data.data.length > 0) {
+            setFormData(prev => ({ ...prev, model: data.data[0].slug }));
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching models:', error);
-      setModels([]);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Tải ảnh đã tạo từ database
+  const fetchGeneratedImages = async () => {
+    try {
+      const response = await generateService.getGenerates({
+        type: 'image',
+        per_page: 24, // Giới hạn tối đa 24 ảnh
+        page: 1
+      });
+      
+      if (response.success && response.data) {
+        const images: GeneratedImage[] = response.data.flatMap(generate => {
+          let imageData: Array<{seed: number, url: string}> = [];
+          let contentData = null;
+          let filePatchData = null;
+          
+          // Parse result_url để lấy array các object {seed, url} từ Runware
+          if (generate.result_url) {
+            try {
+              const resultData = JSON.parse(generate.result_url);
+              // result_url giờ đây chứa array các object {seed, url}
+              if (Array.isArray(resultData)) {
+                imageData = resultData.filter(item => 
+                  item && 
+                  typeof item === 'object' && 
+                  item.url && 
+                  typeof item.url === 'string'
+                );
+              }
+            } catch (parseError) {
+              console.error('Error parsing result_url:', parseError);
+            }
+          }
+          
+          // Parse content để lấy thông tin prompt và model
+          if (generate.content) {
+            try {
+              contentData = JSON.parse(generate.content);
+            } catch (parseError) {
+              console.error('Error parsing content:', parseError);
+            }
+          }
+          
+          // Parse file_patch để lấy thông tin bổ sung
+          if (generate.file_patch) {
+            try {
+              filePatchData = JSON.parse(generate.file_patch);
+            } catch (parseError) {
+              console.error('Error parsing file_patch:', parseError);
+            }
+          }
+          
+          // Tạo một GeneratedImage cho mỗi object ảnh
+          return imageData.map((imageItem, index) => ({
+            id: `${generate.id}-${index}`,
+            url: imageItem.url,
+            seed: imageItem.seed,
+            prompt: contentData?.prompt || generate.name || '',
+            model: contentData?.model || 'Unknown',
+            width: contentData?.width || 1024,
+            height: contentData?.height || 1024,
+            createdAt: new Date(generate.created_at),
+            generateId: generate.id,
+            resultData: filePatchData
+          }));
+        }).filter(img => img.url); // Chỉ hiển thị ảnh có URL hợp lệ
+        
+        setGeneratedImages(images);
+      }
+    } catch (error) {
+      console.error('Error fetching generated images:', error);
+    }
+  };
+
+  // Tối ưu hóa handleInputChange với useCallback
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: name === 'numberResults' ? parseInt(value) : value
     }));
-  };
+  }, []);
 
-  const handleModelSelect = (model: AIModel) => {
+  // Tối ưu hóa handleModelSelect với useCallback
+  const handleModelSelect = useCallback((model: AIModel) => {
     setFormData(prev => ({ ...prev, model: model.slug }));
     setShowModelPopup(false);
-  };
+  }, []);
 
-  const handleAspectRatioSelect = (ratio: typeof aspectRatios[0]) => {
+  // Tối ưu hóa handleAspectRatioSelect với useCallback
+  const handleAspectRatioSelect = useCallback((ratio: typeof aspectRatios[0]) => {
     setSelectedAspectRatio(ratio);
     setFormData(prev => ({
       ...prev,
@@ -123,22 +204,35 @@ const ImageCreator: React.FC = () => {
       height: ratio.height
     }));
     setShowSizeDropdown(false);
-  };
+  }, []);
 
-  const optimizePrompt = async () => {
-    if (!formData.prompt.trim()) {
+  // Tối ưu hóa optimizePrompt với useCallback
+  const optimizePrompt = useCallback(async () => {
+    const currentPrompt = formData.prompt; // Lấy giá trị hiện tại
+    if (!currentPrompt.trim()) {
       showToast('error', 'Please enter a prompt first');
       return;
     }
 
     try {
-      const optimizedPrompt = await AIService.optimizePrompt(formData.prompt);
+      const optimizedPrompt = await AIService.optimizePrompt(currentPrompt);
       setFormData(prev => ({ ...prev, prompt: optimizedPrompt }));
       showToast('success', 'Prompt optimized successfully!');
     } catch (error) {
       showToast('error', 'Failed to optimize prompt');
     }
-  };
+  }, []); // Loại bỏ formData.prompt khỏi dependency để tránh re-render
+
+  // Memoize selected model để tránh tính toán lại không cần thiết
+  const selectedModel = useMemo(() => {
+    // Ensure models is an array before calling find
+    if (!Array.isArray(models)) {
+      return null;
+    }
+    return models.find(model => model.slug === formData.model);
+  }, [models, formData.model]);
+
+  const getSelectedModel = useCallback(() => selectedModel, [selectedModel]);
 
   const generateImage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -155,156 +249,48 @@ const ImageCreator: React.FC = () => {
 
     setLoading(true);
     try {
-      // Kiểm tra credit trước khi tạo ảnh
-      console.log('Checking credits for model:', formData.model);
-      let modelCreditResponse;
-      try {
-        modelCreditResponse = await fetch(`/api/models/${formData.model}/credit-price`);
-        console.log('Model credit response status:', modelCreditResponse.status);
-        if (!modelCreditResponse.ok) {
-          console.error('Failed to fetch model credit price:', modelCreditResponse.statusText);
-          throw new Error(`Failed to fetch model credit price: ${modelCreditResponse.status} ${modelCreditResponse.statusText}`);
-        }
-      } catch (fetchError) {
-        console.error('Error fetching model credit price:', fetchError);
-        if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-          throw new Error('Network error: Unable to connect to backend API. Please check if the server is running.');
-        }
-        throw fetchError;
-      }
-      
-      const creditData = await modelCreditResponse.json();
-      console.log('Model credit data:', creditData);
-      const creditPrice = creditData.credit_price || 0;
-      const totalCreditsNeeded = creditPrice * formData.numberResults;
-      console.log('Total credits needed:', totalCreditsNeeded, '(price:', creditPrice, 'x quantity:', formData.numberResults, ')');
-
-      // Lấy credit hiện tại của người dùng
-      console.log('Fetching user credits via userCreditService...');
-      const userCreditResponse = await userCreditService.getUserCredits();
-      console.log('User credit service response:', userCreditResponse);
-      
-      if (!userCreditResponse.success || !userCreditResponse.data) {
-        console.error('Failed to get user credits:', userCreditResponse.message);
-        throw new Error(`Failed to get user credits: ${userCreditResponse.message}`);
-      }
-      
-      const currentCredits = userCreditResponse.data.total_remaining || 0;
-      console.log('Current user credits:', currentCredits);
-
-      // Kiểm tra xem có đủ credit không
-      if (currentCredits < totalCreditsNeeded) {
-        showToast('error', `Insufficient credits. You need ${totalCreditsNeeded} credits but only have ${currentCredits} credits.`);
-        setLoading(false);
-        return;
-      }
-      
-      console.log('Credit check passed:', currentCredits, '>=', totalCreditsNeeded);
-
-      // Tạo prompt với imageStyle nếu có
-      let finalPrompt = formData.prompt;
-      if (formData.imageStyle) {
-        const styleMap: { [key: string]: string } = {
-          'realistic': 'realistic, photorealistic, high quality',
-          'anime': 'anime style, manga style, japanese animation',
-          'cinematic': 'cinematic, movie scene, dramatic lighting',
-          'abstract': 'abstract art, artistic, creative',
-          'pixel': 'pixel art, 8-bit style, retro gaming',
-          'minimal': 'minimalist, clean, simple design'
-        };
-        const stylePrompt = styleMap[formData.imageStyle] || '';
-        finalPrompt = `${formData.prompt}, ${stylePrompt}`;
-      }
-
+      // Tạo request cho backend
       const request: ImageGenerationRequest = {
-        taskType: 'imageInference',
-        taskUUID: crypto.randomUUID(),
-        positivePrompt: finalPrompt,
+        prompt: formData.prompt,
+        model: formData.model,
         width: formData.width,
         height: formData.height,
-        model: formData.model,
-        numberResults: formData.numberResults
+        numberResults: formData.numberResults,
+        imageStyle: formData.imageStyle,
+        name: `Image: ${formData.prompt.substring(0, 30)}${formData.prompt.length > 30 ? '...' : ''}`,
+        share: false
       };
 
-      // Kiểm tra API key trước khi gọi API
-      const apiKey = import.meta.env.VITE_RUNWARE_API_KEY;
-      console.log('Runware API Key configured:', !!apiKey);
-      if (!apiKey || apiKey === 'your_runware_key_here') {
-        throw new Error('Runware API key is not configured. Please add VITE_RUNWARE_API_KEY to your .env.local file.');
-      }
+      // Validate request
+      imageGenerationService.validateRequest(request);
 
-      console.log('Calling runwareApi.generateImage with request:', request);
-      let response;
-      try {
-        response = await runwareApi.generateImage(request);
-        console.log('Runware API response:', response);
-      } catch (apiError) {
-        console.error('Runware API call failed:', apiError);
-        if (apiError instanceof TypeError && apiError.message.includes('Failed to fetch')) {
-          throw new Error('Network error: Unable to connect to Runware API. Please check your internet connection and API configuration.');
-        }
-        throw apiError;
-      }
+      console.log('Calling backend create-image endpoint with request:', request);
       
-      if (response.data && response.data.length > 0) {
-        console.log('Processing image response data:', response.data);
-        const newImages: GeneratedImage[] = response.data.map((img: RunwareImageResponse, index: number) => ({
-          id: `${Date.now()}_${index}`,
-          url: img.imageURL.replace(/'/g, ''), // Loại bỏ dấu nháy đơn thừa trong URL
-          prompt: formData.prompt,
-          model: formData.model,
-          width: formData.width,
-          height: formData.height,
-          createdAt: new Date()
-        }));
-
-        console.log('New images to add:', newImages);
-        setGeneratedImages(prev => [...newImages, ...prev]);
-        console.log('Generated images state updated');
+      // Gọi backend endpoint
+      const response = await imageGenerationService.createImage(request);
+      
+      if (response.success && response.data) {
+        console.log('Image generation successful:', response.data);
         
-        // Trừ credits sau khi tạo ảnh thành công
-        try {
-          console.log('Attempting to deduct credits:', totalCreditsNeeded);
-          const deductResult = await userCreditService.deductCredits({
-            amount: totalCreditsNeeded,
-            description: `Image generation: ${formData.model} (${formData.width}x${formData.height}) x${formData.numberResults}`,
-            operation_type: 'image_generation'
-          });
-          
-          console.log('Deduct credits result:', deductResult);
-          
-          if (!deductResult.success) {
-            console.error('Failed to deduct credits:', deductResult.message);
-            showToast('warning', 'Image generated but failed to deduct credits. Please contact support.');
-          } else {
-            console.log('Credits deducted successfully:', totalCreditsNeeded);
-          }
-        } catch (deductError) {
-          console.error('Error deducting credits:', deductError);
-          showToast('warning', 'Image generated but error occurred while deducting credits.');
-        }
+        // Refresh danh sách ảnh từ database sau khi tạo thành công
+        // Chỉ cần gọi fetchGeneratedImages một lần để lấy dữ liệu mới nhất từ database
+        await fetchGeneratedImages();
         
-        // Tạo generate record để lưu lịch sử sau khi tạo ảnh thành công
-        try {
-          console.log('Creating generate history record...');
-          const generateResponse = await generateService.createGenerate({
-            name: `Image: ${formData.prompt.substring(0, 50)}${formData.prompt.length > 50 ? '...' : ''}`,
-            content: formData.prompt,
-            type: 'image',
-            status: 'completed',
-            model: formData.model,
-            credit_cost: totalCreditsNeeded
-          });
-          console.log('History record created:', generateResponse);
-        } catch (generateError) {
-          console.error('Error creating history record:', generateError);
-        }
+        // Làm mới số credit sau khi tạo ảnh thành công
+        await refreshUser();
         
-        showToast('success', `Generated ${newImages.length} image(s) successfully! Deducted ${totalCreditsNeeded} credits.`);
+        showToast('success', `Generated ${response.data.images.length} image(s) successfully! Deducted ${response.data.credit_cost} credits. Remaining: ${response.data.remaining_credits} credits.`);
+      } else {
+        console.log('Image generation failed:', response.error);
+        showToast('error', response.error || 'Failed to generate image');
       }
     } catch (error) {
       console.error('Error generating image:', error);
-      showToast('error', 'Failed to generate image. Please try again.');
+      if (error instanceof Error) {
+        showToast('error', error.message);
+      } else {
+        showToast('error', 'Failed to generate image. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -319,13 +305,212 @@ const ImageCreator: React.FC = () => {
     setToast(null);
   };
 
-  const getSelectedModel = () => {
-    // Ensure models is an array before calling find
-    if (!Array.isArray(models)) {
-      return null;
-    }
-    return models.find(model => model.slug === formData.model);
+
+
+  // Hàm mở popup ảnh
+  const openImagePopup = (image: GeneratedImage) => {
+    setSelectedImage(image);
+    setShowImagePopup(true);
   };
+
+  // Hàm đóng popup ảnh
+  const closeImagePopup = () => {
+    setSelectedImage(null);
+    setShowImagePopup(false);
+  };
+
+  // Hàm download ảnh
+  const downloadImage = async (imageUrl: string, filename: string) => {
+    try {
+      // Use a proxy approach to avoid CORS issues with external URLs
+      const response = await fetch(imageUrl, {
+        mode: 'cors',
+        headers: {
+          'Accept': 'image/*',
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || 'generated-image.jpg';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      showToast('success', 'Ảnh đã được tải xuống thành công!');
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      // Fallback: open image in new tab if direct download fails
+      try {
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast('info', 'Ảnh đã được mở trong tab mới. Bạn có thể click chuột phải để lưu ảnh.');
+      } catch (fallbackError) {
+        console.error('Fallback download failed:', fallbackError);
+        showToast('error', 'Không thể tải xuống ảnh. Vui lòng thử lại sau.');
+      }
+    }
+  };
+
+  // Component LazyImage với lazy loading - Memoized để tránh re-render không cần thiết
+  const LazyImage: React.FC<{ src: string; alt: string; className?: string; onClick?: () => void; isDark?: boolean }> = React.memo(({ 
+    src, 
+    alt, 
+    className = '', 
+    onClick,
+    isDark = false
+  }) => {
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [isInView, setIsInView] = useState(false);
+    const imgRef = React.useRef<HTMLImageElement>(null);
+
+    React.useEffect(() => {
+      // Reset loading state when src changes
+      setIsLoaded(false);
+      setIsInView(false);
+      
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            setIsInView(true);
+            observer.disconnect();
+          }
+        },
+        { threshold: 0.1 }
+      );
+
+      if (imgRef.current) {
+        observer.observe(imgRef.current);
+      }
+
+      return () => observer.disconnect();
+    }, [src]); // Chỉ re-run khi src thay đổi
+
+    return (
+      <div ref={imgRef} className={`relative overflow-hidden ${className}`} onClick={onClick}>
+        {!isLoaded && (
+          <div className={`absolute inset-0 flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-200'} animate-pulse`}>
+            <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+        {isInView && (
+          <img
+            src={src}
+            alt={alt}
+            className={`w-full h-full object-cover transition-all duration-300 hover:scale-105 cursor-pointer ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onLoad={() => setIsLoaded(true)}
+            loading="lazy"
+          />
+        )}
+      </div>
+    );
+  }, (prevProps, nextProps) => {
+    // Custom comparison function để chỉ re-render khi cần thiết
+    return prevProps.src === nextProps.src && 
+           prevProps.alt === nextProps.alt && 
+           prevProps.className === nextProps.className &&
+           prevProps.isDark === nextProps.isDark;
+  });
+
+  // Memoized ImageGallery component để tránh re-render khi form state thay đổi
+  const ImageGallery: React.FC<{
+    images: GeneratedImage[];
+    isDark: boolean;
+    onImageClick: (image: GeneratedImage) => void;
+    t: any;
+  }> = React.memo(({ images, isDark, onImageClick, t }) => {
+    if (images.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <div className={`mx-auto w-32 h-32 ${isDark ? 'bg-gradient-to-br from-gray-700 to-gray-600' : 'bg-gradient-to-br from-gray-100 to-gray-200'} rounded-2xl flex items-center justify-center mb-6 animate-pulse`}>
+            <svg className={`w-16 h-16 ${isDark ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+          <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+            No images generated yet
+          </h3>
+          <p className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-500'} max-w-md mx-auto leading-relaxed`}>
+            Create your first AI-generated image by filling out the form and clicking "Generate Image"
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
+        {images.map((image) => (
+          <div 
+            key={`${image.generateId}-${image.id}`} 
+            className={`group relative rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg ${isDark ? 'bg-gray-800/50 hover:bg-gray-700/50' : 'bg-white hover:bg-gray-50'} cursor-pointer`}
+            onClick={() => onImageClick(image)}
+          >
+            {/* Image Container */}
+            <div className="aspect-square relative">
+              <LazyImage
+                src={image.url}
+                alt={image.prompt}
+                className="w-full h-full"
+                isDark={isDark}
+              /> 
+              {/* Overlay with image number */}
+              <div className="absolute top-2 left-2">
+                <div className={`px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'} backdrop-blur-sm`}>
+                  #{images.findIndex(img => img.id === image.id) + 1}
+                </div>
+              </div>  
+              {/* Hover overlay */}
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            
+            {/* Image Info */}
+            <div className="p-3">
+              <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'} line-clamp-2 mb-2`} title={image.prompt}>
+                "{image.prompt}"
+              </p>
+              <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center space-x-2">
+                  
+                  {image.seed && (
+                    <span className={`px-2 py-1 rounded ${isDark ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-600'}`}>
+                      Seed: {image.seed}
+                    </span>
+                  )}
+                </div>
+                <span className={`${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {image.createdAt.toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }, (prevProps, nextProps) => {
+    // Chỉ re-render khi images array thay đổi hoặc isDark thay đổi
+    return prevProps.images === nextProps.images && 
+           prevProps.isDark === nextProps.isDark;
+  });
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${actualTheme === 'dark' ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
@@ -340,7 +525,7 @@ const ImageCreator: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <h3 className={`font-medium ${
               actualTheme === 'dark' ? 'text-white' : 'text-gray-800'
-            }`}>{t.writeAssistant.title}</h3> 
+            }`}>{t.imageCreator.title}</h3> 
           </div>
         </div>
 
@@ -581,61 +766,12 @@ const ImageCreator: React.FC = () => {
                 </div>
               </div>
               
-              {generatedImages.length === 0 ? (
-                <div className="text-center py-16">
-                  <div className={`mx-auto w-32 h-32 ${actualTheme === 'dark' ? 'bg-gradient-to-br from-gray-700 to-gray-600' : 'bg-gradient-to-br from-gray-100 to-gray-200'} rounded-2xl flex items-center justify-center mb-6 animate-pulse`}>
-                    <svg className={`w-16 h-16 ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <h3 className={`text-xl font-semibold mb-3 ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    No images generated yet
-                  </h3>
-                  <p className={`text-base ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} max-w-md mx-auto leading-relaxed`}>
-                    Create your first AI-generated image by filling out the form and clicking "Generate Image"
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-6 max-h-[700px] overflow-y-auto pr-2 custom-scrollbar">
-                  {generatedImages.map((image, index) => (
-                    <div key={image.id} className={`group border rounded-2xl p-6 transition-all duration-300 hover:shadow-xl ${actualTheme === 'dark' ? 'border-gray-600 bg-gray-700/30 hover:border-gray-500' : 'border-gray-200 bg-gray-50/50 hover:border-gray-300'}`}>
-                      <div className="relative overflow-hidden rounded-xl mb-4">
-                        <img
-                          src={image.url}
-                          alt={image.prompt}
-                          className="w-full transition-transform duration-300 group-hover:scale-105"
-                          style={{ aspectRatio: `${image.width}/${image.height}` }}
-                        />
-                        <div className="absolute top-3 right-3">
-                          <div className={`px-2 py-1 rounded-full text-xs font-medium ${actualTheme === 'dark' ? 'bg-black/50 text-white' : 'bg-white/80 text-gray-700'} backdrop-blur-sm`}>
-                            #{index + 1}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="space-y-3">
-                        <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-white/70'}`}>
-                          <p className="text-sm font-medium leading-relaxed" title={image.prompt}>
-                            "{image.prompt}"
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className={`px-2 py-1 rounded-md text-xs font-medium ${actualTheme === 'dark' ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-600'}`}>
-                              {image.model}
-                            </div>
-                            <div className={`px-2 py-1 rounded-md text-xs font-medium ${actualTheme === 'dark' ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-600'}`}>
-                              {image.width}×{image.height}
-                            </div>
-                          </div>
-                          <p className={`text-xs ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {image.createdAt.toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <ImageGallery
+                images={generatedImages}
+                isDark={actualTheme === 'dark'}
+                onImageClick={openImagePopup}
+                t={t}
+              />
             </Card>
           </div>
         </div>
@@ -672,7 +808,7 @@ const ImageCreator: React.FC = () => {
                     {model.name}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {model.platform} • {model.credit_price} credits
+                    {model.platform} • {Math.floor(model.credit_price)} credits
                   </p>
                   {model.short_description && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-2">
@@ -691,6 +827,91 @@ const ImageCreator: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Image Popup Modal */}
+      <Modal
+        isOpen={showImagePopup}
+        onClose={closeImagePopup}
+        title="Image Details"
+        size="lg"
+      >
+        {selectedImage && (
+          <div className="space-y-4">
+            {/* Image Display */}
+            <div className="relative">
+              <img
+                src={selectedImage.url}
+                alt={selectedImage.prompt}
+                className="w-full max-h-96 object-contain rounded-lg"
+              />
+            </div>
+            
+            {/* Image Information */}
+            <div className={`p-4 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+              <h3 className={`font-medium mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                Prompt
+              </h3>
+              <p className={`text-sm ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
+                "{selectedImage.prompt}"
+              </p>
+            </div>
+            
+            {/* Image Details */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                  Dimensions
+                </h4>
+                <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  {selectedImage.width} × {selectedImage.height}
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                  Created
+                </h4>
+                <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  {selectedImage.createdAt.toLocaleDateString()}
+                </p>
+              </div>
+              {selectedImage.seed && (
+                <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                  <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                    Seed
+                  </h4>
+                  <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                    {selectedImage.seed}
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-3 pt-4">
+              <Button
+                variant="outline"
+                onClick={closeImagePopup}
+              >
+                Close
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => downloadImage(
+                  selectedImage.url, 
+                  `generated-image-${selectedImage.id}.jpg`
+                )}
+                startIcon={
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-4-4m4 4l4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+              >
+                Download
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
       {/* Toast Notification */}
       {toast && (
         <div className="fixed top-4 right-4 z-50 max-w-md">
@@ -702,6 +923,13 @@ const ImageCreator: React.FC = () => {
           />
         </div>
       )}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        initialMode="login"
+      />
     </div>
   );
 };

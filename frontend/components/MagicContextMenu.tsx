@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { runwareApi } from '../services/runwareApi';
+import { imageGenerationService } from '../services/imageGenerationService';
 import AIService from '../services/AIService';
 import { useTheme } from '../contexts/ThemeContext';
 import Input from './ui/Input';
@@ -201,7 +201,8 @@ const MagicContextMenu: React.FC<MagicContextMenuProps> = ({ x, y, onClose, onIn
       onClose();
     } catch (error) {
       console.error('Text generation failed:', error);
-      alert('Failed to generate text. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate text. Please try again.';
+      alert(errorMessage);
     }
   };
 
@@ -218,24 +219,42 @@ const MagicContextMenu: React.FC<MagicContextMenuProps> = ({ x, y, onClose, onIn
       
       const size = sizeMap[aspectRatio] || sizeMap['1:1'];
       
-      const result = await runwareApi.generateImage({
-        positivePrompt: prompt,
+      const result = await imageGenerationService.createImage({
+        prompt: prompt,
         model: 'rundiffusion:130@100',
         width: size.width,
         height: size.height,
-        numberResults: 1
+        numberResults: 1,
+        name: 'Magic Context Menu Image',
+        share: false
       });
       
-      if (result && result.length > 0) {
-        onInsertImage(result[0].imageURL);
+      console.log('Image generation result:', result);
+      console.log('Result data:', result.data);
+      console.log('Images array:', result.data?.images);
+      console.log('First image:', result.data?.images?.[0]);
+      
+      if (result.success && result.data?.images && result.data.images.length > 0) {
+        const imageUrl = result.data.images[0];
+        console.log('Image URL to insert:', imageUrl);
+        console.log('Type of image URL:', typeof imageUrl);
+        
+        // Ensure we're passing a string URL, not an object
+        const urlToInsert = typeof imageUrl === 'string' ? imageUrl : 
+                           (typeof imageUrl === 'object' && imageUrl.url) ? imageUrl.url :
+                           JSON.stringify(imageUrl);
+        
+        console.log('Final URL to insert:', urlToInsert);
+        onInsertImage(urlToInsert);
         setShowPromptModal(null);
         onClose();
       } else {
-        throw new Error('No image generated');
+        throw new Error(result.error || 'No image generated');
       }
     } catch (error) {
       console.error('Image generation failed:', error);
-      alert('Failed to generate image. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate image. Please try again.';
+      alert(errorMessage);
     }
   };
 

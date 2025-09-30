@@ -48,12 +48,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   // Navigation items based on current frontend structure
-  const navItems: NavItem[] = [
-    {
-      icon: <PenIcon className="w-5 h-5" />,
-      name: t.sidebar?.writeAssistant?.title || 'Write Assistant',
-      path: '/write-assistant',
-    },
+  const navItems: NavItem[] = [ 
     {
       icon: <ImageIcon className="w-5 h-5" />,
       name: t.sidebar?.imageCreator?.title || 'Image Creator',

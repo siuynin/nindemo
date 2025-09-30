@@ -47,6 +47,15 @@ const ElevenLabs: React.FC = () => {
     content: ''
   });
   
+  // Model and voice settings state
+  const [selectedModel, setSelectedModel] = useState<'eleven_turbo_v2_5' | 'eleven_v3'>('eleven_turbo_v2_5');
+  const [voiceSettings, setVoiceSettings] = useState({
+    speed: 0.97,
+    style: 0,
+    stability: 0.5,
+    similarity_boost: 0.61,
+    use_speaker_boost: true
+  });
   const [selectedVoice, setSelectedVoice] = useState<ElevenLabsVoice | null>(null);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [userGenerates, setUserGenerates] = useState<Generate[]>([]);
@@ -68,6 +77,28 @@ const ElevenLabs: React.FC = () => {
     setSelectedVoice(voice);
     setIsVoiceModalOpen(false);
   };
+
+  // Handle model change and reset voice settings
+  useEffect(() => {
+    // Reset voice settings when model changes
+    if (selectedModel === 'eleven_turbo_v2_5') {
+      setVoiceSettings({
+        speed: 0.97,
+        style: 0,
+        stability: 0.5,
+        similarity_boost: 0.61,
+        use_speaker_boost: true
+      });
+    } else if (selectedModel === 'eleven_v3') {
+      setVoiceSettings({
+        speed: 0.97, // Keep for consistency but won't be sent
+        style: 0,
+        stability: 0.5,
+        similarity_boost: 0.61, // Keep for consistency but won't be sent
+        use_speaker_boost: true
+      });
+    }
+  }, [selectedModel]);
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -183,13 +214,28 @@ const ElevenLabs: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Prepare voice settings based on selected model
+      const requestVoiceSettings: any = {
+        stability: voiceSettings.stability,
+        style: voiceSettings.style,
+        use_speaker_boost: voiceSettings.use_speaker_boost
+      };
+
+      // Add additional settings for turbo_v2_5 model
+      if (selectedModel === 'eleven_turbo_v2_5') {
+        requestVoiceSettings.speed = voiceSettings.speed;
+        requestVoiceSettings.similarity_boost = voiceSettings.similarity_boost;
+      }
+
       // First, create generates record with status 'pending'
       const generateResponse = await generateService.createGenerate({
         name: formData.name.trim(),
         content: formData.content.trim(),
         type: 'audio',
         status: 'pending',
-        voice_id: selectedVoice.voice_id
+        voice_id: selectedVoice.voice_id,
+        model: selectedModel,
+        voice_settings: requestVoiceSettings
       });
       
       if (!generateResponse.success || !generateResponse.data.id) {
@@ -336,6 +382,179 @@ const ElevenLabs: React.FC = () => {
                     >
                       {selectedVoice ? 'Change Voice' : 'Select Voice'}
                     </Button>
+                  </div>
+                  
+                  {/* Model Selection */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Model Selection
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <Card 
+                        padding="sm" 
+                        className={`cursor-pointer border-2 transition-all ${
+                          selectedModel === 'eleven_turbo_v2_5' 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                        onClick={() => setSelectedModel('eleven_turbo_v2_5')}
+                      >
+                        <div className="text-center">
+                          <h4 className="font-medium text-gray-900 dark:text-white text-sm">
+                            Turbo v2.5
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Fast & Customizable
+                          </p>
+                        </div>
+                      </Card>
+                      
+                      <Card 
+                        padding="sm" 
+                        className={`cursor-pointer border-2 transition-all ${
+                          selectedModel === 'eleven_v3' 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                        }`}
+                        onClick={() => setSelectedModel('eleven_v3')}
+                      >
+                        <div className="text-center">
+                          <h4 className="font-medium text-gray-900 dark:text-white text-sm">
+                            V3
+                          </h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            High Quality
+                          </p>
+                        </div>
+                      </Card>
+                    </div>
+                  </div>
+
+                  {/* Voice Settings */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Voice Settings
+                    </label>
+                    
+                    {/* Stability - Available for both models */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm text-gray-600 dark:text-gray-400">
+                          Stability
+                        </label>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {voiceSettings.stability.toFixed(2)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={voiceSettings.stability}
+                        onChange={(e) => setVoiceSettings(prev => ({
+                          ...prev,
+                          stability: parseFloat(e.target.value)
+                        }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                      />
+                    </div>
+
+                    {/* Style - Available for both models */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm text-gray-600 dark:text-gray-400">
+                          Style
+                        </label>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">
+                          {voiceSettings.style.toFixed(2)}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="1"
+                        step="0.01"
+                        value={voiceSettings.style}
+                        onChange={(e) => setVoiceSettings(prev => ({
+                          ...prev,
+                          style: parseFloat(e.target.value)
+                        }))}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                      />
+                    </div>
+
+                    {/* Speed and Similarity Boost - Only for turbo_v2_5 */}
+                    {selectedModel === 'eleven_turbo_v2_5' && (
+                      <>
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">
+                              Speed
+                            </label>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {voiceSettings.speed.toFixed(2)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={voiceSettings.speed}
+                            onChange={(e) => setVoiceSettings(prev => ({
+                              ...prev,
+                              speed: parseFloat(e.target.value)
+                            }))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">
+                              Similarity Boost
+                            </label>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {voiceSettings.similarity_boost.toFixed(2)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="1"
+                            step="0.01"
+                            value={voiceSettings.similarity_boost}
+                            onChange={(e) => setVoiceSettings(prev => ({
+                              ...prev,
+                              similarity_boost: parseFloat(e.target.value)
+                            }))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Speaker Boost - Available for both models */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm text-gray-600 dark:text-gray-400">
+                        Speaker Boost
+                      </label>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={voiceSettings.use_speaker_boost}
+                          onChange={(e) => setVoiceSettings(prev => ({
+                            ...prev,
+                            use_speaker_boost: e.target.checked
+                          }))}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                      </label>
+                    </div>
                   </div>
                   
                   {/* Text Content */}

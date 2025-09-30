@@ -14,7 +14,7 @@ interface CreditResponse {
       created_at: string;
       updated_at: string;
     }>;
-    total_remaining: number;
+    total_remaining: number | string; // Backend có thể trả về string hoặc number
   };
   errors?: any;
 }
@@ -135,9 +135,26 @@ class UserCreditService {
       }
 
       // Validate response structure
-      if (!data.success || !data.data || typeof data.data.total_remaining !== 'number') {
+      if (!data.success || !data.data) {
         console.error('Invalid response structure:', data);
         throw new Error('Invalid response format from credits API');
+      }
+
+      // Convert total_remaining to number if it's a string
+      let totalRemaining: number;
+      if (typeof data.data.total_remaining === 'string') {
+        totalRemaining = parseFloat(data.data.total_remaining);
+        if (isNaN(totalRemaining)) {
+          console.error('Invalid total_remaining value:', data.data.total_remaining);
+          throw new Error('Invalid total_remaining format from credits API');
+        }
+        // Update the data object with the parsed number
+        data.data.total_remaining = totalRemaining;
+      } else if (typeof data.data.total_remaining === 'number') {
+        totalRemaining = data.data.total_remaining;
+      } else {
+        console.error('Invalid total_remaining type:', typeof data.data.total_remaining);
+        throw new Error('Invalid total_remaining format from credits API');
       }
 
       // Update cache

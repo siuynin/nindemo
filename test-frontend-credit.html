@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Frontend Credit API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            border-left: 4px solid #007bff;
+            background-color: #f8f9fa;
+        }
+        .error {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+        }
+        .success {
+            border-left-color: #28a745;
+            background-color: #d4edda;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Frontend Credit API</h1>
+        
+        <div>
+            <h3>Token Management</h3>
+            <input type="text" id="tokenInput" placeholder="Enter auth token" style="width: 300px; padding: 8px;">
+            <button onclick="setToken()">Set Token</button>
+            <button onclick="clearToken()">Clear Token</button>
+        </div>
+
+        <div>
+            <h3>API Tests</h3>
+            <button onclick="testGetCredits()">Test Get Credits</button>
+            <button onclick="testCheckSufficientCredits()">Test Check Sufficient Credits (10)</button>
+            <button onclick="testDeductCredits()">Test Deduct Credits (1)</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8001/api';
+        
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function setToken() {
+            const token = document.getElementById('tokenInput').value;
+            if (token) {
+                localStorage.setItem('auth_token', token);
+                log('Token set successfully', 'success');
+            } else {
+                log('Please enter a token', 'error');
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('auth_token');
+            log('Token cleared', 'success');
+        }
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('auth_token');
+            return {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            };
+        }
+
+        async function testGetCredits() {
+            try {
+                log('Testing GET /user/credits...');
+                
+                const response = await fetch(`${API_BASE_URL}/user/credits`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                log(`Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log(`Response data: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                if (data.success && data.data) {
+                    log(`Total remaining credits: ${data.data.total_remaining}`, 'success');
+                } else {
+                    log('Failed to get credits or invalid response format', 'error');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCheckSufficientCredits() {
+            try {
+                log('Testing checkSufficientCredits for 10 credits...');
+                
+                const response = await fetch(`${API_BASE_URL}/user/credits`, {
+                    method: 'GET',
+                    headers: getAuthHeaders()
+                });
+
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    const hasEnough = data.data.total_remaining >= 10;
+                    log(`Current credits: ${data.data.total_remaining}, Required: 10, Sufficient: ${hasEnough}`, hasEnough ? 'success' : 'error');
+                } else {
+                    log('Failed to check credits', 'error');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDeductCredits() {
+            try {
+                log('Testing deduct 1 credit...');
+                
+                const response = await fetch(`${API_BASE_URL}/user/credits/deduct`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        amount: 1,
+                        description: 'Test deduction from HTML',
+                        operation_type: 'test'
+                    })
+                });
+
+                log(`Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log(`Response data: <pre>${JSON.stringify(data, null, 2)}</pre>`);
+                
+                if (data.success) {
+                    log(`Successfully deducted 1 credit. Remaining: ${data.data.remaining_credits}`, 'success');
+                } else {
+                    log(`Failed to deduct credits: ${data.message}`, 'error');
+                }
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-load token if exists
+        window.onload = function() {
+            const token = localStorage.getItem('auth_token');
+            if (token) {
+                document.getElementById('tokenInput').value = token;
+                log('Existing token loaded', 'success');
+            }
+        };
+    </script>
+</body>
+</html>

@@ -126,7 +126,8 @@ class UserGenerateController extends Controller
             $result = $elevenLabsService->textToSpeech(
                 $request->content ?? '',
                 $request->voice_id ?? 'pNInz6obpgDQGcFmaJgB',
-                $request->voice_settings ?? []
+                $request->model ?? 'eleven_v3',
+                $request->voice_settings ?? null
             );
             
             if ($result['success']) {

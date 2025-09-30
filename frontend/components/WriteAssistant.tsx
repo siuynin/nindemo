@@ -169,10 +169,12 @@ const WriteAssistant: React.FC = () => {
           console.log('📥 Response:', response);
           
           if (response.success && response.data.content) {
-            // Set document name and ID
-            setDocumentName(response.data.name || 'Untitled');
+            // IMPORTANT: Set currentGenerateId FIRST before setting content
+            // This ensures the document will be updated instead of creating a new one
             setCurrentGenerateId(response.data.id);
+            setDocumentName(response.data.name || 'Untitled');
             
+            console.log('🔗 Set currentGenerateId to:', response.data.id);
             console.log('📝 Setting content in editor, editorRef.current:', !!editorRef.current);
             console.log('📄 Content length:', response.data.content.length);
             
@@ -180,9 +182,6 @@ const WriteAssistant: React.FC = () => {
             if (editorRef.current) {
               editorRef.current.setContent(response.data.content);
               console.log('✅ Content set successfully');
-              
-              // Clear the localStorage to prevent reloading on refresh
-              localStorage.removeItem('currentGenerateId');
               
               // Show success toast
               setToast({
@@ -200,9 +199,13 @@ const WriteAssistant: React.FC = () => {
             }
           } else {
             console.log('⚠️ No content in response');
+            // If document doesn't exist or has no content, clear localStorage to prevent issues
+            localStorage.removeItem('currentGenerateId');
           }
         } catch (error) {
           console.error('❌ Error loading generated content:', error);
+          // Clear localStorage on error to prevent repeated failed attempts
+          localStorage.removeItem('currentGenerateId');
           setToast({
             message: 'Có lỗi xảy ra khi tải nội dung',
             type: 'error',
@@ -343,7 +346,7 @@ const WriteAssistant: React.FC = () => {
     const textToProcess = currentSelection || selectedText;
     
     if (!textToProcess.trim()) {
-      showToast(t.writeAssistant.selectTextFirst, 'warning');
+      // showToast(t.writeAssistant.selectTextFirst, 'warning');
       return;
     }
     
@@ -479,17 +482,10 @@ const WriteAssistant: React.FC = () => {
           status: 'completed'
         });
       } else {
-        // Create new document if no ID exists
-        response = await generateService.createGenerate({
-          name: documentName,
-          content: content,
-          type: 'text',
-          status: 'completed'
-        });
-        
-        if (response.success && response.data) {
-          setCurrentGenerateId(response.data.id);
-        }
+        // Don't auto-create new documents - only save if user explicitly saves
+        // This prevents creating "Untitled" documents when navigating from prompt responses
+        console.log('Auto-save skipped: No currentGenerateId and no explicit save action');
+        return;
       }
       
       if (response.success) {
@@ -545,6 +541,9 @@ const WriteAssistant: React.FC = () => {
       }
       
       if (response.success) {
+        // Clear localStorage after successful save to prevent reloading
+        localStorage.removeItem('currentGenerateId');
+        
         setToast({
           message: 'Đã lưu bài viết thành công!',
           type: 'success',

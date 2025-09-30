@@ -113,6 +113,7 @@ class GenerateService {
     file_patch?: string;
     task_id?: string;
     credit_cost?: number;
+    result_url?: string;
   }): Promise<{ success: boolean; data: Generate; message: string }> {
     return this.makeRequest(this.baseUrl, {
       method: 'POST',

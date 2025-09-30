@@ -10,6 +10,7 @@ import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
 import Price from './pages/Price';
 import App from './App';
+import DebugRunware from './debug-runware';
 
 // Wrapper component for Canvas page
 const CanvasPage: React.FC = () => {
@@ -77,6 +78,10 @@ export const router = createBrowserRouter([
       {
         path: 'price',
         element: <Price />,
+      },
+      {
+        path: 'debug-runware',
+        element: <DebugRunware />,
       },
     ],
   },

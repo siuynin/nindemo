@@ -25,7 +25,7 @@ Artists, designers, storytellers, and hobbyists looking to explore AI-driven cre
    npm install
    ```
 
-2. Add your Gemini API key to `.env.local`:
+2. Add your Gemini API key to `.env`:
 
    ```
    GEMINI_API_KEY=your_key

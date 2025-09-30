@@ -66,19 +66,23 @@ const Alert: React.FC<AlertProps> = ({
     ),
   };
 
+  // Get variant styles with fallback to 'info' if variant is invalid
+  const currentVariant = variantClasses[variant] || variantClasses.info;
+  const currentIcon = icons[variant] || icons.info;
+
   return (
-    <div className={`rounded-lg border p-4 ${variantClasses[variant].container}`}>
+    <div className={`rounded-lg border p-4 ${currentVariant.container}`}>
       <div className="flex items-start">
-        <div className={`flex-shrink-0 ${variantClasses[variant].icon}`}>
-          {icons[variant]}
+        <div className={`flex-shrink-0 ${currentVariant.icon}`}>
+          {currentIcon}
         </div>
         <div className="ml-3 flex-1">
           {title && (
-            <h3 className={`text-sm font-medium ${variantClasses[variant].text}`}>
+            <h3 className={`text-sm font-medium ${currentVariant.text}`}>
               {title}
             </h3>
           )}
-          <div className={`${title ? 'mt-1' : ''} text-sm ${variantClasses[variant].text}`}>
+          <div className={`${title ? 'mt-1' : ''} text-sm ${currentVariant.text}`}>
             {message}
           </div>
         </div>
@@ -88,7 +92,7 @@ const Alert: React.FC<AlertProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${variantClasses[variant].icon} ${actualTheme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
+                className={`inline-flex rounded-md p-1.5 focus:outline-none focus:ring-2 focus:ring-offset-2 ${currentVariant.icon} ${actualTheme === 'dark' ? 'hover:bg-white/5' : 'hover:bg-black/5'}`}
               >
                 <span className="sr-only">Dismiss</span>
                 <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

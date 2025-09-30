@@ -232,18 +232,17 @@ const TextToSpeech: React.FC = () => {
           <div className="mb-8"> 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {ttsServices.map((service) => (
-                <Card
+                <a 
+                  href={service.id === 'elevenlabs' ? '/elevenlabs' : service.url}
+                  target={service.id === 'elevenlabs' ? '_self' : '_blank'}
+                  rel="noopener noreferrer"
                   key={service.id}
-                  hover={true}
-                  className="cursor-pointer group"
-                  onClick={() => {
-                    if (service.id === 'elevenlabs') {
-                      navigate('/app/elevenlabs');
-                    } else {
-                      window.open(service.url, '_blank');
-                    }
-                  }}
+                  className="block"
                 >
+                  <Card
+                    hover={true}
+                    className="cursor-pointer group relative z-50 pointer-events-auto"
+                  >
                   <div className="flex flex-col h-full">
                     <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${service.color} text-white mb-3 w-fit`}>
                       {service.icon}
@@ -256,6 +255,7 @@ const TextToSpeech: React.FC = () => {
                     </p> 
                   </div>
                 </Card>
+                </a>
               ))}
             </div>
           </div>

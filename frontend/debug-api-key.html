@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug API Key Loading</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .result { 
+            padding: 15px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+            border-left: 4px solid;
+        }
+        .success { 
+            background-color: #d4edda; 
+            border-left-color: #28a745; 
+            color: #155724; 
+        }
+        .error { 
+            background-color: #f8d7da; 
+            border-left-color: #dc3545; 
+            color: #721c24; 
+        }
+        .info { 
+            background-color: #d1ecf1; 
+            border-left-color: #17a2b8; 
+            color: #0c5460; 
+        }
+        .warning { 
+            background-color: #fff3cd; 
+            border-left-color: #ffc107; 
+            color: #856404; 
+        }
+        button { 
+            padding: 12px 24px; 
+            margin: 10px 5px; 
+            border: none; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .btn-primary { 
+            background-color: #007bff; 
+            color: white; 
+        }
+        .btn-primary:hover { 
+            background-color: #0056b3; 
+        }
+        .btn-success { 
+            background-color: #28a745; 
+            color: white; 
+        }
+        .btn-success:hover { 
+            background-color: #1e7e34; 
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .badge-success {
+            background: #28a745;
+            color: white;
+        }
+        .badge-error {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug API Key Loading</h1>
+        <p>Kiểm tra thực tế việc đọc <code>VITE_RUNWARE_API_KEY</code> từ file <code>.env</code></p>
+        
+        <button class="btn-primary" onclick="debugEnvironment()">🔍 Debug Environment</button>
+        <button class="btn-success" onclick="testImageCreatorLogic()">🎨 Test ImageCreator Logic</button>
+        
+        <div id="results"></div>
+    </div>
+    
+    <script type="module">
+        const results = document.getElementById("results");
+        
+        function addResult(message, type = "info") {
+            const div = document.createElement("div");
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        function clearResults() {
+            results.innerHTML = "";
+        }
+        
+        window.debugEnvironment = function() {
+            clearResults();
+            addResult("🔍 <strong>Bắt đầu debug environment variables...</strong>", "info");
+            
+            // Lấy tất cả environment variables
+            const allEnv = import.meta.env;
+            console.log("All import.meta.env:", allEnv);
+            
+            // Test từng biến cụ thể
+            const runwareKey = import.meta.env.VITE_RUNWARE_API_KEY;
+            const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+            const openaiKey = import.meta.env.VITE_OPENAI_API_KEY;
+            const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+            
+            addResult(`<strong>🔑 VITE_RUNWARE_API_KEY:</strong> ${runwareKey ? 
+                `<span class="status-badge badge-success">✓ CÓ</span> (${runwareKey.length} ký tự)` : 
+                `<span class="status-badge badge-error">✗ KHÔNG</span>`}`, 
+                runwareKey ? "success" : "error");
+            
+            if (runwareKey) {
+                addResult(`📋 <strong>Key preview:</strong> <code>${runwareKey.substring(0, 10)}...${runwareKey.substring(runwareKey.length - 6)}</code>`, "info");
+                
+                // Kiểm tra key có phải placeholder không
+                if (runwareKey === 'your_runware_key_here') {
+                    addResult("⚠️ <strong>Cảnh báo:</strong> API key vẫn là placeholder!", "warning");
+                } else if (runwareKey === 'EI6DphzfDx1lkAOHlAEsNCg5iYItYV0U') {
+                    addResult("ℹ️ <strong>Thông tin:</strong> Đây là key demo từ file .env", "info");
+                } else {
+                    addResult("✅ <strong>Tốt:</strong> API key có vẻ là key thực", "success");
+                }
+            }
+            
+            // Hiển thị các env khác
+            addResult(`<strong>🤖 VITE_GEMINI_API_KEY:</strong> ${geminiKey ? 
+                `<span class="status-badge badge-success">✓ CÓ</span>` : 
+                `<span class="status-badge badge-error">✗ KHÔNG</span>`}`, 
+                geminiKey ? "success" : "error");
+                
+            addResult(`<strong>🧠 VITE_OPENAI_API_KEY:</strong> ${openaiKey ? 
+                `<span class="status-badge badge-success">✓ CÓ</span>` : 
+                `<span class="status-badge badge-error">✗ KHÔNG</span>`}`, 
+                openaiKey ? "success" : "error");
+                
+            addResult(`<strong>🌐 VITE_API_BASE_URL:</strong> ${apiBaseUrl ? 
+                `<span class="status-badge badge-success">✓ CÓ</span> (${apiBaseUrl})` : 
+                `<span class="status-badge badge-error">✗ KHÔNG</span>`}`, 
+                apiBaseUrl ? "success" : "error");
+            
+            // Hiển thị tất cả VITE_ variables
+            const viteVars = Object.keys(allEnv).filter(key => key.startsWith('VITE_'));
+            addResult(`<strong>📋 Tất cả VITE_ variables:</strong><br><pre>${viteVars.join('\\n')}</pre>`, "info");
+            
+            // Hiển thị raw environment object
+            addResult(`<strong>🔧 Raw import.meta.env:</strong><br><pre>${JSON.stringify(allEnv, null, 2)}</pre>`, "info");
+        };
+        
+        window.testImageCreatorLogic = function() {
+            clearResults();
+            addResult("🎨 <strong>Test logic ImageCreator...</strong>", "info");
+            
+            // Mô phỏng chính xác logic trong ImageCreator.tsx
+            const apiKey = import.meta.env.VITE_RUNWARE_API_KEY;
+            console.log('Runware API Key configured:', !!apiKey);
+            
+            addResult(`<strong>🔍 Kiểm tra API key:</strong> ${apiKey ? "Có giá trị" : "Không có giá trị"}`, apiKey ? "success" : "error");
+            
+            // Test điều kiện chính xác như trong code
+            if (!apiKey || apiKey === 'your_runware_key_here') {
+                addResult("❌ <strong>LỖI:</strong> Runware API key is not configured. Please add VITE_RUNWARE_API_KEY to your .env file.", "error");
+                addResult("🔧 <strong>Nguyên nhân:</strong> Điều kiện <code>!apiKey || apiKey === 'your_runware_key_here'</code> trả về true", "warning");
+                
+                if (!apiKey) {
+                    addResult("📝 <strong>Chi tiết:</strong> apiKey là undefined/null/empty", "warning");
+                } else if (apiKey === 'your_runware_key_here') {
+                    addResult("📝 <strong>Chi tiết:</strong> apiKey vẫn là placeholder 'your_runware_key_here'", "warning");
+                }
+                return;
+            }
+            
+            addResult("✅ <strong>THÀNH CÔNG:</strong> API key validation passed!", "success");
+            addResult("🚀 <strong>Kết quả:</strong> ImageCreator sẽ tiếp tục với việc tạo ảnh", "success");
+            
+            // Mock request để test
+            const mockRequest = {
+                taskType: "imageInference",
+                taskUUID: "test-uuid-" + Date.now(),
+                positivePrompt: "A beautiful sunset over mountains",
+                width: 512,
+                height: 512,
+                model: "runware:100@1",
+                numberResults: 1
+            };
+            
+            addResult(`<strong>📝 Mock request sẽ được gửi:</strong><br><pre>${JSON.stringify(mockRequest, null, 2)}</pre>`, "info");
+        };
+        
+        // Auto-run khi trang load
+        setTimeout(() => {
+            debugEnvironment();
+        }, 500);
+    </script>
+</body>
+</html>
