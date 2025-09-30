@@ -2,14 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
-import { LoadingSpinner } from '../components/icons'; 
+import { useLanguage } from '../contexts/LanguageContext'; 
 import generateService from '../services/generateService';
-import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon } from '../components/icons';
+import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
 import AuthModal from '../components/AuthModal';
 import VoiceSelectionModal from '../components/VoiceSelectionModal';
+import ModernAudioPlayer from '../components/ModernAudioPlayer';
 import { ElevenLabsVoice } from '../types';
-import { Card, Button, Badge, Input, TextArea } from '../components/ui';
+import { Card, Button, Badge, Input, TextArea, Select } from '../components/ui';
 
 interface Generate {
   id: number;
@@ -71,6 +71,19 @@ const ElevenLabs: React.FC = () => {
     credit_cost: number;
     task_id?: string;
   } | null>(null);
+  
+  // Audio player state
+  const [audioPlayer, setAudioPlayer] = useState<{
+    isVisible: boolean;
+    title: string;
+    audioUrl: string;
+    generateId?: number;
+  }>({
+    isVisible: false,
+    title: '',
+    audioUrl: '',
+    generateId: undefined
+  });
 
   // Handle voice selection
   const handleVoiceSelect = (voice: ElevenLabsVoice) => {
@@ -108,8 +121,6 @@ const ElevenLabs: React.FC = () => {
       [name]: value
     }));
   };
-
-
 
   // Fetch user generates
   const fetchUserGenerates = async () => {
@@ -322,65 +333,56 @@ const ElevenLabs: React.FC = () => {
                       <span className="text-red-500 ml-1">*</span>
                     </label>
                     
-                    {/* Selected Voice Display */}
-                    {selectedVoice ? (
-                      <Card padding="sm" className="border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <h4 className="font-medium text-gray-900 dark:text-white truncate">
-                                {selectedVoice.name}
-                              </h4>
-                              <Badge variant="solid" color="primary" size="sm">
-                                Selected
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              {Array.isArray(selectedVoice.language) 
-                                ? selectedVoice.language.map(lang => 
-                                    typeof lang === 'object' && lang.language ? lang.language : lang
-                                  ).join(', ').toUpperCase()
-                                : (typeof selectedVoice.language === 'string' ? selectedVoice.language.toUpperCase() : 'N/A')
-                              } • {selectedVoice.gender} • {selectedVoice.age}
-                            </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-500 line-clamp-2">
-                              {selectedVoice.description}
-                            </p>
-                          </div>
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleVoicePreview(selectedVoice.voice_id)}
-                              startIcon={isPlaying === selectedVoice.voice_id ? 
-                                <PauseIcon className="w-4 h-4" /> : 
-                                <PlayIcon className="w-4 h-4" />
-                              }
-                            >
-                              {isPlaying === selectedVoice.voice_id ? 'Pause' : 'Preview'}
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ) : (
-                      <Card padding="sm" className="border-2 border-dashed border-gray-300 dark:border-gray-600">
-                        <div className="text-center py-4">
-                          <SpeakerIcon className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            No voice selected
-                          </p>
-                        </div>
-                      </Card>
-                    )}
-                    
-                    {/* Voice Selection Button */}
+                    {/* Voice Selection Button with Selected Voice Info */}
                     <Button
                       variant="outline"
                       onClick={() => setIsVoiceModalOpen(true)}
-                      startIcon={<SpeakerIcon className="w-5 h-5" />}
-                      className="w-full"
+                      className="w-full p-4 h-auto justify-between text-left"
                     >
-                      {selectedVoice ? 'Change Voice' : 'Select Voice'}
+                      <div className="flex items-center space-x-3">
+                        <SpeakerIcon className="w-5 h-5 text-gray-500" />
+                        <div className="flex-1 min-w-0">
+                          {selectedVoice ? (
+                            <div>
+                              <div className="font-medium text-gray-900 dark:text-white truncate">
+                                {selectedVoice.name}
+                              </div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                {Array.isArray(selectedVoice.language) 
+                                  ? selectedVoice.language.map(lang => 
+                                      typeof lang === 'object' && lang.language ? lang.language : lang
+                                    ).join(', ').toUpperCase()
+                                  : (typeof selectedVoice.language === 'string' ? selectedVoice.language.toUpperCase() : 'N/A')
+                                } • {selectedVoice.gender} • {selectedVoice.age}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-gray-500 dark:text-gray-400">
+                              Select Voice
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {selectedVoice && (
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleVoicePreview(selectedVoice.voice_id);
+                            }}
+                            className="inline-flex items-center px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md cursor-pointer transition-colors mr-2"
+                          >
+                            {isPlaying === selectedVoice.voice_id ? 
+                              <PauseIcon className="w-3 h-3 mr-1" /> : 
+                              <PlayIcon className="w-3 h-3 mr-1" />
+                            }
+                            {isPlaying === selectedVoice.voice_id ? 'Pause' : 'Preview'}
+                          </div>
+                        )}
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
                     </Button>
                   </div>
                   
@@ -391,44 +393,17 @@ const ElevenLabs: React.FC = () => {
                       <span className="text-red-500 ml-1">*</span>
                     </label>
                     
-                    <div className="grid grid-cols-2 gap-3">
-                      <Card 
-                        padding="sm" 
-                        className={`cursor-pointer border-2 transition-all ${
-                          selectedModel === 'eleven_turbo_v2_5' 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                        onClick={() => setSelectedModel('eleven_turbo_v2_5')}
-                      >
-                        <div className="text-center">
-                          <h4 className="font-medium text-gray-900 dark:text-white text-sm">
-                            Turbo v2.5
-                          </h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            Fast & Customizable
-                          </p>
-                        </div>
-                      </Card>
-                      
-                      <Card 
-                        padding="sm" 
-                        className={`cursor-pointer border-2 transition-all ${
-                          selectedModel === 'eleven_v3' 
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-                        }`}
-                        onClick={() => setSelectedModel('eleven_v3')}
-                      >
-                        <div className="text-center">
-                          <h4 className="font-medium text-gray-900 dark:text-white text-sm">
-                            V3
-                          </h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            High Quality
-                          </p>
-                        </div>
-                      </Card>
+                    <div className="space-y-2"> 
+                      <Select
+                         options={[
+                           { value: 'eleven_turbo_v2_5', label: 'Turbo v2.5 - Fast & Customizable' },
+                           { value: 'eleven_v3', label: 'V3 - High Quality' }
+                         ]}
+                         defaultValue={selectedModel}
+                         onChange={(value) => setSelectedModel(value as 'eleven_turbo_v2_5' | 'eleven_v3')}
+                         placeholder="Select a model"
+                         className="w-full"
+                       />
                     </div>
                   </div>
 
@@ -438,64 +413,18 @@ const ElevenLabs: React.FC = () => {
                       Voice Settings
                     </label>
                     
-                    {/* Stability - Available for both models */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">
-                          Stability
-                        </label>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {voiceSettings.stability.toFixed(2)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={voiceSettings.stability}
-                        onChange={(e) => setVoiceSettings(prev => ({
-                          ...prev,
-                          stability: parseFloat(e.target.value)
-                        }))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                      />
-                    </div>
-
-                    {/* Style - Available for both models */}
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-center">
-                        <label className="text-sm text-gray-600 dark:text-gray-400">
-                          Style
-                        </label>
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {voiceSettings.style.toFixed(2)}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="1"
-                        step="0.01"
-                        value={voiceSettings.style}
-                        onChange={(e) => setVoiceSettings(prev => ({
-                          ...prev,
-                          style: parseFloat(e.target.value)
-                        }))}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                      />
-                    </div>
-
-                    {/* Speed and Similarity Boost - Only for turbo_v2_5 */}
-                    {selectedModel === 'eleven_turbo_v2_5' && (
-                      <>
+                    {/* Voice Settings Grid - 2 columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left Column */}
+                      <div className="space-y-4">
+                        {/* Stability - Available for both models */}
                         <div className="space-y-2">
                           <div className="flex justify-between items-center">
                             <label className="text-sm text-gray-600 dark:text-gray-400">
-                              Speed
+                              Stability
                             </label>
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {voiceSettings.speed.toFixed(2)}
+                              {voiceSettings.stability.toFixed(2)}
                             </span>
                           </div>
                           <input
@@ -503,42 +432,100 @@ const ElevenLabs: React.FC = () => {
                             min="0"
                             max="1"
                             step="0.01"
-                            value={voiceSettings.speed}
+                            value={voiceSettings.stability}
                             onChange={(e) => setVoiceSettings(prev => ({
                               ...prev,
-                              speed: parseFloat(e.target.value)
+                              stability: parseFloat(e.target.value)
                             }))}
                             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
                           />
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center">
-                            <label className="text-sm text-gray-600 dark:text-gray-400">
-                              Similarity Boost
-                            </label>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {voiceSettings.similarity_boost.toFixed(2)}
-                            </span>
+                        {/* Style - Only for turbo_v2_5 */}
+                        {selectedModel === 'eleven_turbo_v2_5' && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-sm text-gray-600 dark:text-gray-400">
+                                Style
+                              </label>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {voiceSettings.style.toFixed(2)}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={voiceSettings.style}
+                              onChange={(e) => setVoiceSettings(prev => ({
+                                ...prev,
+                                style: parseFloat(e.target.value)
+                              }))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                            />
                           </div>
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.01"
-                            value={voiceSettings.similarity_boost}
-                            onChange={(e) => setVoiceSettings(prev => ({
-                              ...prev,
-                              similarity_boost: parseFloat(e.target.value)
-                            }))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
-                          />
-                        </div>
-                      </>
-                    )}
+                        )}
+                      </div>
 
-                    {/* Speaker Boost - Available for both models */}
-                    <div className="flex items-center justify-between">
+                      {/* Right Column */}
+                      <div className="space-y-4">
+                        {/* Speed - Only for turbo_v2_5 */}
+                        {selectedModel === 'eleven_turbo_v2_5' && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-sm text-gray-600 dark:text-gray-400">
+                                Speed
+                              </label>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {voiceSettings.speed.toFixed(2)}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={voiceSettings.speed}
+                              onChange={(e) => setVoiceSettings(prev => ({
+                                ...prev,
+                                speed: parseFloat(e.target.value)
+                              }))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                            />
+                          </div>
+                        )}
+
+                        {/* Similarity Boost - Only for turbo_v2_5 */}
+                        {selectedModel === 'eleven_turbo_v2_5' && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <label className="text-sm text-gray-600 dark:text-gray-400">
+                                Similarity Boost
+                              </label>
+                              <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                {voiceSettings.similarity_boost.toFixed(2)}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="0"
+                              max="1"
+                              step="0.01"
+                              value={voiceSettings.similarity_boost}
+                              onChange={(e) => setVoiceSettings(prev => ({
+                                ...prev,
+                                similarity_boost: parseFloat(e.target.value)
+                              }))}
+                              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Speaker Boost - Available for both models - Full width */}
+                    <div className="flex items-center justify-between mt-4">
                       <label className="text-sm text-gray-600 dark:text-gray-400">
                         Speaker Boost
                       </label>
@@ -660,15 +647,12 @@ const ElevenLabs: React.FC = () => {
                                   try {
                                     const audioBlob = await generateService.downloadGenerate(generate.id);
                                     const audioUrl = URL.createObjectURL(audioBlob);
-                                    const audio = new Audio(audioUrl);
                                     
-                                    audio.onended = () => {
-                                      URL.revokeObjectURL(audioUrl);
-                                    };
-                                    
-                                    audio.play().catch(error => {
-                                      console.error('Error playing audio:', error);
-                                      showToast('Không thể phát audio', 'error');
+                                    setAudioPlayer({
+                                      isVisible: true,
+                                      title: generate.name,
+                                      audioUrl: audioUrl,
+                                      generateId: generate.id
                                     });
                                   } catch (error) {
                                     console.error('Error loading audio:', error);
@@ -786,7 +770,23 @@ const ElevenLabs: React.FC = () => {
         isOpen={isVoiceModalOpen}
         onClose={() => setIsVoiceModalOpen(false)}
         onSelectVoice={handleVoiceSelect}
+        selectedVoiceId={selectedVoice?.voice_id}
       />
+
+      {/* Audio Player */}
+      {audioPlayer.isVisible && (
+        <ModernAudioPlayer
+          title={audioPlayer.title}
+          audioUrl={audioPlayer.audioUrl}
+          isVisible={audioPlayer.isVisible}
+          onClose={() => {
+            setAudioPlayer(prev => ({ ...prev, isVisible: false }));
+            if (audioPlayer.audioUrl) {
+              URL.revokeObjectURL(audioPlayer.audioUrl);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

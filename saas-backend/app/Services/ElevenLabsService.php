@@ -33,6 +33,9 @@ class ElevenLabsService
                 throw new Exception('ElevenLabs API key not configured');
             }
 
+            // Calculate credit cost based on model and text length
+            $creditCost = $this->calculateCreditCost($text, $model);
+
             $requestData = [
                 'text' => $text,
                 'model_id' => $model,
@@ -83,7 +86,8 @@ class ElevenLabsService
                 return [
                     'success' => true,
                     'task_id' => $responseData['task_id'] ?? null,
-                    'status' => $responseData['status'] ?? 'processing'
+                    'status' => $responseData['status'] ?? 'processing',
+                    'credit_cost' => $creditCost
                 ];
             } else {
                 Log::error('ElevenLabs API: Text-to-speech failed', [
@@ -178,6 +182,33 @@ class ElevenLabsService
                 'error' => $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Calculate credit cost based on model and text length
+     *
+     * @param string $text
+     * @param string $model
+     * @return float
+     */
+    public function calculateCreditCost($text, $model)
+    {
+        // Get model pricing from database
+        $aiModel = \App\Models\AIModel::where('slug', $model)->first();
+        
+        if (!$aiModel) {
+            // Fallback pricing if model not found
+            $modelPrices = [
+                'eleven_turbo_v2_5' => 0.015,
+                'eleven_v3' => 0.021
+            ];
+            $pricePerChar = $modelPrices[$model] ?? 0.021;
+        } else {
+            $pricePerChar = $aiModel->credit_price;
+        }
+        
+        $characterCount = strlen($text);
+        return $characterCount * $pricePerChar;
     }
 
     /**

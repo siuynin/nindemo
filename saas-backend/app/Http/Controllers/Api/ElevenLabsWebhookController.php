@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
+use App\Models\UserCredit;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ElevenLabsWebhookController extends Controller
 {
@@ -76,6 +78,9 @@ class ElevenLabsWebhookController extends Controller
                             'status' => 'failed',
                             'error_message' => 'Failed to upload audio file to S3'
                         ]);
+                        
+                        // Refund credits on S3 upload failure
+                        $this->refundCredits($generate);
                     }
                 } else {
                     Log::error('ElevenLabs webhook: Failed to download audio', ['audio_url' => $audioUrl]);
@@ -83,12 +88,18 @@ class ElevenLabsWebhookController extends Controller
                         'status' => 'failed',
                         'error_message' => 'Failed to download audio file'
                     ]);
+                    
+                    // Refund credits on audio download failure
+                    $this->refundCredits($generate);
                 }
             } elseif ($status === 'failed') {
                 $generate->update([
                     'status' => 'failed',
                     'error_message' => $errorMessage ?: 'Audio generation failed'
                 ]);
+                
+                // Refund credits on generation failure
+                $this->refundCredits($generate);
                 
                 Log::error('ElevenLabs webhook: Audio generation failed', [
                     'generate_id' => $generate->id,
@@ -113,6 +124,49 @@ class ElevenLabsWebhookController extends Controller
             ]);
             
             return response()->json(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    /**
+     * Refund credits to user when audio generation fails
+     *
+     * @param Generate $generate
+     * @return void
+     */
+    private function refundCredits(Generate $generate): void
+    {
+        try {
+            if ($generate->credit_cost > 0) {
+                DB::beginTransaction();
+                
+                // Create refund credit record
+                $refundCredit = UserCredit::create([
+                    'user_id' => $generate->user_id,
+                    'total_credits' => $generate->credit_cost,
+                    'used_credits' => 0,
+                    'remaining_credits' => $generate->credit_cost,
+                    'credit_type' => 'refund',
+                    'expires_at' => now()->addYear(),
+                    'notes' => 'Refund for failed ElevenLabs audio generation (Generate ID: ' . $generate->id . ')'
+                ]);
+                
+                DB::commit();
+                
+                Log::info('Credits refunded due to ElevenLabs generation failure', [
+                    'user_id' => $generate->user_id,
+                    'generate_id' => $generate->id,
+                    'refunded_credits' => $generate->credit_cost,
+                    'refund_credit_id' => $refundCredit->id
+                ]);
+            }
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Failed to refund credits for ElevenLabs generation failure', [
+                'user_id' => $generate->user_id,
+                'generate_id' => $generate->id,
+                'credits' => $generate->credit_cost,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }
