@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
 use App\Services\ElevenLabsService;
+use App\Services\MinimaxService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -91,7 +92,11 @@ class UserGenerateController extends Controller
             'credit_cost' => 'nullable|numeric|min:0',
             'voice_id' => 'nullable|string|max:255',
             'voice_settings' => 'nullable|array',
-            'result_url' => 'nullable|string'
+            'result_url' => 'nullable|string',
+            'model' => 'nullable|string|max:255',
+            'language_boost' => 'nullable|string|max:255',
+            'with_transcript' => 'nullable|boolean',
+            'receive_url' => 'nullable|string|max:500'
         ]);
 
         if ($validator->fails()) {
@@ -128,6 +133,50 @@ class UserGenerateController extends Controller
                 $request->voice_id ?? 'pNInz6obpgDQGcFmaJgB',
                 $request->model ?? 'eleven_v3',
                 $request->voice_settings ?? null
+            );
+            
+            if ($result['success']) {
+                // Update with task_id, cost and processing status
+                 $generate->update([
+                     'task_id' => $result['task_id'] ?? null, 
+                     'credit_cost' => $estimatedCost,
+                     'status' => 'processing'
+                 ]);
+                 
+                 // Audio will be received via webhook when completed
+                
+                // Deduct credits from user (you may want to implement this)
+                // $user = Auth::user();
+                // $user->decrement('credits', $estimatedCost);
+                
+            } else {
+                $generate->update([
+                    'status' => 'failed',
+                    'error_message' => $result['error']
+                ]);
+            }
+        }
+
+        // If this is a Minimax audio generation request, call Minimax API
+        if ($request->type === 'minimax-audio') {
+            $minimaxService = new MinimaxService();
+            
+            // Calculate cost
+            $estimatedCost = $minimaxService->calculateCost($request->content ?? '');
+            
+            // Call Minimax API
+            $result = $minimaxService->textToSpeech(
+                $request->content ?? '',
+                $request->model ?? 'speech-2.5-hd-preview',
+                $request->voice_settings ?? [
+                    'voice_id' => '209533299589184',
+                    'vol' => 1,
+                    'pitch' => 0,
+                    'speed' => 1
+                ],
+                $request->language_boost ?? 'Auto',
+                $request->with_transcript ?? false,
+                $request->receive_url ?? null
             );
             
             if ($result['success']) {

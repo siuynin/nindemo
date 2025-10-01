@@ -29,6 +29,9 @@ Route::get('/pricing-plans', [App\Http\Controllers\Api\PricingPlanController::cl
 Route::get('/public-voices', [App\Http\Controllers\Api\VoiceController::class, 'index']);
 Route::get('/public-voices/{id}', [App\Http\Controllers\Api\VoiceController::class, 'show']);
 
+// Minimax voices API
+Route::get('/minimax/voices', [App\Http\Controllers\Api\MinimaxController::class, 'getVoices']);
+
 // ElevenLabs webhook
 Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook']);
 

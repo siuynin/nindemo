@@ -8,6 +8,7 @@ import TextToSpeech from './pages/TextToSpeech';
 import Document from './pages/Document';
 import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
+import Minimax from './pages/Minimax';
 import Price from './pages/Price';
 import App from './App';
 import DebugRunware from './debug-runware';
@@ -74,6 +75,10 @@ export const router = createBrowserRouter([
       {
         path: 'elevenlabs',
         element: <ElevenLabs />,
+      },
+      {
+        path: 'minimax',
+        element: <Minimax />,
       },
       {
         path: 'price',
@@ -147,6 +152,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <ElevenLabs />,
+      },
+    ],
+  },
+  {
+    path: '/minimax',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Minimax />,
       },
     ],
   },

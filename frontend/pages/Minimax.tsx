@@ -1,0 +1,593 @@
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext'; 
+import generateService from '../services/generateService';
+import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
+import AuthModal from '../components/AuthModal';
+import ModernAudioPlayer from '../components/ModernAudioPlayer';
+import MinimaxVoiceModal from '../components/MinimaxVoiceModal';
+import { Card, Button, Badge, Input, TextArea, Select } from '../components/ui';
+
+interface Generate {
+  id: number;
+  name: string;
+  status: string;
+  created_at: string;
+  credit_cost: number;
+  task_id?: string;
+  result_url?: string;
+}
+
+interface MinimaxVoice {
+  voice_id: string;
+  name: string;
+  language: string;
+  gender: string;
+  description?: string;
+}
+
+const Minimax: React.FC = () => {
+  const { theme } = useTheme();
+  const { t } = useLanguage();
+  const { user, isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  // Set page title
+  useEffect(() => {
+    document.title = 'Minimax TTS - AI App';
+  }, []);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    content: ''
+  });
+  
+  // Model and voice settings state
+  const [selectedModel, setSelectedModel] = useState<string>('speech-2.5-hd-preview');
+  const [voiceSettings, setVoiceSettings] = useState({
+    voice_id: '209533299589184',
+    vol: 1,
+    pitch: 0,
+    speed: 1
+  });
+  const [languageBoost, setLanguageBoost] = useState<string>('Auto');
+  const [userGenerates, setUserGenerates] = useState<Generate[]>([]);
+  
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPlaying, setIsPlaying] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [selectedVoiceName, setSelectedVoiceName] = useState<string>('Default Voice');
+  const [lastGenerateResult, setLastGenerateResult] = useState<{
+    id: number;
+    name: string;
+    status: string;
+    credit_cost: number;
+    task_id?: string;
+  } | null>(null);
+  
+  // Audio player state
+  const [audioPlayer, setAudioPlayer] = useState<{
+    isVisible: boolean;
+    title: string;
+    audioUrl: string;
+    generateId?: number;
+  }>({
+    isVisible: false,
+    title: '',
+    audioUrl: '',
+    generateId: undefined
+  });
+
+  // Available models
+  const availableModels = [
+    { value: 'speech-2.5-hd-preview', label: 'Speech 2.5 HD Preview - High Quality' },
+    { value: 'speech-2.0', label: 'Speech 2.0 - Standard Quality' }
+  ];
+
+  // Available voices
+  const availableVoices: MinimaxVoice[] = [
+    { voice_id: '209533299589184', name: 'Default Voice', language: 'Auto', gender: 'Neutral', description: 'Standard voice for general use' },
+    { voice_id: '209533299589185', name: 'Female Voice 1', language: 'Auto', gender: 'Female', description: 'Clear female voice' },
+    { voice_id: '209533299589186', name: 'Male Voice 1', language: 'Auto', gender: 'Male', description: 'Clear male voice' }
+  ];
+
+  // Language boost options
+  const languageBoostOptions = [
+    { value: 'Auto', label: 'Auto Detect' },
+    { value: 'en', label: 'English' },
+    { value: 'zh', label: 'Chinese' },
+    { value: 'ja', label: 'Japanese' },
+    { value: 'ko', label: 'Korean' }
+  ];
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Fetch user generates
+  const fetchUserGenerates = async () => {
+    console.log('Auth status:', { isAuthenticated, user: user?.email });
+    if (!isAuthenticated || !user) {
+      console.log('User not authenticated, skipping fetch');
+      return;
+    }
+    
+    try {
+      console.log('Fetching user generates...');
+      const response = await generateService.getGenerates({
+        type: 'audio',
+        per_page: 10
+      });
+      
+      console.log('API Response:', response);
+      
+      if (response.success && response.data) {
+        console.log('Setting userGenerates:', response.data);
+        setUserGenerates(response.data);
+      } else {
+        console.log('No data or unsuccessful response:', response);
+        setUserGenerates([]);
+      }
+    } catch (error) {
+      console.error('Error fetching user generates:', error);
+      setUserGenerates([]);
+    }
+  };
+
+  // Load user generates on component mount and auth change
+  useEffect(() => {
+    fetchUserGenerates();
+  }, [isAuthenticated, user]);
+
+  // Toast notification function
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, visible: false }));
+    }, 5000);
+  };
+
+  const closeToast = () => {
+    setToast(prev => ({ ...prev, visible: false }));
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Check authentication first
+    if (!isAuthenticated || !user) {
+      showToast('Bạn cần đăng nhập để sử dụng tính năng này', 'warning');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    
+    if (!formData.name.trim() || !formData.content.trim()) {
+      showToast('Vui lòng điền đầy đủ thông tin', 'warning');
+      return;
+    }
+
+    setIsLoading(true);
+    
+    try {
+      // Create generates record with status 'pending'
+      const generateResponse = await generateService.createGenerate({
+        name: formData.name.trim(),
+        content: formData.content.trim(),
+        type: 'audio',
+        status: 'pending',
+        provider: 'minimax',
+        model: selectedModel,
+        voice_settings: voiceSettings,
+        language_boost: languageBoost,
+        with_transcript: false
+      });
+      
+      if (!generateResponse.success || !generateResponse.data.id) {
+        throw new Error('Failed to create generate record');
+      }
+
+      // Store the generate result to display to user
+      setLastGenerateResult({
+        id: generateResponse.data.id,
+        name: generateResponse.data.name,
+        status: generateResponse.data.status,
+        credit_cost: generateResponse.data.credit_cost,
+        task_id: generateResponse.data.task_id
+      });
+      
+      showToast(`Yêu cầu tạo audio đã được gửi thành công! Task ID: ${generateResponse.data.task_id || 'N/A'}`, 'success');
+      
+      // Reset form and refresh generates list
+      setFormData({ name: '', content: '' });
+      fetchUserGenerates();
+    } catch (error) {
+      console.error('Error in submission process:', error);
+      showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle audio playback
+  const handlePlayAudio = (generate: Generate) => {
+    if (generate.result_url) {
+      setAudioPlayer({
+        isVisible: true,
+        title: generate.name,
+        audioUrl: generate.result_url,
+        generateId: generate.id
+      });
+    } else {
+      showToast('Audio chưa sẵn sàng hoặc không tồn tại', 'warning');
+    }
+  };
+
+  return (
+    <div className={`min-h-screen transition-colors duration-200 ${
+      theme === 'dark' 
+        ? 'bg-gray-900 text-white' 
+        : 'bg-gray-50 text-gray-900'
+    }`}>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 max-w-7xl">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0">
+              <div className="inline-flex p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 text-white shadow-lg">
+                <SpeakerIcon className="w-8 h-8" />
+              </div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Minimax TTS
+              </h1>
+              <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+                Advanced AI text-to-speech with natural voice synthesis and multilingual support
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            {/* Main Form - Takes 2 columns on xl screens */}
+            <div className="xl:col-span-2 space-y-6">
+              {/* Project Information Card */}
+              <Card className="space-y-6">
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                    Project Information
+                  </h2> 
+                </div>
+
+                <div className="space-y-6">
+                  {/* Project Name */}
+                  <Input
+                    label="Project Name"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter a descriptive name for your project..."
+                    className="w-full"
+                  />
+
+                  {/* Model Selection */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Model Selection
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    
+                    <Select
+                      options={availableModels}
+                      defaultValue={selectedModel}
+                      onChange={(value) => setSelectedModel(value)}
+                      placeholder="Select a model"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Voice Selection */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Voice Selection
+                      <span className="text-red-500 ml-1">*</span>
+                    </label>
+                    
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsVoiceModalOpen(true)}
+                      className="w-full justify-between"
+                    >
+                      <span>{selectedVoiceName}</span>
+                      <SpeakerIcon className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Language Boost */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Language Boost
+                    </label>
+                    
+                    <Select
+                      options={languageBoostOptions}
+                      defaultValue={languageBoost}
+                      onChange={(value) => setLanguageBoost(value)}
+                      placeholder="Select language boost"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* Voice Settings */}
+                  <div className="space-y-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Voice Settings
+                    </label>
+                    
+                    {/* Voice Settings Grid - 2 columns */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Left Column */}
+                      <div className="space-y-4">
+                        {/* Volume */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">
+                              Volume
+                            </label>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {voiceSettings.vol.toFixed(2)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="2"
+                            step="0.1"
+                            value={voiceSettings.vol}
+                            onChange={(e) => setVoiceSettings(prev => ({
+                              ...prev,
+                              vol: parseFloat(e.target.value)
+                            }))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                        </div>
+
+                        {/* Speed */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">
+                              Speed
+                            </label>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {voiceSettings.speed.toFixed(2)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="2"
+                            step="0.1"
+                            value={voiceSettings.speed}
+                            onChange={(e) => setVoiceSettings(prev => ({
+                              ...prev,
+                              speed: parseFloat(e.target.value)
+                            }))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Right Column */}
+                      <div className="space-y-4">
+                        {/* Pitch */}
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <label className="text-sm text-gray-600 dark:text-gray-400">
+                              Pitch
+                            </label>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                              {voiceSettings.pitch.toFixed(1)}
+                            </span>
+                          </div>
+                          <input
+                            type="range"
+                            min="-10"
+                            max="10"
+                            step="1"
+                            value={voiceSettings.pitch}
+                            onChange={(e) => setVoiceSettings(prev => ({
+                              ...prev,
+                              pitch: parseInt(e.target.value)
+                            }))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Text Content */}
+                  <TextArea
+                    label="Text Content"
+                    name="content"
+                    value={formData.content}
+                    onChange={handleInputChange}
+                    placeholder="Enter the text you want to convert to speech..."
+                    rows={6}
+                    className="w-full"
+                    required
+                  />
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={isLoading || !formData.name.trim() || !formData.content.trim()}
+                    className="w-full bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <LoadingSpinner className="w-5 h-5" />
+                        <span>Processing...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-2">
+                        <SpeakerIcon className="w-5 h-5" />
+                        <span>Generate Audio</span>
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </Card>
+            </div>
+
+            {/* Sidebar - Recent Generations */}
+            <div className="xl:col-span-1">
+              <Card className="space-y-4">
+                <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Recent Generations
+                  </h3>
+                </div>
+
+                {/* Last Generate Result */}
+                {lastGenerateResult && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-blue-900 dark:text-blue-100 truncate">
+                          {lastGenerateResult.name}
+                        </h4>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                          Status: {lastGenerateResult.status}
+                        </p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                          Cost: {lastGenerateResult.credit_cost} credits
+                        </p>
+                        {lastGenerateResult.task_id && (
+                          <p className="text-xs text-blue-700 dark:text-blue-300">
+                            Task ID: {lastGenerateResult.task_id}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="info" size="sm">
+                        Latest
+                      </Badge>
+                    </div>
+                  </div>
+                )}
+
+                {/* User Generates List */}
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {userGenerates.length > 0 ? (
+                    userGenerates.map((generate) => (
+                      <div
+                        key={generate.id}
+                        className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {generate.name}
+                            </h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {new Date(generate.created_at).toLocaleDateString()}
+                            </p>
+                            <div className="flex items-center space-x-2 mt-2">
+                              <Badge 
+                                variant={generate.status === 'completed' ? 'success' : 
+                                        generate.status === 'failed' ? 'error' : 'warning'}
+                                size="sm"
+                              >
+                                {generate.status}
+                              </Badge>
+                              {generate.status === 'completed' && generate.result_url && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handlePlayAudio(generate)}
+                                  className="p-1 h-6 w-6"
+                                >
+                                  <PlayIcon className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8">
+                      <SpeakerIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        No audio generations yet
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            </div>
+          </div>
+        </form>
+
+        {/* Toast Notification */}
+        {toast.visible && (
+          <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm ${
+            toast.type === 'success' ? 'bg-green-500 text-white' :
+            toast.type === 'error' ? 'bg-red-500 text-white' :
+            'bg-yellow-500 text-white'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="text-sm">{toast.message}</span>
+              <button
+                onClick={closeToast}
+                className="ml-2 text-white hover:text-gray-200"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Auth Modal */}
+        {isAuthModalOpen && (
+          <AuthModal onClose={() => setIsAuthModalOpen(false)} />
+        )}
+
+        {/* Voice Selection Modal */}
+        <MinimaxVoiceModal
+          isOpen={isVoiceModalOpen}
+          onClose={() => setIsVoiceModalOpen(false)}
+          onSelectVoice={(voiceId, voiceName) => {
+            setVoiceSettings(prev => ({ ...prev, voice_id: voiceId }));
+            setSelectedVoiceName(voiceName);
+          }}
+          selectedVoiceId={voiceSettings.voice_id}
+        />
+
+        {/* Audio Player */}
+        {audioPlayer.isVisible && (
+          <ModernAudioPlayer
+            title={audioPlayer.title}
+            audioUrl={audioPlayer.audioUrl}
+            onClose={() => setAudioPlayer(prev => ({ ...prev, isVisible: false }))}
+            generateId={audioPlayer.generateId}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default Minimax;
