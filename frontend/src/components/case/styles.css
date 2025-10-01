@@ -1,0 +1,106 @@
+/* Creative Editor Styles */
+.cesdkWrapperStyle {
+  position: relative;
+  overflow: hidden;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.cesdkStyle {
+  width: 100%;
+  height: 100%;
+  min-height: 600px;
+  border: none;
+  outline: none;
+}
+
+/* Loading animation for Creative Editor */
+.cesdk-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.cesdk-loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e9ecef;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Mode buttons */
+.mode-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  background: #fff;
+  color: #495057;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mode-button:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.mode-button.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+/* AI Tools Panel */
+.ai-tools-panel {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  height: fit-content;
+}
+
+.ai-tool-item {
+  padding: 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: all 0.2s ease;
+}
+
+.ai-tool-item:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+}
+
+.ai-tool-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.ai-tool-description {
+  font-size: 0.875rem;
+  color: #6c757d;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .cesdkWrapperStyle {
+    height: 500px;
+  }
+  
+  .ai-tools-panel {
+    width: 100%;
+    margin-top: 16px;
+  }
+}

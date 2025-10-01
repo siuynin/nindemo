@@ -1,6 +1,8 @@
 
 import { GoogleGenAI, Modality, GenerateContentResponse, Chat } from "@google/genai";
 import { CanvasItem, ImageItem, TextItem, SelectionRect } from '../types';
+import { userCreditService } from './userCreditService';
+import { AuthService } from './authService';
 
 let aiInstance: GoogleGenAI | null = null;
 
@@ -14,6 +16,46 @@ const getAiClient = (): GoogleGenAI => {
     }
     aiInstance = new GoogleGenAI({ apiKey });
     return aiInstance;
+};
+
+// Check authentication and credits before API calls
+const checkAuthAndCredits = async (requiredCredits: number = 80): Promise<{ success: boolean; message?: string }> => {
+    const authService = new AuthService();
+    
+    // Check if user is authenticated
+    if (!authService.isAuthenticated()) {
+        return {
+            success: false,
+            message: 'Bạn cần đăng nhập để sử dụng tính năng này.'
+        };
+    }
+    
+    // Check if user has sufficient credits
+    const hasSufficientCredits = await userCreditService.checkSufficientCredits(requiredCredits);
+    if (!hasSufficientCredits) {
+        return {
+            success: false,
+            message: `Không đủ credit. Bạn cần ${requiredCredits} credit cho thao tác này. Vui lòng nạp thêm credit để tiếp tục.`
+        };
+    }
+    
+    return { success: true };
+};
+
+// Deduct credits after successful API call
+const deductCreditsForGemini = async (operation: string): Promise<boolean> => {
+    try {
+        const result = await userCreditService.deductCredits({
+            amount: 80,
+            description: `Gemini API - ${operation}`,
+            operation_type: 'gemini_api'
+        });
+        
+        return result.success;
+    } catch (error) {
+        console.error('Error deducting credits for Gemini operation:', error);
+        return false;
+    }
 };
 
 function isImageItem(item: CanvasItem): item is ImageItem {
@@ -46,6 +88,12 @@ function serializeCanvasItems(items: CanvasItem[]): string {
 }
 
 export const interpretCanvas = async (snapshotDataUrl: string, items: CanvasItem[], userPrompt: string | null, model: string): Promise<string> => {
+    // Check authentication and credits before proceeding
+    const authCheck = await checkAuthAndCredits(80);
+    if (!authCheck.success) {
+        throw new Error(authCheck.message);
+    }
+
     const ai = getAiClient();
     const snapshotBase64 = snapshotDataUrl.split(',')[1];
     const snapshotPart = {
@@ -106,7 +154,13 @@ Your output must be ONLY the final, optimized prompt, phrased as a clear instruc
                 thinkingConfig: { thinkingBudget: 0 }
             }
         });
-        return response.text.trim();
+        
+        const result = response.text.trim();
+        
+        // Deduct credits after successful response
+        await deductCreditsForGemini('interpret canvas');
+        
+        return result;
     } catch (error) {
         console.error("Error interpreting canvas:", error);
         throw new Error("Failed to generate an optimized prompt from the canvas layout.");
@@ -119,6 +173,12 @@ export const interpretMagicFill = async (
     userPrompt: string,
     model: string
 ): Promise<string> => {
+    // Check authentication and credits before proceeding
+    const authCheck = await checkAuthAndCredits(80);
+    if (!authCheck.success) {
+        throw new Error(authCheck.message);
+    }
+
     const ai = getAiClient();
     const snapshotBase64 = snapshotDataUrl.split(',')[1];
     const snapshotPart = {
@@ -159,7 +219,13 @@ export const interpretMagicFill = async (
                 thinkingConfig: { thinkingBudget: 0 }
             }
         });
-        return response.text.trim();
+        
+        const result = response.text.trim();
+        
+        // Deduct credits after successful response
+        await deductCreditsForGemini('interpret magic fill');
+        
+        return result;
     } catch (error) {
         console.error("Error interpreting magic fill:", error);
         throw new Error("Failed to generate an optimized prompt for the magic fill task.");
@@ -172,6 +238,12 @@ export const editImageWithMask = async (
     prompt: string,
     referenceImage?: ImageItem | null
 ): Promise<{ base64: string; mimeType: string }> => {
+    // Check authentication and credits before proceeding
+    const authCheck = await checkAuthAndCredits(80);
+    if (!authCheck.success) {
+        throw new Error(authCheck.message);
+    }
+
     const ai = getAiClient();
 
     const targetImagePart = {
@@ -220,6 +292,9 @@ export const editImageWithMask = async (
 
         const part = response.candidates?.[0]?.content?.parts?.[0];
         if (part?.inlineData) {
+            // Deduct credits after successful response
+            await deductCreditsForGemini('edit image with mask');
+            
             return {
                 base64: part.inlineData.data,
                 mimeType: part.inlineData.mimeType,

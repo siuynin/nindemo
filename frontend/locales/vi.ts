@@ -114,6 +114,10 @@ export const vi = {
       title: 'Tạo Ảnh',
       description: 'Tạo ảnh bằng AI với Runware'
     },
+    creativeEditor: {
+      title: 'Trình Chỉnh Sửa Sáng Tạo',
+      description: 'Trình chỉnh sửa sáng tạo nâng cao với AI'
+    },
     textToSpeech: {
       title: 'Văn Bản -> Giọng Nói',
       description: 'Chuyển đổi văn bản thành giọng nói AI'

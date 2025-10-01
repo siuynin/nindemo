@@ -114,6 +114,10 @@ export const en = {
       title: 'Image Creator',
       description: 'AI image generation with Runware'
     },
+    creativeEditor: {
+      title: 'Creative Editor',
+      description: 'Advanced AI-powered creative editor'
+    },
     textToSpeech: {
       title: 'Text to Speech',
       description: 'Convert text to AI-powered speech'

@@ -60,6 +60,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       path: '/image-canvas',
     },
     {
+      icon: <PenIcon className="w-5 h-5" />,
+      name: t.sidebar?.creativeEditor?.title || 'Creative Editor',
+      path: '/creative-editor',
+    },
+    {
       icon: <SpeakerIcon className="w-5 h-5" />,
       name: t.sidebar?.textToSpeech?.title || 'Text to Speech',
       path: '/text-to-speech',

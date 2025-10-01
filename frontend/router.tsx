@@ -10,6 +10,7 @@ import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
 import Minimax from './pages/Minimax';
 import Price from './pages/Price';
+import CreativeEditor from './pages/CreativeEditor';
 import App from './App';
 import DebugRunware from './debug-runware';
 
@@ -87,6 +88,10 @@ export const router = createBrowserRouter([
       {
         path: 'debug-runware',
         element: <DebugRunware />,
+      },
+      {
+        path: 'creative-editor',
+        element: <CreativeEditor />,
       },
     ],
   },
@@ -172,6 +177,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <Price />,
+      },
+    ],
+  },
+  {
+    path: '/creative-editor',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <CreativeEditor />,
       },
     ],
   },

@@ -20,7 +20,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
   const settingCategories: { key: keyof ModelSettings, label: string, description: string }[] = [
     { key: 'textToImage', label: 'Text-to-Image Generation', description: 'Model for creating images from a text prompt only.' },
     { key: 'canvasToImage', label: 'Canvas-to-Image Fusion', description: 'Model for combining multiple items on the canvas into one image.' },
-    { key: 'video', label: 'Video Generation', description: 'Model for animating a canvas selection into a video.' },
     { key: 'interpretation', label: 'Canvas Interpretation', description: 'Model for understanding the layout and intent of canvas items.' },
   ];
 

@@ -53,6 +53,10 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
+      assetsInclude: ['**/*.wasm'],
+      optimizeDeps: {
+        exclude: ['@cesdk/cesdk-js', '@cesdk/engine']
+      },
       server: {
         port: 5175,
         proxy: {

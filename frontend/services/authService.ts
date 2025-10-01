@@ -405,6 +405,7 @@ class AuthService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance and the class
 export const authService = new AuthService();
+export { AuthService };
 export type { User, AuthResponse, UserResponse };

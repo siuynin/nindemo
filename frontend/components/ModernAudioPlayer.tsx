@@ -272,7 +272,7 @@ const ModernAudioPlayer: React.FC<ModernAudioPlayerProps> = ({
         </div>
       </div>
 
-      <style jsx>{`
+      <style>{`
         .slider-thumb-dark::-webkit-slider-thumb {
           appearance: none;
           height: 20px;

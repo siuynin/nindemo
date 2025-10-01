@@ -110,16 +110,7 @@ const SelectionPromptBar: React.FC<SelectionPromptBarProps> = ({
         className="p-2 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 bg-green-600 text-white hover:bg-green-500 focus:ring-green-500 disabled:bg-gray-600 disabled:opacity-70 disabled:cursor-not-allowed"
       >
         <SendIcon className="w-5 h-5" />
-      </button>
-      <button
-        type="button"
-        onClick={(e) => handleSubmit(e, 'video')}
-        title="Generate Video"
-        disabled={disabled}
-        className="p-2 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 bg-indigo-600 text-white hover:bg-indigo-500 focus:ring-indigo-500 disabled:bg-gray-600 disabled:opacity-70 disabled:cursor-not-allowed"
-      >
-        <VideoIcon className="w-5 h-5" />
-      </button>
+      </button> 
       <button
         type="button"
         onClick={onDelete}
@@ -1044,7 +1035,6 @@ function App({ pageOverride }: AppProps = {}) {
   }, [deleteSelectedItems, handlePaste, undo, redo, contextMenu, duplicateItem, selectAllItems, handleSave]);
 
   const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
     const zoomSpeed = 0.1;
     const delta = -e.deltaY * zoomSpeed * 0.05;
     const newZoom = zoom + delta;
