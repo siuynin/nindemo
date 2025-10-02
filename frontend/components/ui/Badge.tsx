@@ -28,6 +28,10 @@ const Badge: React.FC<BadgeProps> = ({
   endIcon,
   children,
 }) => {
+  // Debug logging to help identify prop issues
+  if (process.env.NODE_ENV === 'development') {
+    console.log('Badge props:', { variant, color, size });
+  }
   const baseStyles =
     "inline-flex items-center px-2.5 py-0.5 justify-center gap-1 rounded-full font-medium";
 
@@ -63,9 +67,31 @@ const Badge: React.FC<BadgeProps> = ({
     },
   };
 
+  // Safe access to variants with fallbacks
+  const getVariantStyles = (variant: BadgeVariant, color: BadgeColor) => {
+    try {
+      const variantData = variants[variant];
+      if (!variantData) {
+        console.warn(`Badge variant "${variant}" not found, falling back to "light"`);
+        return variants.light[color] || variants.light.primary;
+      }
+      
+      const colorStyle = variantData[color];
+      if (!colorStyle) {
+        console.warn(`Badge color "${color}" not found in variant "${variant}", falling back to "primary"`);
+        return variantData.primary || variants.light.primary;
+      }
+      
+      return colorStyle;
+    } catch (error) {
+      console.error('Error accessing Badge styles:', error);
+      return variants.light.primary; // Ultimate fallback
+    }
+  };
+
   // Get styles based on size and color variant
-  const sizeClass = sizeStyles[size];
-  const colorStyles = variants[variant][color];
+  const sizeClass = sizeStyles[size] || sizeStyles.md;
+  const colorStyles = getVariantStyles(variant, color);
 
   return (
     <span className={`${baseStyles} ${sizeClass} ${colorStyles}`}>

@@ -9,6 +9,7 @@ import Document from './pages/Document';
 import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
 import Minimax from './pages/Minimax';
+import VoiceClone from './pages/VoiceClone';
 import Price from './pages/Price';
 import CreativeEditor from './pages/CreativeEditor';
 import App from './App';
@@ -80,6 +81,10 @@ export const router = createBrowserRouter([
       {
         path: 'minimax',
         element: <Minimax />,
+      },
+      {
+        path: 'voice-clone',
+        element: <VoiceClone />,
       },
       {
         path: 'price',
@@ -167,6 +172,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <Minimax />,
+      },
+    ],
+  },
+  {
+    path: '/voice-clone',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <VoiceClone />,
       },
     ],
   },

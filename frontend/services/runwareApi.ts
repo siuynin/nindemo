@@ -124,7 +124,7 @@ class RunwareApiService {
 
       return result.data || [];
     } catch (error) {
-      console.error('Error calling Runware API:', error);
+      console.error('Error calling API:', error);
       throw error;
     }
   }

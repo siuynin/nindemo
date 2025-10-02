@@ -22,6 +22,11 @@ interface Voice {
 
 const TextToSpeech: React.FC = () => {
   const { theme } = useTheme();
+  
+  // Debug theme in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('TextToSpeech theme:', theme);
+  }
   const { language, t } = useLanguage();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -52,7 +57,7 @@ const TextToSpeech: React.FC = () => {
       description: t.textToSpeech?.cloneVoiceDesc || 'Clone and replicate any voice with AI',
       icon: <SpeakerIcon className="w-8 h-8" />,
       color: 'from-purple-500 to-pink-500',
-      url: 'https://clonevoice.ai'
+      url: '/voice-clone'
     },
     {
       id: 'ndhub',
@@ -76,7 +81,7 @@ const TextToSpeech: React.FC = () => {
       description: t.textToSpeech?.minmaxDesc || 'Advanced voice synthesis technology',
       icon: <SpeakerIcon className="w-8 h-8" />,
       color: 'from-orange-500 to-red-500',
-      url: 'https://minmax.ai'
+      url: ''
     }
   ];
 
@@ -233,8 +238,8 @@ const TextToSpeech: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {ttsServices.map((service) => (
                 <a 
-                  href={service.id === 'elevenlabs' ? '/elevenlabs' : service.url}
-                  target={service.id === 'elevenlabs' ? '_self' : '_blank'}
+                  href={service.id === 'elevenlabs' ? '/elevenlabs' : service.id === 'minmax' ? '/minimax' : service.url}
+                  target={service.id === 'elevenlabs' || service.id === 'minmax' ? '_self' : '_blank'}
                   rel="noopener noreferrer"
                   key={service.id}
                   className="block"

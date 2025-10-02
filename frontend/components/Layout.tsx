@@ -45,6 +45,9 @@ const LayoutContent: React.FC = () => {
     if (pathname.includes('/text-to-speech')) {
       return 'text-to-speech';
     }
+    if (pathname.includes('/voice-clone')) {
+      return 'voice-clone';
+    }
     if (pathname.includes('/document')) {
       return 'document';
     }

@@ -13,7 +13,7 @@ class MinimaxService
 
     public function __construct()
     {
-        $this->apiKey = env('MINIMAX_API_KEY');
+        $this->apiKey = env('ELEVENLABS_API_KEY');
     }
 
     /**
@@ -138,6 +138,7 @@ class MinimaxService
                 ]
             ]
         ];
+    }
     /**
      * Get available voices from Minimax API
      */
@@ -194,40 +195,7 @@ class MinimaxService
         }
     }
 
-    /**
-     * Get available voices for Minimax TTS
-     *
-     * @return array
-     */
-    public function getVoices()
-    {
-        return [
-            'success' => true,
-            'voices' => [
-                [
-                    'voice_id' => '209533299589184',
-                    'name' => 'Default Voice',
-                    'language' => 'Auto',
-                    'gender' => 'Neutral',
-                    'description' => 'Standard voice for general use'
-                ],
-                [
-                    'voice_id' => '209533299589185',
-                    'name' => 'Female Voice 1',
-                    'language' => 'Auto',
-                    'gender' => 'Female',
-                    'description' => 'Clear female voice'
-                ],
-                [
-                    'voice_id' => '209533299589186',
-                    'name' => 'Male Voice 1',
-                    'language' => 'Auto',
-                    'gender' => 'Male',
-                    'description' => 'Clear male voice'
-                ]
-            ]
-        ];
-    }
+
 
     /**
      * Calculate credit cost based on model and text length

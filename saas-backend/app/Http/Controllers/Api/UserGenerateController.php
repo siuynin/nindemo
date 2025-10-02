@@ -120,44 +120,78 @@ class UserGenerateController extends Controller
             'result_url' => $request->result_url
         ]);
 
-        // If this is an audio generation request, call ElevenLabs API
+        // If this is an audio generation request, determine service by model
         if ($request->type === 'audio') {
-            $elevenLabsService = new ElevenLabsService();
+            $model = $request->model ?? '';
             
-            // Calculate cost
-            $estimatedCost = $elevenLabsService->calculateCost($request->content ?? '');
-            
-            // Call ElevenLabs API
-            $result = $elevenLabsService->textToSpeech(
-                $request->content ?? '',
-                $request->voice_id ?? 'pNInz6obpgDQGcFmaJgB',
-                $request->model ?? 'eleven_v3',
-                $request->voice_settings ?? null
-            );
-            
-            if ($result['success']) {
-                // Update with task_id, cost and processing status
-                 $generate->update([
-                     'task_id' => $result['task_id'] ?? null, 
-                     'credit_cost' => $estimatedCost,
-                     'status' => 'processing'
-                 ]);
-                 
-                 // Audio will be received via webhook when completed
+            // Check if it's a Minimax model (contains 'minimax' or 'speech')
+            if (stripos($model, 'minimax') !== false || stripos($model, 'speech') !== false) {
+                // Use Minimax service
+                $minimaxService = new MinimaxService();
                 
-                // Deduct credits from user (you may want to implement this)
-                // $user = Auth::user();
-                // $user->decrement('credits', $estimatedCost);
+                // Calculate cost
+                $estimatedCost = $minimaxService->calculateCost($request->content ?? '');
                 
+                // Call Minimax API
+                $result = $minimaxService->textToSpeech(
+                    $request->content ?? '',
+                    $model ?: 'speech-2.5-hd-preview',
+                    $request->voice_settings ?? [
+                        'voice_id' => '209533299589184',
+                        'vol' => 1,
+                        'pitch' => 0,
+                        'speed' => 1
+                    ],
+                    $request->language_boost ?? 'Auto',
+                    $request->with_transcript ?? false,
+                    $request->receive_url ?? null
+                );
+                
+                if ($result['success']) {
+                    // Update with task_id, cost and processing status
+                     $generate->update([
+                         'task_id' => $result['task_id'] ?? null, 
+                         'credit_cost' => $estimatedCost,
+                         'status' => 'processing'
+                     ]);
+                } else {
+                    $generate->update([
+                        'status' => 'failed',
+                        'error_message' => $result['error']
+                    ]);
+                }
             } else {
-                $generate->update([
-                    'status' => 'failed',
-                    'error_message' => $result['error']
-                ]);
+                // Default to ElevenLabs service
+                $elevenLabsService = new ElevenLabsService();
+                
+                // Calculate cost
+                $estimatedCost = $elevenLabsService->calculateCost($request->content ?? '');
+                
+                // Call ElevenLabs API
+                $result = $elevenLabsService->textToSpeech(
+                    $request->content ?? '',
+                    $request->voice_id ?? 'pNInz6obpgDQGcFmaJgB',
+                    $model ?: 'eleven_v3',
+                    $request->voice_settings ?? null
+                );
+                
+                if ($result['success']) {
+                    // Update with task_id, cost and processing status
+                     $generate->update([
+                         'task_id' => $result['task_id'] ?? null, 
+                         'credit_cost' => $estimatedCost,
+                         'status' => 'processing'
+                     ]);
+                } else {
+                    $generate->update([
+                        'status' => 'failed',
+                        'error_message' => $result['error']
+                    ]);
+                }
             }
         }
 
-        // If this is a Minimax audio generation request, call Minimax API
+        // Keep minimax-audio type for backward compatibility
         if ($request->type === 'minimax-audio') {
             $minimaxService = new MinimaxService();
             
@@ -186,13 +220,6 @@ class UserGenerateController extends Controller
                      'credit_cost' => $estimatedCost,
                      'status' => 'processing'
                  ]);
-                 
-                 // Audio will be received via webhook when completed
-                
-                // Deduct credits from user (you may want to implement this)
-                // $user = Auth::user();
-                // $user->decrement('credits', $estimatedCost);
-                
             } else {
                 $generate->update([
                     'status' => 'failed',

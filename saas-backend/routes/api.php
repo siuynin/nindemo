@@ -177,6 +177,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/process-text-gemini', [App\Http\Controllers\Api\AIProcessController::class, 'processTextGemini']);
     });
     
+    // Voice Clone Routes
+    Route::prefix('voice-clones')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\VoiceCloneController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\VoiceCloneController::class, 'store']);
+        Route::get('/{id}', [App\Http\Controllers\Api\VoiceCloneController::class, 'show']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\VoiceCloneController::class, 'destroy']);
+    });
+    
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption
 });

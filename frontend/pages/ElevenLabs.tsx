@@ -116,6 +116,15 @@ const ElevenLabs: React.FC = () => {
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Giới hạn ký tự cho content dựa trên model
+    if (name === 'content') {
+      const maxLength = selectedModel === 'eleven_turbo_v2_5' ? 20000 : 3000;
+      if (value.length > maxLength) {
+        return;
+      }
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -552,7 +561,7 @@ const ElevenLabs: React.FC = () => {
                     onChange={handleInputChange}
                     placeholder="Enter the text you want to convert to speech..."
                     rows={6}
-                    hint={`${formData.content.length} characters`}
+                    hint={`${formData.content.length}/${selectedModel === 'eleven_turbo_v2_5' ? 20000 : 3000} characters`}
                     className="w-full"
                   />
                   

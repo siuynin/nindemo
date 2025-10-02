@@ -45,6 +45,9 @@ const Minimax: React.FC = () => {
     content: ''
   });
   
+  // Character limit for Minimax
+  const CHARACTER_LIMIT = 20000;
+  
   // Model and voice settings state
   const [selectedModel, setSelectedModel] = useState<string>('speech-2.5-hd-preview');
   const [voiceSettings, setVoiceSettings] = useState({
@@ -85,8 +88,8 @@ const Minimax: React.FC = () => {
 
   // Available models
   const availableModels = [
-    { value: 'speech-2.5-hd-preview', label: 'Speech 2.5 HD Preview - High Quality' },
-    { value: 'speech-2.0', label: 'Speech 2.0 - Standard Quality' }
+    { value: 'speech-2.5-turbo-preview', label: 'Speech 2.5 Turbo Preview - High Quality' },
+    { value: 'speech-2.0-turbo', label: 'Speech 2.0 Turbo - Standard Quality' }
   ];
 
   // Available voices
@@ -99,15 +102,66 @@ const Minimax: React.FC = () => {
   // Language boost options
   const languageBoostOptions = [
     { value: 'Auto', label: 'Auto Detect' },
-    { value: 'en', label: 'English' },
-    { value: 'zh', label: 'Chinese' },
-    { value: 'ja', label: 'Japanese' },
-    { value: 'ko', label: 'Korean' }
+    { value: 'Vietnamese', label: 'Vietnamese' },
+    { value: 'English', label: 'English' },
+    { value: 'Afrikaans', label: 'Afrikaans' },
+    { value: 'Arabic', label: 'Arabic' },
+    { value: 'Armenian', label: 'Armenian' },
+    { value: 'Assamese', label: 'Assamese' },
+    { value: 'Azerbaijani', label: 'Azerbaijani' },
+    { value: 'Belarusian', label: 'Belarusian' },
+    { value: 'Bengali', label: 'Bengali' },
+    { value: 'Bosnian', label: 'Bosnian' },
+    { value: 'Bulgarian', label: 'Bulgarian' },
+    { value: 'Catalan', label: 'Catalan' },
+    { value: 'Cebuano', label: 'Cebuano' },
+    { value: 'Chichewa', label: 'Chichewa' },
+    { value: 'Chinese', label: 'Chinese' },
+    { value: 'Croatian', label: 'Croatian' },
+    { value: 'Czech', label: 'Czech' },
+    { value: 'Danish', label: 'Danish' },
+    { value: 'Dutch', label: 'Dutch' },
+    { value: 'Estonian', label: 'Estonian' },
+    { value: 'Filipino', label: 'Filipino' },
+    { value: 'Finnish', label: 'Finnish' },
+    { value: 'French', label: 'French' },
+    { value: 'Galician', label: 'Galician' },
+    { value: 'Georgian', label: 'Georgian' },
+    { value: 'German', label: 'German' },
+    { value: 'Greek', label: 'Greek' },
+    { value: 'Gujarati', label: 'Gujarati' },
+    { value: 'Hausa', label: 'Hausa' },
+    { value: 'Hebrew', label: 'Hebrew' },
+    { value: 'Hindi', label: 'Hindi' },
+    { value: 'Hungarian', label: 'Hungarian' },
+    { value: 'Icelandic', label: 'Icelandic' },
+    { value: 'Indonesian', label: 'Indonesian' }, 
+    { value: 'Italian', label: 'Italian' },
+    { value: 'Japanese', label: 'Japanese' }, 
+    { value: 'Korean', label: 'Korean' },
+    { value: 'Malay', label: 'Malay' },
+    { value: 'Portuguese', label: 'Portuguese' }, 
+    { value: 'Polish', label: 'Polish' },
+    { value: 'Russian', label: 'Russian' },  
+    { value: 'Romanian', label: 'Romanian' },
+    { value: 'Spanish', label: 'Spanish' }, 
+    { value: 'Swedish', label: 'Swedish' },
+    { value: 'Thai', label: 'Thai' },
+    { value: 'Turkish', label: 'Turkish' },
+    { value: 'Ukrainian', label: 'Ukrainian' },
+    { value: 'Urdu', label: 'Urdu' },
+    
   ];
 
   // Handle form input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // Giới hạn ký tự cho content
+    if (name === 'content' && value.length > CHARACTER_LIMIT) {
+      return;
+    }
+    
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -426,9 +480,11 @@ const Minimax: React.FC = () => {
                     onChange={handleInputChange}
                     placeholder="Enter the text you want to convert to speech..."
                     rows={6}
+                    hint={`${formData.content.length}/${CHARACTER_LIMIT} characters`}
                     className="w-full"
                     required
                   />
+                  
 
                   {/* Submit Button */}
                   <Button
