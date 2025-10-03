@@ -73,6 +73,13 @@ const ImageCreator: React.FC = () => {
   useEffect(() => {
     fetchModels();
     fetchGeneratedImages(); // Tải ảnh từ database khi component mount
+    
+    // Xử lý URL parameters để lấy prompt từ Document page
+    const urlParams = new URLSearchParams(window.location.search);
+    const promptFromUrl = urlParams.get('prompt');
+    if (promptFromUrl) {
+      setFormData(prev => ({ ...prev, prompt: promptFromUrl }));
+    }
   }, []);
 
   // Set up AIService toast callback

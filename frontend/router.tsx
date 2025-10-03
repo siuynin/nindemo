@@ -13,6 +13,7 @@ import VoiceClone from './pages/VoiceClone';
 import Price from './pages/Price';
 import CreativeEditor from './pages/CreativeEditor';
 import ImageTools from './pages/ImageTools';
+import UserCredit from './pages/UserCredit';
 import App from './App';
 import DebugRunware from './debug-runware';
 
@@ -102,6 +103,10 @@ export const router = createBrowserRouter([
       {
         path: 'image-tools',
         element: <ImageTools />,
+      },
+      {
+        path: 'user-credit',
+        element: <UserCredit />,
       },
     ],
   },
@@ -217,6 +222,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <ImageTools />,
+      },
+    ],
+  },
+  {
+    path: '/user-credit',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <UserCredit />,
       },
     ],
   },

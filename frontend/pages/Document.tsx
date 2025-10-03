@@ -65,7 +65,7 @@ const Document: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [templatesLoading, setTemplatesLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'my-documents' | 'templates'>('templates');
+  const [activeTab, setActiveTab] = useState<'my-documents' | 'templates'>(isAuthenticated ? 'my-documents' : 'templates');
   
   // Toast state
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
@@ -111,6 +111,19 @@ const Document: React.FC = () => {
     audioUrl: '',
     title: '',
     isPlaying: false
+  });
+
+  // Image modal state
+  const [imageModal, setImageModal] = useState<{
+    isOpen: boolean;
+    images: string[];
+    currentIndex: number;
+    title: string;
+  }>({
+    isOpen: false,
+    images: [],
+    currentIndex: 0,
+    title: ''
   });
   
   const [filterOptions, setFilterOptions] = useState<{
@@ -196,8 +209,26 @@ const Document: React.FC = () => {
 
   // Handle edit generate
   const handleEditGenerate = (generate: Generate) => {
-    // Navigate to write-assistant with the document name/id
-    navigate(`/write-assistant/${generate.name || generate.id}`);
+    if (generate.type === 'image') {
+      // For image type, navigate to ImageCreator with the prompt from content
+      const searchParams = new URLSearchParams();
+      if (generate.content) {
+        try {
+          // Parse JSON content to extract only the prompt
+          const contentData = JSON.parse(generate.content);
+          if (contentData.prompt) {
+            searchParams.set('prompt', contentData.prompt);
+          }
+        } catch (error) {
+          // Fallback: use content as is if it's not JSON
+          searchParams.set('prompt', generate.content);
+        }
+      }
+      navigate(`/image-creator?${searchParams.toString()}`);
+    } else {
+      // For other types, navigate to write-assistant
+      navigate(`/write-assistant/${generate.name || generate.id}`);
+    }
   };
 
   // Handle play audio
@@ -228,6 +259,43 @@ const Document: React.FC = () => {
       document.body.removeChild(link);
     } else {
       alert('Không tìm thấy file audio để tải xuống');
+    }
+  };
+
+  // Handle view generate (for images)
+  const handleViewGenerate = (generate: Generate) => {
+    if (generate.type === 'image' && generate.result_url) {
+      try {
+        // Parse result_url to get array of image URLs
+        const resultData = JSON.parse(generate.result_url);
+        let imageUrls: string[] = [];
+        
+        if (Array.isArray(resultData)) {
+          // If it's an array of objects with url property
+          imageUrls = resultData
+            .filter(item => item && typeof item === 'object' && item.url)
+            .map(item => item.url);
+        } else if (typeof resultData === 'string') {
+          // If it's a single URL string
+          imageUrls = [resultData];
+        }
+        
+        if (imageUrls.length > 0) {
+          setImageModal({
+            isOpen: true,
+            images: imageUrls,
+            currentIndex: 0,
+            title: generate.name || 'Generated Images'
+          });
+        } else {
+          alert('Không tìm thấy ảnh để hiển thị');
+        }
+      } catch (error) {
+        console.error('Error parsing result_url:', error);
+        alert('Không thể hiển thị ảnh');
+      }
+    } else {
+      alert('Không có ảnh để hiển thị');
     }
   };
 
@@ -811,6 +879,7 @@ const Document: React.FC = () => {
                               ) : (
                                 <>
                                   <button
+                                    onClick={() => handleViewGenerate(generate)}
                                     className="text-blue-600 hover:text-blue-900 p-1"
                                     title="Xem"
                                   >
@@ -1132,6 +1201,81 @@ const Document: React.FC = () => {
             onDownload={() => handleDownloadAudio({ result_url: audioPlayer.audioUrl })}
             autoPlay={true}
           />
+
+       {/* Image Modal */}
+       {imageModal.isOpen && (
+         <Modal
+           isOpen={imageModal.isOpen}
+           onClose={() => setImageModal(prev => ({ ...prev, isOpen: false }))}
+           title={imageModal.title}
+           size="xl"
+         >
+           <div className="space-y-4">
+             {/* Image Display */}
+             <div className="relative">
+               <img
+                 src={imageModal.images[imageModal.currentIndex]}
+                 alt={`Image ${imageModal.currentIndex + 1}`}
+                 className="w-full h-auto max-h-96 object-contain rounded-lg"
+               />
+               
+               {/* Image Counter */}
+               {imageModal.images.length > 1 && (
+                 <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
+                   theme === 'dark' ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'
+                 } backdrop-blur-sm`}>
+                   {imageModal.currentIndex + 1} / {imageModal.images.length}
+                 </div>
+               )}
+             </div>
+
+             {/* Navigation Buttons */}
+             {imageModal.images.length > 1 && (
+               <div className="flex justify-center space-x-4">
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => setImageModal(prev => ({
+                     ...prev,
+                     currentIndex: prev.currentIndex > 0 ? prev.currentIndex - 1 : prev.images.length - 1
+                   }))}
+                 >
+                   ← Previous
+                 </Button>
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => setImageModal(prev => ({
+                     ...prev,
+                     currentIndex: prev.currentIndex < prev.images.length - 1 ? prev.currentIndex + 1 : 0
+                   }))}
+                 >
+                   Next →
+                 </Button>
+               </div>
+             )}
+
+             {/* Download Button */}
+             <div className="flex justify-center">
+               <Button
+                 variant="primary"
+                 size="sm"
+                 onClick={() => {
+                   const link = document.createElement('a');
+                   link.href = imageModal.images[imageModal.currentIndex];
+                   link.download = `image-${imageModal.currentIndex + 1}.jpg`;
+                   document.body.appendChild(link);
+                   link.click();
+                   document.body.removeChild(link);
+                 }}
+               >
+                 <DownloadIcon className="w-4 h-4 mr-2" />
+                 Download Image
+               </Button>
+             </div>
+           </div>
+         </Modal>
+       )}
      </div>
    );
  };

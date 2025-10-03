@@ -245,3 +245,19 @@ body {
     background: linear-gradient(90deg, rgba(75, 163, 255, .18), rgba(110, 243, 214, .15));
     box-shadow: inset 0 0 0 1px rgba(75, 163, 255, .35);
 }
+.polotno-workspace-container .konvajs-content::after {
+    background: rgb(231 231 231);
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 30px;
+    z-index: 111;
+}
+.bp5-navbar.bp5-dark, .bp5-dark .bp5-navbar {
+    background-color: #111827 !important;
+}
+.bp5-dark .bp5-navbar {
+    box-shadow: none !important;
+}

@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import AdminLayout from '../components/AdminLayout';
+import React, { useState, useEffect } from 'react'; 
+import { useTheme } from '../contexts/ThemeContext';
+import { generateService } from '../services/generateService';
 
 interface ImageItem {
   id: string;
@@ -8,70 +9,80 @@ interface ImageItem {
   createdAt: Date;
   size?: string;
   dimensions?: string;
+  prompt?: string;
+  model?: string;
 }
 
 const ImageTools: React.FC = () => {
+  const { theme } = useTheme();
   const [recentImages, setRecentImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Mock data for recent images - replace with actual API call
+  // Fetch recent images from API
   useEffect(() => {
-    const mockImages: ImageItem[] = [
-      {
-        id: '1',
-        url: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Image+1',
-        name: 'summer-vacation.jpg',
-        createdAt: new Date('2024-01-15'),
-        size: '2.4 MB',
-        dimensions: '1920x1080'
-      },
-      {
-        id: '2',
-        url: 'https://via.placeholder.com/300x200/4ECDC4/FFFFFF?text=Image+2',
-        name: 'product-shot.png',
-        createdAt: new Date('2024-01-14'),
-        size: '1.8 MB',
-        dimensions: '1200x800'
-      },
-      {
-        id: '3',
-        url: 'https://via.placeholder.com/300x200/45B7D1/FFFFFF?text=Image+3',
-        name: 'landscape-photo.jpg',
-        createdAt: new Date('2024-01-13'),
-        size: '3.2 MB',
-        dimensions: '2560x1440'
-      },
-      {
-        id: '4',
-        url: 'https://via.placeholder.com/300x200/96CEB4/FFFFFF?text=Image+4',
-        name: 'portrait-mode.jpg',
-        createdAt: new Date('2024-01-12'),
-        size: '2.1 MB',
-        dimensions: '1080x1350'
-      },
-      {
-        id: '5',
-        url: 'https://via.placeholder.com/300x200/FECA57/FFFFFF?text=Image+5',
-        name: 'macro-shot.png',
-        createdAt: new Date('2024-01-11'),
-        size: '1.5 MB',
-        dimensions: '800x800'
-      },
-      {
-        id: '6',
-        url: 'https://via.placeholder.com/300x200/FF6B9D/FFFFFF?text=Image+6',
-        name: 'night-sky.jpg',
-        createdAt: new Date('2024-01-10'),
-        size: '4.1 MB',
-        dimensions: '3840x2160'
+    const fetchRecentImages = async () => {
+      try {
+        setLoading(true);
+        const response = await generateService.getGenerates({
+          type: 'image',
+          per_page: 12, // Lấy 12 ảnh gần đây nhất
+          page: 1
+        });
+        
+        if (response.success && response.data) {
+          const images: ImageItem[] = response.data.flatMap(generate => {
+            let imageData: Array<{seed: number, url: string}> = [];
+            let contentData = null;
+            
+            // Parse result_url để lấy array các object {seed, url} từ Runware
+            if (generate.result_url) {
+              try {
+                const resultData = JSON.parse(generate.result_url);
+                if (Array.isArray(resultData)) {
+                  imageData = resultData.filter(item => 
+                    item && 
+                    typeof item === 'object' && 
+                    item.url && 
+                    typeof item.url === 'string'
+                  );
+                }
+              } catch (parseError) {
+                console.error('Error parsing result_url:', parseError);
+              }
+            }
+            
+            // Parse content để lấy thông tin prompt và model
+            if (generate.content) {
+              try {
+                contentData = JSON.parse(generate.content);
+              } catch (parseError) {
+                console.error('Error parsing content:', parseError);
+              }
+            }
+            
+            // Tạo một ImageItem cho mỗi object ảnh
+            return imageData.map((imageItem, index) => ({
+              id: `${generate.id}-${index}`,
+              url: imageItem.url,
+              name: generate.name || `Image ${generate.id}-${index}`,
+              createdAt: new Date(generate.created_at),
+              prompt: contentData?.prompt || '',
+              model: contentData?.model || 'Unknown',
+              size: '2.4 MB', // Placeholder - có thể tính toán thực tế nếu cần
+              dimensions: `${contentData?.width || 1024}x${contentData?.height || 1024}`
+            }));
+          }).filter(img => img.url); // Chỉ hiển thị ảnh có URL hợp lệ
+          
+          setRecentImages(images);
+        }
+      } catch (error) {
+        console.error('Error fetching recent images:', error);
+      } finally {
+        setLoading(false);
       }
-    ];
+    };
 
-    // Simulate API loading
-    setTimeout(() => {
-      setRecentImages(mockImages);
-      setLoading(false);
-    }, 1000);
+    fetchRecentImages();
   }, []);
 
   const handleImageClick = (image: ImageItem) => {
@@ -85,16 +96,24 @@ const ImageTools: React.FC = () => {
   };
  
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Image Tools</h1>
+  return ( 
+      <div className={`min-h-screen p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+          <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Image Tools</h1>
           <div className="flex space-x-3">
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            <button className={`px-4 py-2 rounded-lg transition-colors ${
+              theme === 'dark' 
+                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            }`}>
               Upload Images
             </button>
-            <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+            <button className={`px-4 py-2 rounded-lg transition-colors ${
+              theme === 'dark' 
+                ? 'bg-green-600 hover:bg-green-700 text-white' 
+                : 'bg-green-600 hover:bg-green-700 text-white'
+            }`}>
               Create New
             </button>
           </div>
@@ -102,12 +121,14 @@ const ImageTools: React.FC = () => {
 
         {/* Recent Images Section */}
         <div className="mb-12">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Recent Images</h2>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-800'}`}>Recent Images</h2>
           <div className="grid grid-cols-6 gap-4">
             {recentImages.map((image) => (
               <div
                 key={image.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group"
+                className={`rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer group ${
+                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                }`}
                 onClick={() => handleImageClick(image)}
               >
                 <div className="relative">
@@ -152,13 +173,19 @@ const ImageTools: React.FC = () => {
                   </div>
                 </div>
                 <div className="p-3">
-                  <h3 className="font-medium text-gray-900 text-sm truncate mb-1">
+                  <h3 className={`font-medium text-sm truncate mb-1 ${
+                    theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                  }`}>
                     {image.name}
                   </h3>
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className={`text-xs mb-1 ${
+                    theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                  }`}>
                     {image.size} • {image.dimensions}
                   </p>
-                  <p className="text-xs text-gray-400">
+                  <p className={`text-xs ${
+                    theme === 'dark' ? 'text-gray-400' : 'text-gray-400'
+                  }`}>
                     {image.createdAt.toLocaleDateString()}
                   </p>
                 </div>
@@ -169,7 +196,7 @@ const ImageTools: React.FC = () => {
 
         {/* Tools Section */}
         <div className="mb-8">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">Available Tools</h2>
+          <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-800'}`}>Available Tools</h2>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
             {[
               { name: 'Image Editor', icon: '🎨', description: 'Edit images' },
@@ -181,40 +208,50 @@ const ImageTools: React.FC = () => {
             ].map((tool) => (
               <div
                 key={tool.name}
-                className="bg-white rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow cursor-pointer"
+                className={`rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow cursor-pointer ${
+                  theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+                }`}
               >
                 <div className="text-3xl mb-2">{tool.icon}</div>
-                <h3 className="font-medium text-gray-900 text-sm mb-1">{tool.name}</h3>
-                <p className="text-xs text-gray-500">{tool.description}</p>
+                <h3 className={`font-medium text-sm mb-1 ${
+                  theme === 'dark' ? 'text-gray-100' : 'text-gray-900'
+                }`}>{tool.name}</h3>
+                <p className={`text-xs ${
+                  theme === 'dark' ? 'text-gray-300' : 'text-gray-500'
+                }`}>{tool.description}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* Stats Section */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-4">Storage Stats</h2>
+        <div className={`rounded-lg shadow-md p-6 ${
+          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
+        }`}>
+          <h2 className={`text-xl font-semibold mb-4 ${
+            theme === 'dark' ? 'text-gray-100' : 'text-gray-800'
+          }`}>Storage Stats</h2>
           <div className="grid grid-cols-4 gap-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{recentImages.length}</div>
-              <div className="text-sm text-gray-500">Total Images</div>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Total Images</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">12.5 GB</div>
-              <div className="text-sm text-gray-500">Used Storage</div>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Used Storage</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-purple-600">87.5 GB</div>
-              <div className="text-sm text-gray-500">Free Space</div>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Free Space</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">24</div>
-              <div className="text-sm text-gray-500">This Week</div>
+              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>This Week</div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+        </div>
+      </div> 
   );
 };
 

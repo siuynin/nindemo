@@ -444,7 +444,11 @@ const CreativeEditorPage: React.FC = () => {
         currentPage="creative-editor"
         onBackToDocument={() => navigate('/app/document')}
       /> 
-      
+       <style>{` 
+        body {
+         font-family: Outfit, Inter, sans-serif !important;
+        }
+       `}</style>
       {/* Polotno Editor */}
       <div style={{ flex: 1, overflow: 'hidden' }}>
         <PolotnoContainer style={{ width: '100%', height: '100%' }}>

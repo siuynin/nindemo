@@ -60,9 +60,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       path: '/image-canvas',
     },
     {
-      icon: <PenIcon className="w-5 h-5" />,
-      name: t.sidebar?.creativeEditor?.title || 'Creative Editor',
-      path: '/creative-editor',
+      icon: <ImageIcon className="w-5 h-5" />,
+      name: 'Image Tools',
+      path: '/image-tools',
     },
     
     {
@@ -80,10 +80,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       path: '/document',
     },
     {
-      icon: <ImageIcon className="w-5 h-5" />,
-      name: 'Image Tools',
-      path: '/image-tools',
+      icon: <PenIcon className="w-5 h-5" />,
+      name: t.sidebar?.creativeEditor?.title || 'Creative Editor',
+      path: '/creative-editor',
     },
+    
   ];
 
   const othersItems: NavItem[] = [
