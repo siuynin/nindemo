@@ -169,6 +169,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('images')->group(function () {
         Route::post('/create-image', [App\Http\Controllers\Api\ImageGenerationController::class, 'createImage']);
         Route::get('/generation/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getGenerationStatus']);
+        Route::post('/upscale', [App\Http\Controllers\Api\ImageGenerationController::class, 'upscaleImage']);
     });
     
     // AI Text Processing Routes

@@ -74,6 +74,53 @@ class RunwareService
     }
 
     /**
+     * Upscale image using Runware API
+     */
+    public function upscaleImage(array $request): array
+    {
+        try {
+            Log::info('Calling Runware Upscale API', ['request' => $request]);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->post($this->baseUrl, [$request]);
+
+            if (!$response->successful()) {
+                Log::error('Runware Upscale API error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new \Exception('Runware Upscale API request failed: ' . $response->body());
+            }
+
+            $data = $response->json();
+            Log::info('Runware Upscale API response', ['response' => $data]);
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Runware Upscale API exception', ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Build Runware upscale request
+     */
+    public function buildUpscaleRequest(string $inputImage, string $outputFormat, int $upscaleFactor): array
+    {
+        return [
+            'taskType' => 'imageUpscale',
+            'taskUUID' => (string) \Illuminate\Support\Str::uuid(),
+            'inputImage' => $inputImage,
+            'model' => 'runware:501@1',
+            'outputType' => 'URL',
+            'outputFormat' => $outputFormat,
+            'upscaleFactor' => $upscaleFactor
+        ];
+    }
+
+    /**
      * Build Runware request from validated data
      */
     public function buildRequest(array $validatedData): array

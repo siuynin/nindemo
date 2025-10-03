@@ -284,4 +284,104 @@ class ImageGenerationController extends Controller
             return response()->json(['error' => 'Internal server error'], 500);
         }
     }
+
+    /**
+     * Upscale image using Runware API
+     */
+    public function upscaleImage(Request $request)
+    {
+        try {
+            // Validate request
+            $validatedData = $request->validate([
+                'inputImage' => 'required|string',
+                'outputFormat' => 'required|string|in:jpg,png,webp',
+                'upscaleFactor' => 'required|integer|in:2,4,8'
+            ]);
+
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Check user credits (upscale costs 5 credits)
+            $creditCost = 5;
+            if ($user->credits < $creditCost) {
+                return response()->json(['error' => 'Insufficient credits'], 400);
+            }
+
+            // Create Generate record
+            $generate = Generate::create([
+                'user_id' => $user->id,
+                'type' => 'upscale',
+                'status' => 'processing',
+                'name' => 'Image Upscale ' . now()->format('Y-m-d H:i:s'),
+                'content' => json_encode([
+                    'outputFormat' => $validatedData['outputFormat'],
+                    'upscaleFactor' => $validatedData['upscaleFactor']
+                ]),
+                'credit_cost' => $creditCost
+            ]);
+
+            // Build Runware request
+            $runwareRequest = $this->runwareService->buildUpscaleRequest(
+                $validatedData['inputImage'],
+                $validatedData['outputFormat'],
+                $validatedData['upscaleFactor']
+            );
+
+            // Call Runware API
+            $response = $this->runwareService->upscaleImage($runwareRequest);
+
+            // Process response
+            if (isset($response['data']) && !empty($response['data'])) {
+                $imageData = $response['data'][0];
+                
+                if (isset($imageData['imageURL'])) {
+                    // Update generate record with success
+                    $generate->update([
+                        'status' => 'completed',
+                        'result_url' => $imageData['imageURL'],
+                        'file_patch' => json_encode($imageData)
+                    ]);
+
+                    // Deduct credits
+                    $user->decrement('credits', $creditCost);
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'id' => $generate->id,
+                            'status' => 'completed',
+                            'imageUrl' => $imageData['imageURL'],
+                            'credit_cost' => $creditCost,
+                            'remaining_credits' => $user->credits - $creditCost
+                        ]
+                    ]);
+                }
+            }
+
+            // Handle failure
+            $generate->update([
+                'status' => 'failed',
+                'file_patch' => json_encode(['error' => 'No image data received from API'])
+            ]);
+
+            return response()->json(['error' => 'Failed to upscale image'], 500);
+
+        } catch (ValidationException $e) {
+            return response()->json(['error' => $e->getMessage()], 422);
+        } catch (\Exception $e) {
+            Log::error('Error upscaling image', ['error' => $e->getMessage()]);
+            
+            // Update generate record if it exists
+            if (isset($generate)) {
+                $generate->update([
+                    'status' => 'failed',
+                    'file_patch' => json_encode(['error' => $e->getMessage()])
+                ]);
+            }
+
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
+    }
 }

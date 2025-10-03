@@ -199,18 +199,23 @@ const ImageTools: React.FC = () => {
           <h2 className={`text-xl font-semibold mb-6 ${theme === 'dark' ? 'text-gray-100' : 'text-gray-800'}`}>Available Tools</h2>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
             {[
-              { name: 'Image Editor', icon: '🎨', description: 'Edit images' },
-              { name: 'AI Enhancer', icon: '✨', description: 'Enhance with AI' },
-              { name: 'Background Remove', icon: '🎯', description: 'Remove backgrounds' },
-              { name: 'Resize', icon: '📐', description: 'Resize images' },
-              { name: 'Compress', icon: '🗜️', description: 'Compress files' },
-              { name: 'Convert', icon: '🔄', description: 'Format conversion' }
+              { name: 'Image Editor', icon: '🎨', description: 'Edit images', link: null },
+              { name: 'AI Enhancer', icon: '✨', description: 'Enhance with AI', link: null },
+              { name: 'Background Remove', icon: '🎯', description: 'Remove backgrounds', link: null },
+              { name: 'Resize', icon: '📐', description: 'Resize images', link: null },
+              { name: 'Compress', icon: '🗜️', description: 'Compress files', link: null },
+              { name: 'AI Upscaler', icon: '🔍', description: 'Upscale with AI', link: '/pages/image-tool/UpScaler' }
             ].map((tool) => (
               <div
                 key={tool.name}
                 className={`rounded-lg shadow-md p-4 text-center hover:shadow-lg transition-shadow cursor-pointer ${
                   theme === 'dark' ? 'bg-gray-800' : 'bg-white'
                 }`}
+                onClick={() => {
+                  if (tool.link) {
+                    window.location.href = tool.link;
+                  }
+                }}
               >
                 <div className="text-3xl mb-2">{tool.icon}</div>
                 <h3 className={`font-medium text-sm mb-1 ${
