@@ -12,6 +12,7 @@ import Minimax from './pages/Minimax';
 import VoiceClone from './pages/VoiceClone';
 import Price from './pages/Price';
 import CreativeEditor from './pages/CreativeEditor';
+import ImageTools from './pages/ImageTools';
 import App from './App';
 import DebugRunware from './debug-runware';
 
@@ -97,6 +98,10 @@ export const router = createBrowserRouter([
       {
         path: 'creative-editor',
         element: <CreativeEditor />,
+      },
+      {
+        path: 'image-tools',
+        element: <ImageTools />,
       },
     ],
   },
@@ -202,6 +207,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <CreativeEditor />,
+      },
+    ],
+  },
+  {
+    path: '/image-tools',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <ImageTools />,
       },
     ],
   },

@@ -62,6 +62,9 @@ const AdminLayoutContent: React.FC = () => {
   const location = useLocation();
   const { t } = useLanguage();
   
+  // Check if current page is CreativeEditor
+  const isCreativeEditorPage = location.pathname.includes('/creative-editor');
+  
   // Sidebar state management
   const [isExpanded, setIsExpanded] = useState<boolean>(() => loadState('sidebarExpanded', true));
   const [isMobileOpen, setIsMobileOpen] = useState<boolean>(false);
@@ -139,44 +142,52 @@ const AdminLayoutContent: React.FC = () => {
         <div className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-gradient-to-tr from-green-400/15 via-blue-400/10 to-purple-400/20 float-reverse-animation"></div>
       </div>
 
-      {/* Sidebar */}
-      <div className="relative z-10">
-        <AdminSidebar
-          isExpanded={isMobile ? false : isExpanded}
-          isMobileOpen={isMobileOpen}
-          isHovered={isHovered}
-          onSetIsHovered={setIsHovered}
-          currentPage={currentPage}
-        />
-        
-        {/* Mobile Backdrop */}
-        {isMobileOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-            onClick={() => setIsMobileOpen(false)}
+      {/* Sidebar - Ẩn cho CreativeEditor */}
+      {!isCreativeEditorPage && (
+        <div className="relative z-10">
+          <AdminSidebar
+            isExpanded={isMobile ? false : isExpanded}
+            isMobileOpen={isMobileOpen}
+            isHovered={isHovered}
+            onSetIsHovered={setIsHovered}
+            currentPage={currentPage}
           />
-        )}
-      </div>
+          
+          {/* Mobile Backdrop */}
+          {isMobileOpen && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+              onClick={() => setIsMobileOpen(false)}
+            />
+          )}
+        </div>
+      )}
 
       {/* Main Content */}
       <div
         className={`flex-1 flex flex-col transition-all duration-300 ease-in-out relative z-10 ${
-          isExpanded || isHovered ? "lg:ml-[290px]" : "lg:ml-[90px]"
+          isCreativeEditorPage 
+            ? "ml-0" // Không có margin cho CreativeEditor
+            : isExpanded || isHovered 
+              ? "lg:ml-[290px]" 
+              : "lg:ml-[90px]"
         } ${isMobileOpen ? "ml-0" : ""}`}
       >
-        {/* Header */}
-        <AdminTopBar
-          onToggleSidebar={toggleSidebar}
-          isSidebarOpen={isMobile ? isMobileOpen : isExpanded}
-        />
+        {/* Header - Ẩn cho CreativeEditor */}
+        {!isCreativeEditorPage && (
+          <AdminTopBar
+            onToggleSidebar={toggleSidebar}
+            isSidebarOpen={isMobile ? isMobileOpen : isExpanded}
+          />
+        )}
 
         {/* Page Content */}
-        <div className="flex-1">
+        <div className={`flex-1 ${isCreativeEditorPage ? 'h-screen' : ''}`}>
           <Outlet />
         </div>
 
-        {/* Chatbot */}
-        <BubbleChatbot />
+        {/* Chatbot - Ẩn cho CreativeEditor */}
+        {!isCreativeEditorPage && <BubbleChatbot />}
       </div>
     </div>
   );

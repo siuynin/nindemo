@@ -25,13 +25,17 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return savedTheme || 'dark';
   });
 
-  // Apply theme to html element
+  // Apply theme to html element and body for BlueprintJS
   useEffect(() => {
     const htmlElement = document.documentElement;
+    const bodyElement = document.body;
+    
     if (theme === 'dark') {
       htmlElement.classList.add('dark');
+      bodyElement.classList.add('bp5-dark');
     } else {
       htmlElement.classList.remove('dark');
+      bodyElement.classList.remove('bp5-dark');
     }
   }, [theme]);
 

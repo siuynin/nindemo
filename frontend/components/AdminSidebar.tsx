@@ -64,6 +64,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       name: t.sidebar?.creativeEditor?.title || 'Creative Editor',
       path: '/creative-editor',
     },
+    
     {
       icon: <SpeakerIcon className="w-5 h-5" />,
       name: t.sidebar?.textToSpeech?.title || 'Text to Speech',
@@ -77,6 +78,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: <DocumentIcon className="w-5 h-5" />,
       name: t.sidebar?.document?.title || 'Document',
       path: '/document',
+    },
+    {
+      icon: <ImageIcon className="w-5 h-5" />,
+      name: 'Image Tools',
+      path: '/image-tools',
     },
   ];
 

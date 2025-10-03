@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@blueprintjs/core": "^6.3.1",
     "@cesdk/cesdk-js": "^1.60.0",
     "@cesdk/engine": "^1.60.0",
     "@google/genai": "^1.17.0",
@@ -19,9 +20,10 @@
     "classnames": "^2.5.1",
     "i18next": "^25.5.2",
     "lodash": "^4.17.21",
-    "react": "^19.1.1",
+    "polotno": "^2.29.0",
+    "react": "18.2.0",
     "react-colorful": "^5.6.1",
-    "react-dom": "^19.1.1",
+    "react-dom": "18.2.0",
     "react-i18next": "^15.7.3",
     "react-router-dom": "^7.8.2"
   },

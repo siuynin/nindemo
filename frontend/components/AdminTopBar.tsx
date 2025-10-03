@@ -11,12 +11,16 @@ interface AdminTopBarProps {
   className?: string;
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
+  currentPage?: 'creative-editor' | 'document' | 'default';
+  onBackToDocument?: () => void;
 }
 
 const AdminTopBar: React.FC<AdminTopBarProps> = ({ 
   className = '', 
   onToggleSidebar,
-  isSidebarOpen = false 
+  isSidebarOpen = false,
+  currentPage = 'default',
+  onBackToDocument
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
@@ -44,7 +48,11 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
   }, []);
 
   const handleToggle = () => {
-    if (onToggleSidebar) {
+    if (currentPage === 'creative-editor' && onBackToDocument) {
+      // Khi ở trang CreativeEditor, nút này sẽ trở thành nút Back to Document
+      onBackToDocument();
+    } else if (onToggleSidebar) {
+      // Mặc định là toggle sidebar
       onToggleSidebar();
     }
   };
@@ -86,13 +94,30 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
       <header className={`sticky top-0 flex w-full bg-white border-gray-200 z-50 dark:border-gray-800 dark:bg-gray-900 lg:border-b ${className}`}>
         <div className="flex flex-col items-center justify-between grow lg:flex-row lg:px-6">
           <div className="flex items-center justify-between w-full gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-800 sm:gap-4 lg:justify-normal lg:border-b-0 lg:px-0 lg:py-4">
-            {/* Sidebar Toggle Button */}
+            {/* Sidebar Toggle Button / Back to Document Button */}
             <button
               className="flex items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-50 dark:border-gray-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               onClick={handleToggle}
-              aria-label={isSidebarOpen ? "Close Sidebar" : "Open Sidebar"}
+              aria-label={currentPage === 'creative-editor' ? "Back to Document" : (isSidebarOpen ? "Close Sidebar" : "Open Sidebar")}
             >
-              {isSidebarOpen ? (
+              {currentPage === 'creative-editor' ? (
+                // Back arrow icon for CreativeEditor page
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="transition-transform duration-200"
+                >
+                  <path
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                    d="M10.7071 4.29289C11.0976 4.68342 11.0976 5.31658 10.7071 5.70711L5.41421 11H20C20.5523 11 21 11.4477 21 12C21 12.5523 20.5523 13 20 13H5.41421L10.7071 18.2929C11.0976 18.6834 11.0976 19.3166 10.7071 19.7071C10.3166 20.0976 9.68342 20.0976 9.29289 19.7071L2.29289 12.7071C1.90237 12.3166 1.90237 11.6834 2.29289 11.2929L9.29289 4.29289C9.68342 3.90237 10.3166 3.90237 10.7071 4.29289Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              ) : isSidebarOpen ? (
                 // Close icon (X)
                 <svg
                   width="20"

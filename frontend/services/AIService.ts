@@ -144,7 +144,7 @@ class AIService {
         throw new Error('Authentication required. Please log in.');
       }
       
-      const response = await fetch('http://localhost:8001/api/ai/process-text', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ai/process-text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +182,7 @@ class AIService {
         throw new Error('Authentication required. Please log in.');
       }
       
-      const response = await fetch('http://localhost:8001/api/ai/process-text-gemini', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ai/process-text-gemini`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
