@@ -1,9 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,100..700;1,100..700&display=swap');
-
-body {
-    font-family: 'IBM Plex Sans', sans-serif;
-}
-
+ 
 .bp5-dark .topbar .bp5-button, .bp5-dark .bp5-button.bp5-intent-primary  {
     box-shadow: none !important;
     padding: 9px 20px;

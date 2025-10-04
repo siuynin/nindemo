@@ -329,7 +329,7 @@ const useHeight = () => {
   return height;
 };
 
-const App = observer(({ store }) => {
+const Canvas = observer(({ store }) => {
   const project = useProject();
   const height = useHeight();
 
@@ -421,4 +421,4 @@ const App = observer(({ store }) => {
   );
 });
 
-export default App;
+export default Canvas;

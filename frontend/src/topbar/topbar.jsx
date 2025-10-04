@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import {
   Navbar,
@@ -7,6 +7,9 @@ import {
   NavbarDivider,
   EditableText,
   Popover,
+  Button,
+  Menu,
+  MenuItem,
 } from '@blueprintjs/core';
 
 import FaGithub from '@meronex/icons/fa/FaGithub';
@@ -17,13 +20,15 @@ import MdcCloudAlert from '@meronex/icons/mdc/MdcCloudAlert';
 import MdcCloudCheck from '@meronex/icons/mdc/MdcCloudCheck';
 import MdcCloudSync from '@meronex/icons/mdc/MdcCloudSync';
 import styled from 'polotno/utils/styled';
+import AuthModal from 'components/AuthModal';
+import ProfileModal from 'components/ProfileModal';
 
 import { useProject } from '../project';
+import { t } from '../translations';
 
 import { FileMenu } from './file-menu';
 import { DownloadButton } from './download-button';
-import { PostProcessButton } from './post-process-button';
-import { UserMenu } from './user-menu';
+import { PostProcessButton } from './post-process-button'; 
 import { CloudWarning } from '../cloud-warning';
 
 const NavbarContainer = styled('div')`
@@ -79,6 +84,105 @@ const Status = observer(({ project }) => {
 
 export default observer(({ store }) => {
   const project = useProject();
+  
+  // State management
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState(null);
+  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState('login');
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+          // Verify token and get user info
+          const response = await fetch('/api/user', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            setUser(userData);
+            setIsAuthenticated(true);
+          } else {
+            localStorage.removeItem('authToken');
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsAuthenticated(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  // Event handlers
+  const toggleAccountDropdown = () => {
+    setIsAccountDropdownOpen(!isAccountDropdownOpen);
+  };
+
+  const handleProfileClick = () => {
+    setIsProfileModalOpen(true);
+    setIsAccountDropdownOpen(false);
+  };
+
+  const handleLoginClick = () => {
+    setAuthModalMode('login');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleRegisterClick = () => {
+    setAuthModalMode('register');
+    setIsAuthModalOpen(true);
+  };
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        await fetch('/api/logout', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      localStorage.removeItem('authToken');
+      setUser(null);
+      setIsAuthenticated(false);
+      setIsAccountDropdownOpen(false);
+    }
+  };
+
+  const userMenu = (
+    <Menu>
+      <MenuItem
+        text={t.topbar?.profile || 'Profile'}
+        onClick={handleProfileClick}
+      />
+      <MenuItem
+        text="User Credit"
+        onClick={() => window.location.href = '/user-credit'}
+      />
+      <MenuItem
+        text={t.topbar?.logout || 'Logout'}
+        onClick={handleLogout}
+      />
+    </Menu>
+  );
 
   return (
     <NavbarContainer className="bp5-navbar topbar">
@@ -109,7 +213,7 @@ export default observer(({ store }) => {
                 letterSpacing: '0.25px',
               }}
             >
-              Polotno
+              AI Studio
             </span>
           </div>
           <NavbarDivider />
@@ -136,30 +240,81 @@ export default observer(({ store }) => {
           <AnchorButton href="https://polotno.com" target="_blank" minimal>
             For developers
           </AnchorButton>
-          {/* 
-          <AnchorButton
-            minimal
-            href="https://github.com/lavrton/polotno-studio"
-            target="_blank"
-            icon={
-              <FaGithub className="bp5-icon" style={{ fontSize: '20px' }} />
-            }
-          ></AnchorButton>
-          <AnchorButton
-            minimal
-            href="https://twitter.com/lavrton"
-            target="_blank"
-            icon={
-              <FaTwitter className="bp5-icon" style={{ fontSize: '20px' }} />
-            }
-          ></AnchorButton> */}
+          
           <NavbarDivider />
           <PostProcessButton store={store} />
           <DownloadButton store={store} />
-          <UserMenu store={store} project={project} />
-          {/* <NavbarHeading>Polotno Studio</NavbarHeading> */}
+          
+          {/* User Authentication Section */}
+          {isAuthenticated ? (
+            <Popover content={userMenu} position="bottom-right">
+              <Button
+                minimal
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '8px 12px',
+                }}
+              >
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    backgroundColor: '#007aff',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                  }}
+                >
+                  {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                  {user?.name || user?.email}
+                </span>
+              </Button>
+            </Popover>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Button
+                minimal
+                onClick={handleLoginClick}
+                style={{ fontSize: '14px' }}
+              >
+                {t.topbar?.login || 'Login'}
+              </Button>
+              <Button
+                intent="primary"
+                onClick={handleRegisterClick}
+                style={{ fontSize: '14px' }}
+              >
+                {t.topbar?.register || 'Register'}
+              </Button>
+            </div>
+          )}
         </Navbar.Group>
       </NavInner>
+
+      {/* Modals */}
+      {isProfileModalOpen && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+        />
+      )}
+
+      {isAuthModalOpen && (
+        <AuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          mode={authModalMode}
+          onSwitchMode={(mode) => setAuthModalMode(mode)}
+        />
+      )}
     </NavbarContainer>
   );
 });

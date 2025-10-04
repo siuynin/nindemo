@@ -245,15 +245,66 @@ body {
     background: linear-gradient(90deg, rgba(75, 163, 255, .18), rgba(110, 243, 214, .15));
     box-shadow: inset 0 0 0 1px rgba(75, 163, 255, .35);
 }
+/* Canvas overlay - áp dụng cho tất cả các trang canvas */
+.polotno-workspace-container .konvajs-content {
+    position: relative;
+}
+
+/* Overlay cho trang đang active */
 .polotno-workspace-container .konvajs-content::after {
     background: rgb(231 231 231);
-    content: '';
+    content: 'Powered by AI Studio';
     position: absolute;
     bottom: 0;
     right: 0;
     width: 200px;
     height: 30px;
     z-index: 111;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+/* Đảm bảo overlay hiển thị trên tất cả các layer canvas */
+.polotno-workspace-container .konvajs-content > div::after {
+    background: rgb(231 231 231);
+    content: 'Powered by AI Studio';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 30px;
+    z-index: 111;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
+}
+
+/* Overlay cho workspace container chính */
+.polotno-workspace-container::after {
+    background: rgb(231 231 231);
+    content: 'Powered by AI Studio';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+    height: 30px;
+    z-index: 9999;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #666;
 }
 .bp5-navbar.bp5-dark, .bp5-dark .bp5-navbar {
     background-color: #111827 !important;
