@@ -1,6 +1,5 @@
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
-import Layout from './components/Layout';
 import AdminLayout from './components/AdminLayout';
 import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
@@ -16,6 +15,7 @@ import ImageTools from './pages/ImageTools';
 import UserCredit from './pages/UserCredit';
 import App from './App';
 import DebugRunware from './debug-runware';
+import UpScaler from './pages/image-tool/UpScaler';
 
 // Wrapper component for Canvas page
 const CanvasPage: React.FC = () => {
@@ -103,6 +103,16 @@ export const router = createBrowserRouter([
       {
         path: 'image-tools',
         element: <ImageTools />,
+        children: [
+          {
+            index: true,
+            element: <div>Select an image tool</div>,
+          },
+          {
+            path: 'upscaler',
+            element: <UpScaler />,
+          },
+        ],
       },
       {
         path: 'user-credit',
@@ -222,6 +232,10 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <ImageTools />,
+      },
+      {
+        path: 'upscaler',
+        element: <UpScaler />,
       },
     ],
   },

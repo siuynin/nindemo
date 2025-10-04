@@ -215,8 +215,6 @@ const customAIWrite = async (text: string, prompt: string) => {
 console.log('[CreativeEditor] Configuring Polotno AI Write with custom function');
 
 // Override any existing configurations by setting up AI before store creation
-import { setTranslations } from 'polotno/config';
-
 // Set translations first to enable AI Write
 setTranslations({
   text: {

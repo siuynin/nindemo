@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'; 
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { generateService } from '../services/generateService';
 
@@ -15,6 +16,7 @@ interface ImageItem {
 
 const ImageTools: React.FC = () => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [recentImages, setRecentImages] = useState<ImageItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -96,7 +98,8 @@ const ImageTools: React.FC = () => {
   };
  
 
-  return ( 
+  return (
+    <>
       <div className={`min-h-screen p-6 ${theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'}`}>
         <div className="max-w-7xl mx-auto">
           <div className="flex justify-between items-center mb-8">
@@ -204,7 +207,7 @@ const ImageTools: React.FC = () => {
               { name: 'Background Remove', icon: '🎯', description: 'Remove backgrounds', link: null },
               { name: 'Resize', icon: '📐', description: 'Resize images', link: null },
               { name: 'Compress', icon: '🗜️', description: 'Compress files', link: null },
-              { name: 'AI Upscaler', icon: '🔍', description: 'Upscale with AI', link: '/pages/image-tool/UpScaler' }
+              { name: 'AI Upscaler', icon: '🔍', description: 'Upscale with AI', link: '/app/image-tools/upscaler' }
             ].map((tool) => (
               <div
                 key={tool.name}
@@ -213,7 +216,7 @@ const ImageTools: React.FC = () => {
                 }`}
                 onClick={() => {
                   if (tool.link) {
-                    window.location.href = tool.link;
+                    navigate(tool.link);
                   }
                 }}
               >
@@ -256,7 +259,9 @@ const ImageTools: React.FC = () => {
           </div>
         </div>
         </div>
-      </div> 
+      </div>
+      <Outlet />
+    </>
   );
 };
 
