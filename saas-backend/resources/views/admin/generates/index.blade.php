@@ -312,7 +312,126 @@
                 alert('Có lỗi xảy ra khi tải dữ liệu');
             });
     }
-    
+
+    // Edit generate - mở form chỉnh sửa
+    function editGenerate(id) {
+        fetch(`/admin/generates/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                // Tạo form chỉnh sửa với tất cả các field
+                const editForm = `
+                    <form id="editGenerateForm">
+                        <input type="hidden" name="_method" value="PUT">
+                        <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]').getAttribute('content')}">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Tên</label>
+                            <input type="text" class="form-control" name="name" value="${data.name || ''}" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Loại</label>
+                            <select class="form-select" name="type" required>
+                                <option value="text" ${data.type === 'text' ? 'selected' : ''}>Text</option>
+                                <option value="image" ${data.type === 'image' ? 'selected' : ''}>Image</option>
+                                <option value="audio" ${data.type === 'audio' ? 'selected' : ''}>Audio</option>
+                                <option value="video" ${data.type === 'video' ? 'selected' : ''}>Video</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Trạng thái</label>
+                            <select class="form-select" name="status" required>
+                                <option value="pending" ${data.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                <option value="processing" ${data.status === 'processing' ? 'selected' : ''}>Processing</option>
+                                <option value="completed" ${data.status === 'completed' ? 'selected' : ''}>Completed</option>
+                                <option value="failed" ${data.status === 'failed' ? 'selected' : ''}>Failed</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Chia sẻ</label>
+                            <select class="form-select" name="share" required>
+                                <option value="private" ${data.share === 'private' ? 'selected' : ''}>Private</option>
+                                <option value="public" ${data.share === 'public' ? 'selected' : ''}>Public</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Chi phí Credit</label>
+                            <input type="number" class="form-control" name="credit_cost" value="${data.credit_cost || 0}" step="0.01" min="0">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Task ID</label>
+                            <input type="text" class="form-control" name="task_id" value="${data.task_id || ''}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Đường dẫn file</label>
+                            <input type="text" class="form-control" name="file_patch" value="${data.file_patch || ''}">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Nội dung</label>
+                            <textarea class="form-control" name="content" rows="5">${data.content || ''}</textarea>
+                        </div>
+                        
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                            <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                        </div>
+                    </form>
+                `;
+                
+                // Hiển thị form trong modal chỉnh sửa
+                const modalBody = document.getElementById('editModalBody');
+                modalBody.innerHTML = editForm;
+                
+                // Thêm sự kiện submit cho form
+                document.getElementById('editGenerateForm').addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    saveGenerate(id);
+                });
+                
+                // Hiển thị modal chỉnh sửa
+                const modal = new bootstrap.Modal(document.getElementById('editModal'));
+                modal.show();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi tải dữ liệu');
+            });
+    }
+
+    // Lưu thay đổi
+    function saveGenerate(id) {
+        const form = document.getElementById('editGenerateForm');
+        const formData = new FormData(form);
+        
+        fetch(`/admin/generates/${id}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Cập nhật thành công!');
+                bootstrap.Modal.getInstance(document.getElementById('editModal')).hide();
+                location.reload();
+            } else {
+                alert('Có lỗi xảy ra: ' + (data.message || 'Không thể cập nhật'));
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Có lỗi xảy ra khi lưu dữ liệu');
+        });
+    }
+
     // Delete generate
     function deleteGenerate(id) {
         if (confirm('Bạn có chắc chắn muốn xóa generate này?')) {
