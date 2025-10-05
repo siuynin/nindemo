@@ -63,7 +63,7 @@ const UpScaler: React.FC = () => {
     if (file) {
       const fakeEvent = {
         target: { files: [file] }
-      } as React.ChangeEvent<HTMLInputElement>;
+      } as unknown as React.ChangeEvent<HTMLInputElement>;
       handleImageSelect(fakeEvent);
     }
   };

@@ -16,7 +16,7 @@ import { downloadFile } from 'polotno/utils/download';
 import * as unit from 'polotno/utils/unit';
 import { t } from 'polotno/utils/l10n';
 import { jsonToPPTX } from 'polotno/utils/to-pptx';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 
 const saveAsVideo = async ({ store, pixelRatio, fps, onProgress }) => {
   const json = store.toJSON();
@@ -369,7 +369,7 @@ export const DownloadButton = observer(({ store }) => {
             <>
               <div style={{ padding: '10px', maxWidth: '180px', opacity: 0.8 }}>
                 <strong>Beta feature.</strong>{' '}
-                <a href="mailto:anton@polotno.com">
+                <a href="mailto:support@ai-studio.com">
                   Let us know what you think!
                 </a>
               </div>

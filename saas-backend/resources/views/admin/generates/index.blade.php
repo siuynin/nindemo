@@ -92,11 +92,23 @@
                             <div class="btn-group" role="group">
                                 <button type="button" class="btn btn-sm btn-outline-primary" 
                                         onclick="viewGenerate({{ $generate->id }})" 
-                                        data-bs-toggle="modal" data-bs-target="#viewModal">
+                                        data-bs-toggle="modal" data-bs-target="#viewModal"
+                                        title="Xem chi tiết">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                <button type="button" class="btn btn-sm btn-outline-warning" 
+                                        onclick="editGenerate({{ $generate->id }})" 
+                                        title="Chỉnh sửa">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-info" 
+                                        onclick="duplicateGenerate({{ $generate->id }})" 
+                                        title="Sao chép">
+                                    <i class="fas fa-copy"></i>
+                                </button>
                                 <button type="button" class="btn btn-sm btn-outline-danger" 
-                                        onclick="deleteGenerate({{ $generate->id }})">
+                                        onclick="deleteGenerate({{ $generate->id }})" 
+                                        title="Xóa">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -134,6 +146,21 @@
             </div>
             <div class="modal-body" id="viewModalBody">
                 <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Chỉnh sửa Generate</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="editModalBody">
+                <!-- Edit form will be loaded here -->
             </div>
         </div>
     </div>

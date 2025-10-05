@@ -1,20 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { useNavigate } from 'react-router-dom';
+import { observer } from 'mobx-react-lite';
 
 import { createStore } from 'polotno/model/store';
 import { unstable_setAnimationsEnabled } from 'polotno/config';
+import { initPolotnoOverrides } from '../src/utils/polotno-override';
+import { initMockKey } from '../src/utils/mock-polotno-key';
 import { createProject, ProjectContext } from '../src/project';
  
 import '../src/index.css';
+import '../src/styles/credit-override.css';
 import Canva from '../src/Canva';
 import '../src/logger';
-import { ErrorBoundary } from 'react-error-boundary';
-import AdminTopBar from '../components/AdminTopBar'
+import { ErrorBoundary } from 'react-error-boundary'; 
 
 unstable_setAnimationsEnabled(true);
 
-const store = createStore({ key: 'nFA5H9elEytDyPyvKL7T', showCredit: false, });
+const store = createStore({ key: 'nFA5H9elEytDyPyvKL7T', showCredit: false });
 window.store = store;
 store.addPage();
 
@@ -41,7 +44,7 @@ function Fallback({ error, resetErrorBoundary }) {
   );
 }
 
-const CreativeEditor: React.FC = () => {
+const CreativeEditor = observer(() => {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
@@ -60,74 +63,17 @@ const CreativeEditor: React.FC = () => {
     document.head.appendChild(coreLink);
     document.head.appendChild(iconsLink);
     
-    // Ghi đè watermark function của Polotno
-    const overrideWatermark = () => {
-      if (window.Polotno && window.Polotno.utils) {
-        window.Polotno.utils.drawWatermark = (context, width, height) => {
-          context.font = "14px Arial";
-          context.fillStyle = "#007aff";
-          context.textAlign = "right";
-          context.fillText("© AI Studio", width - 10, height - 10);
-        };
-      }
-    };
-
-    // Thử ghi đè ngay lập tức
-    overrideWatermark();
+    // Khởi tạo Polotno overrides để loại bỏ license check và watermark
+    const observer = initPolotnoOverrides();
     
-    // Thử ghi đè sau một khoảng thời gian ngắn (khi Polotno đã load)
-    const timeouts = [100, 500, 1000, 2000].map(delay => 
-      setTimeout(overrideWatermark, delay)
-    );
-    
-    // Thay thế text "Powered by polotno.com" bằng JavaScript
-    const replacePolotnoText = () => {
-      const textNodes = [];
-      const walker = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        null,
-        false
-      );
-      
-      let node;
-      while (node = walker.nextNode()) {
-        if (node.textContent && node.textContent.includes('polotno.com')) {
-          textNodes.push(node);
-        }
-      }
-      
-      textNodes.forEach(textNode => {
-        if (textNode.textContent.includes('Powered by polotno.com')) {
-          textNode.textContent = textNode.textContent.replace('Powered by polotno.com', 'Powered by AI Studio');
-        }
-        if (textNode.textContent.includes('polotno.com')) {
-          textNode.textContent = textNode.textContent.replace(/polotno\.com/g, 'AI Studio');
-        }
-      });
-    };
-
-    // Chạy ngay lập tức
-    replacePolotnoText();
-    
-    // Chạy lại sau khi DOM thay đổi
-    const observer = new MutationObserver(() => {
-      replacePolotnoText();
-      overrideWatermark(); // Cũng thử ghi đè watermark khi DOM thay đổi
-    });
-    
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
+    // Initialize mock key to bypass license validation
+    initMockKey();
     
     // Cleanup function
     return () => {
       document.head.removeChild(coreLink);
       document.head.removeChild(iconsLink);
       observer.disconnect();
-      timeouts.forEach(clearTimeout);
     };
   }, []);
 
@@ -136,14 +82,7 @@ const CreativeEditor: React.FC = () => {
   };
 
   return (
-    <div className="creative-editor-container" style={{ width: '100vw',  display: 'flex', flexDirection: 'column' }}>
-      {/* AdminTopBar với đầy đủ controls */}
-      <AdminTopBar 
-        onToggleSidebar={handleToggleSidebar}
-        isSidebarOpen={isSidebarOpen}
-        currentPage="creative-editor"
-        onBackToDocument={() => navigate('/app/document')}
-      />
+    <div className="creative-editor-container" style={{ width: '100vw', display: 'flex', flexDirection: 'column' }}>
       <ErrorBoundary
         FallbackComponent={Fallback}
         onReset={(details) => {
@@ -163,6 +102,6 @@ const CreativeEditor: React.FC = () => {
       </ErrorBoundary>
     </div>
   );
-};
+});
 
 export default CreativeEditor;

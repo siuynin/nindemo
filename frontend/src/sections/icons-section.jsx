@@ -5,7 +5,7 @@ import { isAlive } from 'mobx-state-tree';
 
 import { svgToURL } from 'polotno/utils/svg';
 import { SectionTab } from 'polotno/side-panel';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 import { getImageSize } from 'polotno/utils/image';
 import styled from 'polotno/utils/styled';
 import { t } from 'polotno/utils/l10n';

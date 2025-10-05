@@ -4,7 +4,7 @@ import { InputGroup, Card, Button } from '@blueprintjs/core';
 
 // import { urlToBase64, svgToURL } from 'polotno/utils/svg';
 import { SectionTab } from 'polotno/side-panel';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 // import { getImageSize } from 'polotno/utils/image';
 import FdCommentQuotes from '@meronex/icons/fd/FdCommentQuotes';
 import { getAPI } from 'polotno/utils/api';

@@ -100,6 +100,7 @@ const AdminLayoutContent: React.FC = () => {
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768;
+      console.log('Window width:', window.innerWidth, 'Is mobile:', mobile);
       setIsMobile(mobile);
       if (!mobile) {
         setIsMobileOpen(false);
@@ -120,10 +121,13 @@ const AdminLayoutContent: React.FC = () => {
   }, [isExpanded]);
 
   const toggleSidebar = () => {
-    if (window.innerWidth >= 1024) {
+    console.log('toggleSidebar called, window width:', window.innerWidth);
+    if (window.innerWidth >= 768) {
       setIsExpanded(prev => !prev);
+      console.log('Toggling expanded state');
     } else {
       setIsMobileOpen(prev => !prev);
+      console.log('Toggling mobile open state');
     }
   };
 
@@ -144,9 +148,9 @@ const AdminLayoutContent: React.FC = () => {
 
       {/* Sidebar - Ẩn cho CreativeEditor */}
       {!isCreativeEditorPage && (
-        <div className="relative z-10">
+        <>
           <AdminSidebar
-            isExpanded={isMobile ? false : isExpanded}
+            isExpanded={isMobileOpen || (!isMobile && isExpanded)}
             isMobileOpen={isMobileOpen}
             isHovered={isHovered}
             onSetIsHovered={setIsHovered}
@@ -156,11 +160,11 @@ const AdminLayoutContent: React.FC = () => {
           {/* Mobile Backdrop */}
           {isMobileOpen && (
             <div
-              className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+              className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
               onClick={() => setIsMobileOpen(false)}
             />
           )}
-        </div>
+        </>
       )}
 
       {/* Main Content */}

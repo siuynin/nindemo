@@ -9,6 +9,7 @@ import {
   SparklesIcon, 
   SpeakerIcon, 
   DocumentIcon,
+  VideoIcon,
   ChevronLeftIcon,
   ChevronRightIcon 
 } from './icons';
@@ -39,6 +40,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const { t } = useLanguage();
   const { user, isAuthenticated, totalCredits } = useAuth();
   const location = useLocation();
+  const [isMobile, setIsMobile] = useState(false);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "marketing" | "others";
@@ -46,6 +48,18 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Check mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Navigation items based on current frontend structure
   const navItems: NavItem[] = [ 
@@ -64,7 +78,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       name: 'Image Tools',
       path: '/image-tools',
     },
-    
+    {
+      icon: <VideoIcon className="w-5 h-5" />,
+      name: t.sidebar?.videoGeneration?.title || 'Video Generation',
+      path: '/app/video-generation',
+    },
     {
       icon: <SpeakerIcon className="w-5 h-5" />,
       name: t.sidebar?.textToSpeech?.title || 'Text to Speech',
@@ -279,7 +297,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   return (
     <aside
-      className={`fixed mt-16 flex flex-col lg:mt-0 top-0 left-0 h-screen transition-all duration-300 ease-in-out z-40 border-r ${
+      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r pt-16 lg:pt-0 ${
         theme === 'dark'
           ? 'bg-gray-900 border-gray-800 text-gray-100'
           : 'bg-white border-gray-200 text-gray-900'
@@ -289,7 +307,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           : isHovered
           ? "w-[290px]"
           : "w-[90px]"
-      } ${isMobileOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0`}
+      } ${isMobileOpen ? "translate-x-0" : isMobile ? "-translate-x-full" : "translate-x-0"}`}
       onMouseEnter={() => !isExpanded && onSetIsHovered(true)}
       onMouseLeave={() => onSetIsHovered(false)}
     >

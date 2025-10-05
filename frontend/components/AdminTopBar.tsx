@@ -6,6 +6,7 @@ import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
 import ProfileModal from './ProfileModal';
 import AuthModal from './AuthModal';
+import UserMenu from './UserMenu';
 
 interface AdminTopBarProps {
   className?: string;
@@ -24,11 +25,6 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
-  const { user, isAuthenticated, logout, isLoading } = useAuth();
-  const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authModalMode, setAuthModalMode] = useState<'login' | 'register'>('login');
   const [isApplicationMenuOpen, setApplicationMenuOpen] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,7 +43,10 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
     };
   }, []);
 
-  const handleToggle = () => {
+  const handleToggle = (e: React.MouseEvent) => {
+    console.log('handleToggle clicked, currentPage:', currentPage);
+    e.preventDefault();
+    e.stopPropagation();
     if (currentPage === 'creative-editor' && onBackToDocument) {
       // Khi ở trang CreativeEditor, nút này sẽ trở thành nút Back to Document
       onBackToDocument();
@@ -61,34 +60,6 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
     setApplicationMenuOpen(!isApplicationMenuOpen);
   };
 
-  const toggleAccountDropdown = () => {
-    setIsAccountDropdownOpen(!isAccountDropdownOpen);
-  };
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setIsAccountDropdownOpen(false);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  const handleLoginClick = () => {
-    setAuthModalMode('login');
-    setIsAuthModalOpen(true);
-  };
-
-  const handleRegisterClick = () => {
-    setAuthModalMode('register');
-    setIsAuthModalOpen(true);
-  };
-
-  const handleProfileClick = () => {
-    setIsProfileModalOpen(true);
-    setIsAccountDropdownOpen(false);
-  };
-
   return (
     <>
       <header className={`sticky top-0 flex w-full bg-white border-gray-200 z-50 dark:border-gray-800 dark:bg-gray-900 lg:border-b ${className}`}>
@@ -97,7 +68,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
             {/* Sidebar Toggle Button / Back to Document Button */}
             <button
               className="flex items-center justify-center w-10 h-10 text-gray-500 border-gray-200 rounded-lg z-50 dark:border-gray-800 lg:flex dark:text-gray-400 lg:h-11 lg:w-11 lg:border hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              onClick={handleToggle}
+              onClick={(e) => handleToggle(e)}
               aria-label={currentPage === 'creative-editor' ? "Back to Document" : (isSidebarOpen ? "Close Sidebar" : "Open Sidebar")}
             >
               {currentPage === 'creative-editor' ? (
@@ -161,7 +132,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
               </h1>
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {/* Mobile Menu Toggle for Right Side Controls */}
             <button
               onClick={toggleApplicationMenu}
               className="flex items-center justify-center w-10 h-10 text-gray-700 rounded-lg hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800 lg:hidden"
@@ -232,101 +203,13 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
               {/* Language Toggle */}
               <LanguageToggle />
             </div>
-
+ 
             {/* User Area */}
-            <div className="relative">
-              {isAuthenticated ? (
-                <div className="relative">
-                  <button
-                    onClick={toggleAccountDropdown}
-                    className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                      {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {user?.name || user?.email}
-                    </span>
-                    <svg
-                      className={`w-4 h-4 text-gray-500 transition-transform ${isAccountDropdownOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-
-                  {isAccountDropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-                      <div className="py-1">
-                        <button
-                          onClick={handleProfileClick}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          {t.topbar?.profile || 'Profile'}
-                        </button>
-                        <button
-                          onClick={() => window.location.href = '/user-credit'}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          User Credit
-                        </button>
-                        <button
-                          onClick={handleLogout}
-                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          {t.topbar?.logout || 'Logout'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleLoginClick}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
-                  >
-                    {t.topbar?.login || 'Login'}
-                  </button>
-                  <button
-                    onClick={handleRegisterClick}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    {t.topbar?.register || 'Register'}
-                  </button>
-                </div>
-              )}
-            </div>
+            <UserMenu />
           </div>
         </div>
       </header>
 
-      {/* Modals */}
-      {isProfileModalOpen && (
-        <ProfileModal
-          isOpen={isProfileModalOpen}
-          onClose={() => setIsProfileModalOpen(false)}
-        />
-      )}
-
-      {isAuthModalOpen && (
-        <AuthModal
-          isOpen={isAuthModalOpen}
-          onClose={() => setIsAuthModalOpen(false)}
-          mode={authModalMode}
-          onSwitchMode={(mode) => setAuthModalMode(mode)}
-        />
-      )}
-
-      {/* Backdrop for mobile dropdown */}
-      {isAccountDropdownOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsAccountDropdownOpen(false)}
-        />
-      )}
     </>
   );
 };

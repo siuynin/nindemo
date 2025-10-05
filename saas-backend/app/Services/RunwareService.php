@@ -121,6 +121,37 @@ class RunwareService
     }
 
     /**
+     * Generate video using Runware API
+     */
+    public function generateVideo(array $request): array
+    {
+        try {
+            Log::info('Calling Runware Video API', ['request' => $request]);
+
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->apiKey,
+                'Content-Type' => 'application/json',
+            ])->post($this->baseUrl, [$request]);
+
+            if (!$response->successful()) {
+                Log::error('Runware Video API error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
+                throw new \Exception('Runware Video API request failed: ' . $response->body());
+            }
+
+            $data = $response->json();
+            Log::info('Runware Video API response', ['response' => $data]);
+
+            return $data;
+        } catch (\Exception $e) {
+            Log::error('Runware Video API exception', ['error' => $e->getMessage()]);
+            throw $e;
+        }
+    }
+
+    /**
      * Build Runware request from validated data
      */
     public function buildRequest(array $validatedData): array

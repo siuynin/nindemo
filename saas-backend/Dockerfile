@@ -1,27 +1,22 @@
+# Dockerfile
 FROM php:8.2-apache
 
-# Cài extension
-RUN apt-get update && apt-get install -y \
-    libpng-dev libonig-dev libxml2-dev zip unzip git curl \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-
-# Cài Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Copy code
 WORKDIR /var/www/html
+
+# Copy project files
 COPY . .
 
-# Cài dependency
-RUN composer install --no-dev --optimize-autoloader 
-RUN php artisan key:generate --force \
-    && php artisan config:cache \
-    && php artisan route:cache
-# Enable mod_rewrite và chỉnh DocumentRoot về /public
-RUN a2enmod rewrite \
-    && sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf \
-    && sed -i 's|/var/www/|/var/www/html/public|g' /etc/apache2/apache2.conf
+# Cài extension PHP
+RUN apt-get update && apt-get install -y libzip-dev zip unzip \
+    && docker-php-ext-install pdo pdo_mysql zip
 
-EXPOSE 80
+# Cài composer dependencies
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN composer install --no-dev --optimize-autoloader
 
-CMD ["apache2-foreground"]
+# Enable mod_rewrite
+RUN a2enmod rewrite
+COPY .docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+# Chỉ build xong thôi, KHÔNG artisan ở đây!
+CMD php artisan key:generate --force && php artisan migrate --force && apache2-foreground

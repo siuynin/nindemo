@@ -13,6 +13,7 @@ import Price from './pages/Price';
 import CreativeEditor from './pages/CreativeEditor';
 import ImageTools from './pages/ImageTools';
 import UserCredit from './pages/UserCredit';
+import VideoGeneration from './pages/VideoGeneration';
 import App from './App';
 import DebugRunware from './debug-runware';
 import UpScaler from './pages/image-tool/UpScaler';
@@ -117,6 +118,10 @@ export const router = createBrowserRouter([
       {
         path: 'user-credit',
         element: <UserCredit />,
+      },
+      {
+        path: 'video-generation',
+        element: <VideoGeneration />,
       },
     ],
   },

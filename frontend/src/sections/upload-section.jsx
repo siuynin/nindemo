@@ -8,6 +8,7 @@ import {
 } from 'polotno/side-panel';
 import { getImageSize, getCrop } from 'polotno/utils/image';
 import { getVideoSize, getVideoPreview } from 'polotno/utils/video';
+import { getKey } from '../utils/mock-polotno-key';
 import { dataURLtoBlob } from '../blob';
 
 import { CloudWarning } from '../cloud-warning';

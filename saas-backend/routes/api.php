@@ -171,6 +171,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/generation/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getGenerationStatus']);
         Route::post('/upscale', [App\Http\Controllers\Api\ImageGenerationController::class, 'upscaleImage']);
     });
+
+    // Video Generation Routes
+    Route::prefix('video')->group(function () {
+        Route::post('/generate', [App\Http\Controllers\Api\VideoGenerationController::class, 'generateVideo']);
+        Route::get('/generation/{id}', [App\Http\Controllers\Api\VideoGenerationController::class, 'getGenerationStatus']);
+        Route::get('/generations', [App\Http\Controllers\Api\VideoGenerationController::class, 'getUserGenerations']);
+    });
     
     // AI Text Processing Routes
     Route::prefix('ai')->group(function () {

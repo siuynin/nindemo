@@ -6,7 +6,7 @@ import { useInfiniteAPI } from 'polotno/utils/use-api';
 import { t } from 'polotno/utils/l10n';
 import { Video } from '@blueprintjs/icons';
 import { selectVideo } from 'polotno/side-panel/select-video';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 
 // use Polotno API proxy into Pexels
 // WARNING: don't use on production! Use your own proxy and Pexels API key

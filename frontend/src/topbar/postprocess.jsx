@@ -9,7 +9,7 @@ import {
   Callout,
   Spinner,
 } from '@blueprintjs/core';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 import { downloadFile } from 'polotno/utils/download';
 import { useCredits } from '../credits';
 import { ArrowRight } from '@blueprintjs/icons';

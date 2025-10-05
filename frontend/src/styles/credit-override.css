@@ -1,0 +1,86 @@
+/* Credit Override CSS - Hide all Polotno credits and watermarks */
+
+/* Hide all credit and watermark elements */
+[class*="credit"],
+[class*="watermark"],
+[class*="powered"],
+[data-testid*="credit"],
+a[href*="polotno.com"], 
+span[class*="polotno"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+}
+
+/* Hide canvas watermarks and overlays */
+canvas + div[style*="position"],
+canvas ~ div[style*="position"],
+canvas + div[class*="watermark"],
+canvas ~ div[class*="watermark"] {
+  display: none !important;
+}
+
+/* Hide specific Polotno UI elements */
+div[data-testid*="polotno"],
+div[data-testid*="credit"],
+div[data-testid*="watermark"],
+button[data-testid*="credit"] {
+  display: none !important;
+}
+
+/* Hide elements with credit text content */
+div:has(> *:contains("Powered by")),
+div:has(> *:contains("Made with")),
+div:has(> *:contains("polotno.com")),
+span:has(*:contains("Powered by")),
+span:has(*:contains("Made with")) {
+  display: none !important;
+}
+
+/* Hide bottom-right positioned elements (common watermark position) */
+div[style*="position: absolute"][style*="bottom"],
+div[style*="position: fixed"][style*="bottom"] {
+  display: none !important;
+}
+
+/* Hide any element containing polotno text */
+*[id*="polotno"],
+*[data-*="polotno"] {
+  display: none !important;
+}
+
+/* Additional selectors for common credit patterns */
+.credit,
+.watermark,
+.powered-by,
+.made-with,
+#credit,
+#watermark,
+#powered-by {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
+/* Hide SVG watermarks */
+svg[class*="watermark"],
+svg[class*="credit"] {
+  display: none !important;
+}
+
+/* Force hide with high specificity */
+body [class*="credit"],
+body [class*="watermark"],
+body [class*="powered"],
+html [class*="credit"],
+html [class*="watermark"],
+html [class*="powered"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}

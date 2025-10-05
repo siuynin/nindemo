@@ -4,7 +4,7 @@ import { InputGroup, Button, HTMLSelect, ButtonGroup } from '@blueprintjs/core';
 import { Clean, Plus } from '@blueprintjs/icons';
 
 import { SectionTab } from 'polotno/side-panel';
-import { getKey } from 'polotno/utils/validate-key';
+import { getKey } from '../utils/mock-polotno-key';
 import { getImageSize } from 'polotno/utils/image';
 import { t } from 'polotno/utils/l10n';
 
