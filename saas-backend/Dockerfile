@@ -16,7 +16,6 @@ RUN composer install --no-dev --optimize-autoloader
 
 # Enable mod_rewrite
 RUN a2enmod rewrite
-COPY .docker/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
 
 # Chỉ build xong thôi, KHÔNG artisan ở đây!
 CMD php artisan key:generate --force && php artisan migrate --force && apache2-foreground
