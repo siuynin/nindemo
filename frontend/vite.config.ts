@@ -12,8 +12,25 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-            maximumFileSizeToCacheInBytes: 5000000 // Tăng giới hạn lên 5 MiB
+            maximumFileSizeToCacheInBytes: 10000000, // Tăng giới hạn lên 10 MiB
+            skipWaiting: true,
+            clientsClaim: true,
+            cleanupOutdatedCaches: true,
+            // Loại trừ các file bundle quá lớn nếu cần
+            exclude: [/\.(?:map)$/i]
           },
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
+              'editor-vendor': ['@cesdk/cesdk-js', '@cesdk/engine']
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000 // Cảnh báo khi chunk > 1MB
+      },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
             name: 'AI App - Creative Assistant',

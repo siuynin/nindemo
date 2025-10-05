@@ -260,6 +260,8 @@
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${new Date(generate.created_at).toLocaleDateString('vi-VN')}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button onclick="viewGenerate(${generate.id})" class="text-indigo-600 hover:text-indigo-900 mr-3">Xem</button>
+                        <button onclick="editGenerate(${generate.id})" class="text-green-600 hover:text-green-900 mr-3">Chỉnh sửa</button>
+                        <button onclick="duplicateGenerate(${generate.id})" class="text-blue-600 hover:text-blue-900 mr-3">Sao chép</button>
                         <button onclick="deleteGenerate(${generate.id})" class="text-red-600 hover:text-red-900">Xóa</button>
                     </td>
                 </tr>
@@ -333,6 +335,52 @@
                 console.error('Error:', error);
                 alert('Có lỗi xảy ra khi xóa');
             });
+        }
+    }
+
+    // Duplicate generate - sao chép bản ghi
+    function duplicateGenerate(id) {
+        if (confirm('Bạn có muốn sao chép generate này?')) {
+            // Lấy dữ liệu generate hiện tại
+            fetch(`/admin/generates/${id}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Tạo dữ liệu mới với tên thay đổi
+                    const newData = {
+                        name: data.name + ' (Copy)',
+                        type: data.type,
+                        content: data.content,
+                        share: data.share,
+                        credit_cost: data.credit_cost,
+                        _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    };
+                    
+                    // Gửi request tạo bản sao
+                    return fetch('/admin/generates', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify(newData)
+                    });
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.message) {
+                        alert(result.message);
+                        location.reload(); // Reload để cập nhật danh sách
+                    } else {
+                        alert('Sao chép thành công!');
+                        location.reload();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi sao chép');
+                });
         }
     }
     
