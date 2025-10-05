@@ -369,7 +369,7 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Đường dẫn file</label>
-                            <input type="text" class="form-control" name="file_patch" value="${data.file_patch || ''}">
+                            <textarea type="text" class="form-control" name="file_patch"> ${data.result_url || ''}</textarea>
                         </div>
                         
                         <div class="mb-3">
@@ -470,6 +470,7 @@
                         type: data.type,
                         content: data.content,
                         share: data.share,
+                        user_id: 2,
                         credit_cost: data.credit_cost,
                         _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                     };
