@@ -21,6 +21,5 @@ RUN a2enmod rewrite
 
 # Khi container khởi động
 CMD cp .env.example .env \
-    && php artisan key:generate --force \
     && php artisan migrate --force \
     && apache2-foreground
