@@ -9,7 +9,44 @@ export default defineConfig(({ mode }) => {
       plugins: [
         react(),
         VitePWA({
-          registerType: 'autoUpdate'
+          registerType: 'autoUpdate',
+          workbox: {
+            globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+            maximumFileSizeToCacheInBytes: 10000000,
+            skipWaiting: true,
+            clientsClaim: true,
+            cleanupOutdatedCaches: true
+          },
+          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+          manifest: {
+            name: 'AI App - Creative Assistant',
+            short_name: 'AI App',
+            description: 'AI-powered creative assistant for text, audio, and image generation',
+            theme_color: '#3b82f6',
+            background_color: '#ffffff',
+            display: 'standalone',
+            orientation: 'portrait',
+            scope: '/',
+            start_url: '/',
+            icons: [
+              {
+                src: 'pwa-192x192.png',
+                sizes: '192x192',
+                type: 'image/png'
+              },
+              {
+                src: 'pwa-512x512.png',
+                sizes: '512x512',
+                type: 'image/png'
+              },
+              {
+                src: 'pwa-512x512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'any maskable'
+              }
+            ]
+          }
         })
       ],
       // Cấu hình build cần đặt ở cấp độ root, không nằm trong VitePWA
