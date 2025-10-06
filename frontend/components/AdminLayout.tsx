@@ -154,6 +154,7 @@ const AdminLayoutContent: React.FC = () => {
             isMobileOpen={isMobileOpen}
             isHovered={isHovered}
             onSetIsHovered={setIsHovered}
+            onMobileClose={() => setIsMobileOpen(false)}
             currentPage={currentPage}
           />
           

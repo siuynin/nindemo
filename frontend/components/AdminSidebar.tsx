@@ -19,6 +19,7 @@ interface AdminSidebarProps {
   isMobileOpen: boolean;
   isHovered: boolean;
   onSetIsHovered: (hovered: boolean) => void;
+  onMobileClose?: () => void;
   currentPage: string;
 }
 
@@ -34,6 +35,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   isMobileOpen,
   isHovered,
   onSetIsHovered,
+  onMobileClose,
   currentPage
 }) => {
   const { theme } = useTheme();
@@ -48,6 +50,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   } | null>(null);
   const [subMenuHeight, setSubMenuHeight] = useState<Record<string, number>>({});
   const subMenuRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  // Handle mobile link click
+  const handleMobileLinkClick = useCallback(() => {
+    if (isMobile && isMobileOpen && onMobileClose) {
+      onMobileClose();
+    }
+  }, [isMobile, isMobileOpen, onMobileClose]);
 
   // Check mobile screen size
   useEffect(() => {
@@ -217,21 +226,22 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           ) : (
             nav.path && (
               <Link
-                to={nav.path}
-                className={`w-full flex items-center gap-3 px-3 py-3 text-left rounded-lg transition-all duration-200 group ${
-                  isActive(nav.path)
-                    ? theme === 'dark'
-                      ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
-                      : 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                    : theme === 'dark'
-                      ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                      : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                } ${
-                  !isExpanded && !isHovered
-                    ? "lg:justify-center"
-                    : "lg:justify-start"
-                }`}
-              >
+              to={nav.path}
+              onClick={handleMobileLinkClick}
+              className={`w-full flex items-center gap-3 px-3 py-3 text-left rounded-lg transition-all duration-200 group ${
+                isActive(nav.path)
+                  ? theme === 'dark'
+                    ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
+                    : 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
+                  : theme === 'dark'
+                    ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              } ${
+                !isExpanded && !isHovered
+                  ? "lg:justify-center"
+                  : "lg:justify-start"
+              }`}
+            >
                 <span className="flex-shrink-0">
                   {nav.icon}
                 </span>
@@ -259,6 +269,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
+                      onClick={handleMobileLinkClick}
                       className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
                         isActive(subItem.path)
                           ? theme === 'dark'
@@ -409,6 +420,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
               </div>
               <Link
                 to="/price"
+                onClick={handleMobileLinkClick}
                 className="inline-block mt-2 px-3 py-1 text-xs font-medium text-white bg-blue-600 rounded-full hover:bg-blue-700 transition-colors"
               >
                 {t.sidebar?.buy_more || 'Buy More'}

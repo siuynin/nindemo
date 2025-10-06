@@ -55,11 +55,24 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
-              'ui-vendor': ['@headlessui/react', '@heroicons/react']
+              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
+              'router-vendor': ['react-router-dom'],
+              'utils-vendor': ['lodash', 'chroma-js', 'classnames']
             }
           }
         },
-        chunkSizeWarningLimit: 1000 // Cảnh báo khi chunk > 1MB
+        chunkSizeWarningLimit: 1000, // Cảnh báo khi chunk > 1MB
+        minify: 'terser', // Sử dụng terser thay vì esbuild để tránh lỗi minification
+        terserOptions: {
+          compress: {
+            drop_console: false, // Giữ console.log để debug
+            drop_debugger: false
+          },
+          mangle: {
+            keep_fnames: true, // Giữ tên function để tránh lỗi 'o is not a function'
+            reserved: ['o', 'e', 't', 'n', 'r', 'i', 'a', 's'] // Bảo vệ các tên biến ngắn
+          }
+        }
       },
       define: {
         'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),

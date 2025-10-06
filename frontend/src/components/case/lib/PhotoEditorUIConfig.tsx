@@ -1,17 +1,11 @@
-import CreativeEditorSDK, {
-  AssetResult,
-  CreativeEngine,
-  SettingsBool
-} from '@cesdk/cesdk-js';
-import { removeBackground } from '@imgly/background-removal';
+ 
 import APP_ASSETS from '../assets/Apps.json';
 import { getImageSize } from './CreativeEngineUtils';
 import loadAssetSourceFromContentJSON from './loadAssetSourceFromContentJSON';
 import { caseAssetPath } from '../util/photo-util';
 
 export async function initPhotoEditorUIConfig(
-  instance: CreativeEditorSDK,
-  photoUri: string
+   photoUri: string
 ) {
   setupDock(instance);
   // Hide 'Resize' button on the navigation bar
