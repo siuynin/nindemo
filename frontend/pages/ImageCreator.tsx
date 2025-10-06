@@ -789,9 +789,9 @@ const ImageCreator: React.FC = () => {
         isOpen={showModelPopup}
         onClose={() => setShowModelPopup(false)}
         title={t.imageCreator?.selectModel || 'Select AI Model'}
-        size="lg"
+        size="xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto">
           {models.map((model) => (
             <button
               key={model.id}
@@ -803,11 +803,15 @@ const ImageCreator: React.FC = () => {
               }`}
             >
               <div className="flex items-start space-x-3">
-                {model.thumbnail && (
+                {model.thumbnail_url && (
                   <img
-                    src={model.thumbnail}
+                    src={model.thumbnail_url}
                     alt={model.name}
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -818,7 +822,7 @@ const ImageCreator: React.FC = () => {
                     {model.platform} • {Math.floor(model.credit_price)} credits
                   </p>
                   {model.short_description && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-2">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-3">
                       {model.short_description}
                     </p>
                   )}

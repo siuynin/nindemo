@@ -100,7 +100,7 @@ class GenerateController extends Controller
             'type' => 'sometimes|string|max:255',
             'status' => 'nullable|string|max:255',
             'share' => 'nullable|string|max:255',
-            'file_patch' => 'nullable|string|max:255',
+            'result_url' => 'nullable|string|max:255',
             'task_id' => 'nullable|string|max:255',
             'credit_cost' => 'nullable|numeric|min:0'
         ]);
@@ -108,7 +108,11 @@ class GenerateController extends Controller
         $generate->update($validated);
         $generate->load('user');
         
-        return response()->json($generate);
+        return response()->json([
+            'success' => true,
+            'message' => 'Generate updated successfully',
+            'data' => $generate
+        ]);
     }
 
     /**
@@ -127,6 +131,6 @@ class GenerateController extends Controller
         
         // Return redirect for web requests
         return redirect()->route('admin.generates.index')
-                        ->with('success', 'Generate deleted successfully');
+                    ->with('success', 'Generate deleted successfully');
     }
 }
