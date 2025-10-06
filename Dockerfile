@@ -16,7 +16,7 @@ RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # Làm việc trong thư mục app
 WORKDIR /var/www/html
-COPY saas-backend/ .
+COPY . .
 
 # Cài Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
