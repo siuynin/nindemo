@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 
 export default defineConfig({
+    base: process.env.NODE_ENV === 'production' ? 'https://api.ndhubs.com/' : '/',
     plugins: [
         laravel({
             input: [

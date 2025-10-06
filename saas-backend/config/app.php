@@ -123,4 +123,17 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Asset URL
+    |--------------------------------------------------------------------------
+    |
+    | The asset URL is used to generate URLs for assets. This is useful
+    | when using a CDN or when you want to serve assets from a different
+    | domain than your application.
+    |
+    */
+
+    'asset_url' => env('ASSET_URL'),
+
 ];
