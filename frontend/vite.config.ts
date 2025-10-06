@@ -10,14 +10,12 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
-          strategies: 'generateSW',
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-            maximumFileSizeToCacheInBytes: 10000000, // Tăng giới hạn lên 10 MiB
+            maximumFileSizeToCacheInBytes: 10000000,
             skipWaiting: true,
             clientsClaim: true,
-            cleanupOutdatedCaches: true,
-            globIgnores: ['**/*.map']
+            cleanupOutdatedCaches: true
           },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
