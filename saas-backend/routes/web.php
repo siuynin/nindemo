@@ -7,6 +7,16 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+// Health check route for Railway
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'app' => config('app.name'),
+        'env' => config('app.env')
+    ]);
+});
+
 // Authentication Routes
 Auth::routes();
 
