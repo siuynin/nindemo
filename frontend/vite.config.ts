@@ -55,8 +55,7 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks: {
               'react-vendor': ['react', 'react-dom'],
-              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
-              'editor-vendor': ['@cesdk/cesdk-js', '@cesdk/engine']
+              'ui-vendor': ['@headlessui/react', '@heroicons/react']
             }
           }
         },
@@ -74,7 +73,7 @@ export default defineConfig(({ mode }) => {
       },
       assetsInclude: ['**/*.wasm'],
       optimizeDeps: {
-        exclude: ['@cesdk/cesdk-js', '@cesdk/engine']
+        include: ['react', 'react-dom']
       },
       server: {
         port: 5175,
