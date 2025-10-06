@@ -31,7 +31,14 @@ RUN npm run build
 # Phân quyền Laravel
 RUN chown -R www-data:www-data storage bootstrap/cache
 
+# Tạo symbolic link cho storage (cần thiết cho Railway)
+RUN php artisan storage:link
+
+# Tạo thư mục storage nếu chưa có
+RUN mkdir -p storage/app/public/models/thumbnails
+RUN chown -R www-data:www-data storage/app/public
+
 EXPOSE 80
 
 # Khởi động Apache
-CMD php artisan config:cache && php artisan route:cache && apache2-foreground
+CMD php artisan config:cache && php artisan route:cache && php artisan storage:link && apache2-foreground

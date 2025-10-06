@@ -44,7 +44,7 @@ class AIModelController extends Controller
 
         // Handle thumbnail upload
         if ($request->hasFile('thumbnail')) {
-            $validated['thumbnail'] = $request->file('thumbnail')->store('models/thumbnails', 'public');
+            $validated['thumbnail'] = $request->file('thumbnail')->store('models/thumbnails', 's3');
         }
 
         // Generate slug if not provided
@@ -93,9 +93,9 @@ class AIModelController extends Controller
         if ($request->hasFile('thumbnail')) {
             // Delete old thumbnail
             if ($model->thumbnail) {
-                Storage::disk('public')->delete($model->thumbnail);
+                Storage::disk('s3')->delete($model->thumbnail);
             }
-            $validated['thumbnail'] = $request->file('thumbnail')->store('models/thumbnails', 'public');
+            $validated['thumbnail'] = $request->file('thumbnail')->store('models/thumbnails', 's3');
         }
 
         // Generate slug if not provided

@@ -41,7 +41,7 @@
                                         <td>{{ $model->id }}</td>
                                         <td>
                                             @if($model->thumbnail)
-                                                <img src="{{ Storage::url($model->thumbnail) }}" 
+                                                <img src="{{ Storage::disk('s3')->url($model->thumbnail) }}" 
                                                      alt="{{ $model->name }}" 
                                                      class="img-thumbnail" 
                                                      style="width: 50px; height: 50px; object-fit: cover;">

@@ -126,7 +126,7 @@
                                     <label for="thumbnail" class="form-label">Thumbnail</label>
                                     @if($model->thumbnail)
                                         <div class="mb-2">
-                                            <img src="{{ Storage::url($model->thumbnail) }}" 
+                                            <img src="{{ Storage::disk('s3')->url($model->thumbnail) }}" 
                                                  alt="Current thumbnail" 
                                                  class="img-thumbnail" 
                                                  style="max-width: 150px; max-height: 150px;">
