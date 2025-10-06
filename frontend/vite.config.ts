@@ -10,27 +10,16 @@ export default defineConfig(({ mode }) => {
         react(),
         VitePWA({
           registerType: 'autoUpdate',
+          strategies: 'generateSW',
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
             maximumFileSizeToCacheInBytes: 10000000, // Tăng giới hạn lên 10 MiB
             skipWaiting: true,
             clientsClaim: true,
             cleanupOutdatedCaches: true,
-            // Loại trừ các file bundle quá lớn nếu cần
-            exclude: [/\.(?:map)$/i]
+            // Loại trừ các file không cần cache (ví dụ sourcemaps)
+            globIgnores: ['**/*.map']
           },
-      build: {
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
-              'editor-vendor': ['@cesdk/cesdk-js', '@cesdk/engine']
-            }
-          }
-        },
-        chunkSizeWarningLimit: 1000 // Cảnh báo khi chunk > 1MB
-      },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
             name: 'AI App - Creative Assistant',
@@ -63,6 +52,19 @@ export default defineConfig(({ mode }) => {
           }
         })
       ],
+      // Cấu hình build cần đặt ở cấp độ root, không nằm trong VitePWA
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
+              'editor-vendor': ['@cesdk/cesdk-js', '@cesdk/engine']
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000 // Cảnh báo khi chunk > 1MB
+      },
       define: {
         'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),
