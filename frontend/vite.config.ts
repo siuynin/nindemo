@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
             skipWaiting: true,
             clientsClaim: true,
             cleanupOutdatedCaches: true,
-            // Loại trừ các file không cần cache (ví dụ sourcemaps)
             globIgnores: ['**/*.map']
           },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],

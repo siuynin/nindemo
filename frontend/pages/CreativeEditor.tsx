@@ -17,7 +17,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 
 unstable_setAnimationsEnabled(true);
 
-const store = createStore({ key: 'nFA5H9elEytDyPyvKL7T', showCredit: false });
+const store = createStore({ key: ' ', showCredit: false });
 window.store = store;
 store.addPage();
 
