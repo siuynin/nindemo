@@ -31,7 +31,7 @@ yarn-error.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
-
+/frontend/dist/
 # Laravel specific
 /saas-backend/vendor/
 /saas-backend/storage/logs/*.log
