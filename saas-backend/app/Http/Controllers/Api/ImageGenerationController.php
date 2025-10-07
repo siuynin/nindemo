@@ -131,13 +131,74 @@ class ImageGenerationController extends Controller
                 Log::info('Processing Runware response', ['response_structure' => $runwareResponse]);
                 
                 if (isset($runwareResponse['data']) && is_array($runwareResponse['data'])) {
+                    // Collect Runware URLs for batch upload to S3
+                    $runwareUrls = [];
+                    $seedData = [];
+                    
                     foreach ($runwareResponse['data'] as $imageData) {
                         if (isset($imageData['imageURL']) && isset($imageData['seed'])) {
-                            // For now, store Runware URL directly as the URL
-                            // In the future, this can be replaced with S3 URL after upload
+                            $runwareUrls[] = $imageData['imageURL'];
+                            $seedData[] = $imageData['seed'];
+                        }
+                    }
+                    
+                    // Upload images to S3 if S3 is configured
+                    Log::info('Checking S3 configuration', [
+                        'is_configured' => $this->imageStorageService->isS3Configured(),
+                        'urls_count' => count($runwareUrls)
+                    ]);
+                    
+                    if ($this->imageStorageService->isS3Configured() && !empty($runwareUrls)) {
+                        try {
+                            Log::info('Starting S3 upload process', ['urls_count' => count($runwareUrls)]);
+                            
+                            $uploadResult = $this->imageStorageService->uploadMultipleImagesFromUrls($runwareUrls, 'generated-images');
+                            
+                            Log::info('S3 upload result', ['result' => $uploadResult]);
+                            
+                            if (!empty($uploadResult['uploaded_urls'])) {
+                                // Use S3 URLs
+                                foreach ($uploadResult['uploaded_urls'] as $index => $s3Url) {
+                                    $imageResults[] = [
+                                        'seed' => $seedData[$index] ?? null,
+                                        'url' => $s3Url
+                                    ];
+                                }
+                                
+                                Log::info('Images uploaded to S3 successfully', [
+                                    'uploaded_count' => count($uploadResult['uploaded_urls']),
+                                    'errors_count' => count($uploadResult['errors'])
+                                ]);
+                            } else {
+                                // Fallback to Runware URLs if S3 upload fails
+                                Log::warning('S3 upload failed, using Runware URLs as fallback');
+                                foreach ($runwareUrls as $index => $runwareUrl) {
+                                    $imageResults[] = [
+                                        'seed' => $seedData[$index] ?? null,
+                                        'url' => $runwareUrl
+                                    ];
+                                }
+                            }
+                        } catch (\Exception $s3Error) {
+                            Log::error('S3 upload error, using Runware URLs as fallback', ['error' => $s3Error->getMessage()]);
+                            // Fallback to Runware URLs
+                            foreach ($runwareUrls as $index => $runwareUrl) {
+                                $imageResults[] = [
+                                    'seed' => $seedData[$index] ?? null,
+                                    'url' => $runwareUrl
+                                ];
+                            }
+                        }
+                    } else {
+                        // S3 not configured, use Runware URLs
+                        Log::info('S3 not configured or no URLs, using Runware URLs', [
+                            'is_configured' => $this->imageStorageService->isS3Configured(),
+                            'urls_empty' => empty($runwareUrls)
+                        ]);
+                        foreach ($runwareUrls as $index => $runwareUrl) {
                             $imageResults[] = [
-                                'seed' => $imageData['seed'],
-                                'url' => $imageData['imageURL']
+                                'seed' => $seedData[$index] ?? null,
+                                'url' => $runwareUrl
                             ];
                         }
                     }
@@ -337,10 +398,36 @@ class ImageGenerationController extends Controller
                 $imageData = $response['data'][0];
                 
                 if (isset($imageData['imageURL'])) {
+                    $runwareUrl = $imageData['imageURL'];
+                    $finalUrl = $runwareUrl; // Default to Runware URL
+                    
+                    // Try to upload to S3 if configured
+                    if ($this->imageStorageService->isS3Configured()) {
+                        try {
+                            Log::info('Uploading upscaled image to S3', ['runware_url' => $runwareUrl]);
+                            
+                            $s3Url = $this->imageStorageService->uploadImageFromUrl($runwareUrl, 'upscaled-images');
+                            $finalUrl = $s3Url; // Use S3 URL if upload successful
+                            
+                            Log::info('Upscaled image uploaded to S3 successfully', [
+                                'runware_url' => $runwareUrl,
+                                's3_url' => $s3Url
+                            ]);
+                        } catch (\Exception $s3Error) {
+                            Log::error('S3 upload failed for upscaled image, using Runware URL as fallback', [
+                                'error' => $s3Error->getMessage(),
+                                'runware_url' => $runwareUrl
+                            ]);
+                            // Keep using Runware URL as fallback
+                        }
+                    } else {
+                        Log::info('S3 not configured, using Runware URL for upscaled image');
+                    }
+                    
                     // Update generate record with success
                     $generate->update([
                         'status' => 'completed',
-                        'result_url' => $imageData['imageURL'],
+                        'result_url' => $finalUrl,
                         'file_patch' => json_encode($imageData)
                     ]);
 
@@ -352,7 +439,7 @@ class ImageGenerationController extends Controller
                         'data' => [
                             'id' => $generate->id,
                             'status' => 'completed',
-                            'imageUrl' => $imageData['imageURL'],
+                            'imageUrl' => $finalUrl,
                             'credit_cost' => $creditCost,
                             'remaining_credits' => $user->credits - $creditCost
                         ]

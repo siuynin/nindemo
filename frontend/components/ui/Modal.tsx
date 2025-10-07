@@ -82,7 +82,7 @@ export const Modal: React.FC<ModalProps> = ({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className={`flex items-center justify-between p-6 border-b ${actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`flex items-center justify-between p-4 border-b ${actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'}`}>
             {title && (
               <h3 className={`text-lg font-semibold ${actualTheme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                 {title}

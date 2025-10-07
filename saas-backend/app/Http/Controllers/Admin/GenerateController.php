@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
+use App\Models\AIModel;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -30,7 +31,7 @@ class GenerateController extends Controller
                   });
             });
         }
-        
+        $models = AIModel::latest()->where('type','image')->paginate(75);
         // Filter by user if provided
         if ($request->has('user_id') && $request->user_id) {
             $query->where('user_id', $request->user_id);
@@ -54,7 +55,7 @@ class GenerateController extends Controller
         }
         
         // Return view for web requests
-        return view('admin.generates.index', compact('generates'));
+        return view('admin.generates.index', compact('generates', 'models'));
     }
 
     /**
@@ -92,22 +93,28 @@ class GenerateController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Generate $generate): JsonResponse
+    public function update(Request $request, Generate $generate)
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'content' => 'nullable|string',
-            'type' => 'sometimes|string|max:255',
-            'status' => 'nullable|string|max:255',
-            'share' => 'nullable|string|max:255',
-            'result_url' => 'nullable|string|max:255',
-            'task_id' => 'nullable|string|max:255',
-            'credit_cost' => 'nullable|numeric|min:0'
-        ]);
+        // Log dữ liệu nhận được để debug
+        \Log::info('Update Generate Request Data:', $request->all());
         
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'content' => 'nullable|string',
+            'type' => 'required|string|max:255',
+            'status' => 'required|string|max:255',
+            'share' => 'required|string|max:255',
+            'file_patch' => 'nullable|string',
+            'task_id' => 'nullable|string|max:255',
+            'credit_cost' => 'nullable|numeric|min:0',
+            'result_url' => 'nullable|string',
+            'error_message' => 'nullable|string',
+            'completed_at' => 'nullable|date'
+        ]); 
+
         $generate->update($validated);
         $generate->load('user');
-        
+
         return response()->json([
             'success' => true,
             'message' => 'Generate updated successfully',
@@ -131,6 +138,6 @@ class GenerateController extends Controller
         
         // Return redirect for web requests
         return redirect()->route('admin.generates.index')
-                    ->with('success', 'Generate deleted successfully');
+             ->with('success', 'Generate deleted successfully');
     }
 }

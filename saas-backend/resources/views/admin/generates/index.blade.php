@@ -371,7 +371,13 @@
                             <label class="form-label">Đường dẫn file</label>
                             <textarea class="form-control" name="result_url" rows="3">${data.result_url || ''}</textarea>
                         </div>
-                        
+
+                        @forelse($models as $model)
+                            <span class="badge bg-primary">{{ $model->slug }}</span>
+                         @empty
+                            <p class="text-muted">Không có mô hình nào</p>
+                        @endforelse 
+
                         <div class="mb-3">
                             <label class="form-label">Nội dung</label>
                             <textarea class="form-control" name="content" rows="5">${data.content || ''}</textarea>
@@ -408,6 +414,9 @@
     function saveGenerate(id) {
         const form = document.getElementById('editGenerateForm');
         const formData = new FormData(form);
+        
+        // Thêm _method để Laravel hiểu đây là PUT request
+        formData.append('_method', 'PUT');
         
         fetch(`/admin/generates/${id}`, {
             method: 'POST',

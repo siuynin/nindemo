@@ -209,11 +209,11 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
         theme === 'dark' ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
       }`}>
         {/* Header */}
-        <div className={`p-6 border-b ${
+        <div className={`p-4 border-b ${
           theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
         }`}>
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold">Chọn Giọng Nói</h2>
+            <h2 className="text-xl font-bold">Chọn Giọng Nói</h2>
             <button
               onClick={onClose}
               className={`p-2 rounded-lg transition-colors ${
@@ -228,7 +228,7 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
         </div>
 
         {/* Filters */}
-        <div className={`p-6 border-b ${
+        <div className={`p-4 border-b ${
           theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
         }`}>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">

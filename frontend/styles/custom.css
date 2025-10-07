@@ -312,3 +312,10 @@ body {
 .bp5-dark .bp5-navbar {
     box-shadow: none !important;
 }
+.polotno-app-container .polotno-side-panel-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+ 
+}

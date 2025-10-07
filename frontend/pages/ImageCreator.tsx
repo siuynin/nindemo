@@ -791,12 +791,12 @@ const ImageCreator: React.FC = () => {
         title={t.imageCreator?.selectModel || 'Select AI Model'}
         size="xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto px-4 py-2">
           {models.map((model) => (
             <button
               key={model.id}
               onClick={() => handleModelSelect(model)}
-              className={`p-4 border rounded-lg text-left transition-colors ${
+              className={`p-2 border rounded-lg text-left transition-colors ${
                 formData.model === model.slug
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
                   : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
