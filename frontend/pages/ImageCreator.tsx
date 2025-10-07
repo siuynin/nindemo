@@ -520,7 +520,7 @@ const ImageCreator: React.FC = () => {
   });
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${actualTheme === 'dark' ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' : 'bg-gradient-to-br from-blue-50 via-white to-purple-50'}`}>
+    <div className={`min-h-screen font-sans transition-colors duration-300 ${actualTheme === 'dark' ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-30">
         <div className={`absolute inset-0 ${actualTheme === 'dark' ? 'bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]' : 'bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]'}`}></div>
@@ -540,7 +540,7 @@ const ImageCreator: React.FC = () => {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 lg:gap-12">
           {/* Form Section */}
           <div className="xl:col-span-4">
-            <Card className="shadow-2xl backdrop-blur-sm sticky top-8" padding="lg" shadow="lg">
+            <Card className=" backdrop-blur-sm sticky top-8" padding="lg" shadow="lg">
               <div className="flex items-center mb-3"> 
                 <div>
                   <h2 className={`text-xl font-semibold text-gray-800 ${
@@ -669,7 +669,7 @@ const ImageCreator: React.FC = () => {
                             onClick={() => handleAspectRatioSelect(ratio)}
                             className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 first:rounded-t-lg last:rounded-b-lg ${
                               selectedAspectRatio.ratio === ratio.ratio
-                                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                                ? 'bg-gray-100 dark:bg-gray-700/50 text-gray-900 dark:text-gray-100'
                                 : 'text-gray-700 dark:text-gray-300'
                             }`}
                           >
@@ -760,7 +760,7 @@ const ImageCreator: React.FC = () => {
 
           {/* Generated Images Section */}
           <div className="xl:col-span-8">
-            <Card className="shadow-2xl backdrop-blur-sm h-full" padding="lg" shadow="lg">
+            <Card className="  backdrop-blur-sm h-full" padding="lg" shadow="lg">
               <div className="flex items-center mb-8">
                 <div className={`w-12 h-12 rounded-xl  ${actualTheme === 'dark' ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-gradient-to-r from-green-600 to-blue-600'} flex items-center justify-center mr-4 shadow-lg`}>
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -789,25 +789,29 @@ const ImageCreator: React.FC = () => {
         isOpen={showModelPopup}
         onClose={() => setShowModelPopup(false)}
         title={t.imageCreator?.selectModel || 'Select AI Model'}
-        size="lg"
+        size="xl"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto px-4 py-2">
           {models.map((model) => (
             <button
               key={model.id}
               onClick={() => handleModelSelect(model)}
-              className={`p-4 border rounded-lg text-left transition-colors ${
+              className={`p-2 border rounded-lg text-left transition-colors ${
                 formData.model === model.slug
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-400'
+                  ? 'border-gray-400 bg-gray-100 dark:bg-gray-700/50 dark:border-gray-500'
                   : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700/50'
               }`}
             >
               <div className="flex items-start space-x-3">
-                {model.thumbnail && (
+                {model.thumbnail_url && (
                   <img
-                    src={model.thumbnail}
+                    src={model.thumbnail_url}
                     alt={model.name}
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
                   />
                 )}
                 <div className="flex-1 min-w-0">
@@ -818,7 +822,7 @@ const ImageCreator: React.FC = () => {
                     {model.platform} • {Math.floor(model.credit_price)} credits
                   </p>
                   {model.short_description && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-2">
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-3">
                       {model.short_description}
                     </p>
                   )}

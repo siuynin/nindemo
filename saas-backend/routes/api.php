@@ -29,6 +29,10 @@ Route::get('/pricing-plans', [App\Http\Controllers\Api\PricingPlanController::cl
 Route::get('/public-voices', [App\Http\Controllers\Api\VoiceController::class, 'index']);
 Route::get('/public-voices/{id}', [App\Http\Controllers\Api\VoiceController::class, 'show']);
 
+// Public generates (images/content with share = 'public')
+Route::get('/public-generates', [App\Http\Controllers\Api\PublicGenerateController::class, 'index']);
+Route::get('/public-generates/{id}', [App\Http\Controllers\Api\PublicGenerateController::class, 'show']);
+
 // Minimax voices API
 Route::get('/minimax/voices', [App\Http\Controllers\Api\MinimaxController::class, 'getVoices']);
 

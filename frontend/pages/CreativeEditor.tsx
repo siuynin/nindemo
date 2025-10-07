@@ -12,12 +12,12 @@ import { createProject, ProjectContext } from '../src/project';
 import '../src/index.css';
 import '../src/styles/credit-override.css';
 import Canva from '../src/Canva';
-import '../src/logger';
+import '../src/logger'; 
 import { ErrorBoundary } from 'react-error-boundary'; 
 
 unstable_setAnimationsEnabled(true);
 
-const store = createStore({ key: 'nFA5H9elEytDyPyvKL7T', showCredit: false });
+const store = createStore({ key: ' ', showCredit: false });
 window.store = store;
 store.addPage();
 
@@ -28,9 +28,7 @@ function Fallback({ error, resetErrorBoundary }) {
   return (
     <div style={{ width: '100vw', height: '100vh' }}>
       <div style={{ textAlign: 'center', paddingTop: '40px' }}>
-        <p>Something went wrong in the app.</p>
-        <p>Try to reload the page.</p>
-        <p>If it does not work, clear cache and reload.</p>
+        <p>Something went wrong in the app.</p> 
         <button
           onClick={async () => {
             await project.clear();
@@ -53,11 +51,11 @@ const CreativeEditor = observer(() => {
     // Tạo link elements cho BlueprintJS CSS
     const coreLink = document.createElement('link');
     coreLink.rel = 'stylesheet';
-    coreLink.href = 'https://unpkg.com/@blueprintjs/core@5.x/lib/css/blueprint.css';
+    coreLink.href = '../styles/blueprint.css';
     
     const iconsLink = document.createElement('link');
     iconsLink.rel = 'stylesheet';
-    iconsLink.href = 'https://unpkg.com/@blueprintjs/icons@5.x/lib/css/blueprint-icons.css';
+    iconsLink.href = '../styles/blueprint-icons.css';
     
     // Thêm vào head
     document.head.appendChild(coreLink);

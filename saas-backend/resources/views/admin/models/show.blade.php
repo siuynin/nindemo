@@ -23,7 +23,7 @@
                         <div class="col-md-4">
                             @if($model->thumbnail)
                                 <div class="text-center mb-4">
-                                    <img src="{{ Storage::url($model->thumbnail) }}" 
+                                    <img src="{{ Storage::disk('s3')->url($model->thumbnail) }}" 
                                          alt="{{ $model->name }}" 
                                          class="img-fluid rounded shadow" 
                                          style="max-width: 100%; max-height: 300px; object-fit: cover;">

@@ -203,6 +203,51 @@ const Minimax: React.FC = () => {
     fetchUserGenerates();
   }, [isAuthenticated, user]);
 
+  // Auto-check status for processing generates
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const processingGenerates = userGenerates.filter(
+      generate => generate.status === 'processing' || generate.status === 'pending'
+    );
+
+    if (processingGenerates.length === 0) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const response = await generateService.getGenerates({
+          type: 'audio',
+          per_page: 10
+        });
+        
+        if (response.success && response.data) {
+          setUserGenerates(response.data);
+          
+          // Check if lastGenerateResult needs updating
+          if (lastGenerateResult && (lastGenerateResult.status === 'processing' || lastGenerateResult.status === 'pending')) {
+            const updatedGenerate = response.data.find(g => g.id === lastGenerateResult.id);
+            if (updatedGenerate && updatedGenerate.status !== lastGenerateResult.status) {
+              setLastGenerateResult({
+                ...lastGenerateResult,
+                status: updatedGenerate.status
+              });
+              
+              if (updatedGenerate.status === 'completed') {
+                showToast(`Audio generation "${updatedGenerate.name}" completed successfully!`, 'success');
+              } else if (updatedGenerate.status === 'failed') {
+                showToast(`Audio generation "${updatedGenerate.name}" failed.`, 'error');
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking generate status:', error);
+      }
+    }, 5000); // Check every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [userGenerates, lastGenerateResult, isAuthenticated, user]);
+
   // Toast notification function
   const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
     setToast({ message, type, visible: true });
@@ -545,7 +590,7 @@ const Minimax: React.FC = () => {
                 )}
 
                 {/* User Generates List */}
-                <div className="space-y-3 max-h-96 overflow-y-auto">
+                <div className="space-y-3  overflow-y-auto">
                   {userGenerates.length > 0 ? (
                     userGenerates.map((generate) => (
                       <div

@@ -52,7 +52,7 @@ class MinimaxService
                 'voice_setting' => $voiceSettings,
                 'language_boost' => $languageBoost,
                 'with_transcript' => $withTranscript,
-                'receive_url' => config('app.url') . '/api/getaudio'
+                'receive_url' => config('app.url') . '/api/getaudio',
             ];
             
             $url = $this->baseUrl . '/task/text-to-speech';

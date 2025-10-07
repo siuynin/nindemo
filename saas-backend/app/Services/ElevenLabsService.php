@@ -40,8 +40,8 @@ class ElevenLabsService
                 'text' => $text,
                 'model_id' => $model,
                 'with_transcript' => false,
-                // 'receive_url' => config('app.url') . '/api/getaudio',
-                'receive_url' => 'http://myapp.loca.lt/api/getaudio'
+                'receive_url' => config('app.url') . '/api/getaudio',
+                // 'receive_url' => 'http://myapp.loca.lt/api/getaudio'
             ];
 
             // Add voice settings if provided

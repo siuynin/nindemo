@@ -12,25 +12,11 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           workbox: {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-            maximumFileSizeToCacheInBytes: 10000000, // Tăng giới hạn lên 10 MiB
+            maximumFileSizeToCacheInBytes: 10000000,
             skipWaiting: true,
             clientsClaim: true,
-            cleanupOutdatedCaches: true,
-            // Loại trừ các file bundle quá lớn nếu cần
-            exclude: [/\.(?:map)$/i]
+            cleanupOutdatedCaches: true
           },
-      build: {
-        rollupOptions: {
-          output: {
-            manualChunks: {
-              'react-vendor': ['react', 'react-dom'],
-              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
-              'editor-vendor': ['@cesdk/cesdk-js', '@cesdk/engine']
-            }
-          }
-        },
-        chunkSizeWarningLimit: 1000 // Cảnh báo khi chunk > 1MB
-      },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
             name: 'AI App - Creative Assistant',
@@ -63,6 +49,31 @@ export default defineConfig(({ mode }) => {
           }
         })
       ],
+      // Cấu hình build cần đặt ở cấp độ root, không nằm trong VitePWA
+      build: {
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'react-vendor': ['react', 'react-dom'],
+              'ui-vendor': ['@headlessui/react', '@heroicons/react'],
+              'router-vendor': ['react-router-dom'],
+              'utils-vendor': ['lodash', 'chroma-js', 'classnames']
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000, // Cảnh báo khi chunk > 1MB
+        minify: 'terser', // Sử dụng terser thay vì esbuild để tránh lỗi minification
+        terserOptions: {
+          compress: {
+            drop_console: false, // Giữ console.log để debug
+            drop_debugger: false
+          },
+          mangle: {
+            keep_fnames: true, // Giữ tên function để tránh lỗi 'o is not a function'
+            reserved: ['o', 'e', 't', 'n', 'r', 'i', 'a', 's'] // Bảo vệ các tên biến ngắn
+          }
+        }
+      },
       define: {
         'process.env.API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.VITE_GEMINI_API_KEY),
@@ -75,7 +86,7 @@ export default defineConfig(({ mode }) => {
       },
       assetsInclude: ['**/*.wasm'],
       optimizeDeps: {
-        exclude: ['@cesdk/cesdk-js', '@cesdk/engine']
+        include: ['react', 'react-dom']
       },
       server: {
         port: 5175,

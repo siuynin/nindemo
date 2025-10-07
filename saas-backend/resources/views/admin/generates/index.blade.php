@@ -369,9 +369,15 @@
                         
                         <div class="mb-3">
                             <label class="form-label">Đường dẫn file</label>
-                            <textarea type="text" class="form-control" name="file_patch"> ${data.result_url || ''}</textarea>
+                            <textarea class="form-control" name="result_url" rows="3">${data.result_url || ''}</textarea>
                         </div>
-                        
+
+                        @forelse($models as $model)
+                            <span class="badge bg-primary">{{ $model->slug }}</span>
+                         @empty
+                            <p class="text-muted">Không có mô hình nào</p>
+                        @endforelse 
+
                         <div class="mb-3">
                             <label class="form-label">Nội dung</label>
                             <textarea class="form-control" name="content" rows="5">${data.content || ''}</textarea>
@@ -409,14 +415,24 @@
         const form = document.getElementById('editGenerateForm');
         const formData = new FormData(form);
         
+        // Thêm _method để Laravel hiểu đây là PUT request
+        formData.append('_method', 'PUT');
+        
         fetch(`/admin/generates/${id}`, {
             method: 'POST',
             body: formData,
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 alert('Cập nhật thành công!');
@@ -428,7 +444,7 @@
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Có lỗi xảy ra khi lưu dữ liệu');
+            alert('Có lỗi xảy ra khi lưu dữ liệu: ' + error.message);
         });
     }
 

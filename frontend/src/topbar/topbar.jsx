@@ -109,7 +109,7 @@ export default observer(({ store }) => {
                 letterSpacing: '0.25px',
               }}
             >
-              Polotno
+               NDhubs
             </span>
           </div>
           <NavbarDivider />

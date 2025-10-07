@@ -36,7 +36,7 @@ const ImageCreatorPage: React.FC = () => {
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <HomeLayout />,
+    element: <AdminLayout />,
     children: [
       {
         index: true,
