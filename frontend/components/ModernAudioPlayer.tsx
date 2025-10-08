@@ -58,11 +58,20 @@ const ModernAudioPlayer: React.FC<ModernAudioPlayerProps> = ({
       });
     };
 
-    if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
+    // Preload and prepare audio for faster playback
+    audio.preload = 'auto';
+    audio.load();
+
+    // Use canplaythrough for better loading assurance
+    const handleCanPlayThrough = () => {
+      handleCanPlay();
+    };
+
+    if (audio.readyState >= 4) { // HAVE_ENOUGH_DATA
       handleCanPlay();
     } else {
-      audio.addEventListener('canplay', handleCanPlay);
-      return () => audio.removeEventListener('canplay', handleCanPlay);
+      audio.addEventListener('canplaythrough', handleCanPlayThrough);
+      return () => audio.removeEventListener('canplaythrough', handleCanPlayThrough);
     }
   }, [autoPlay, isVisible, audioUrl]);
 
@@ -72,10 +81,30 @@ const ModernAudioPlayer: React.FC<ModernAudioPlayerProps> = ({
 
     if (isPlaying) {
       audio.pause();
+      setIsPlaying(false);
     } else {
-      audio.play();
+      // Ensure audio is ready before playing
+      if (audio.readyState >= 3) { // HAVE_FUTURE_DATA
+        audio.play().then(() => {
+          setIsPlaying(true);
+        }).catch((error) => {
+          console.log('Play failed:', error);
+          setIsPlaying(false);
+        });
+      } else {
+        // If not ready, wait for canplay event
+        const handleCanPlay = () => {
+          audio.play().then(() => {
+            setIsPlaying(true);
+          }).catch((error) => {
+            console.log('Play failed:', error);
+            setIsPlaying(false);
+          });
+          audio.removeEventListener('canplay', handleCanPlay);
+        };
+        audio.addEventListener('canplay', handleCanPlay);
+      }
     }
-    setIsPlaying(!isPlaying);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -111,7 +140,7 @@ const ModernAudioPlayer: React.FC<ModernAudioPlayerProps> = ({
         ? 'bg-gray-900/95 border-gray-700' 
         : 'bg-white/95 border-gray-200'
     }`}>
-      <audio ref={audioRef} src={audioUrl} preload="metadata" />
+      <audio ref={audioRef} src={audioUrl} preload="auto" />
       
       <div className="max-w-4xl mx-auto p-4">
         {/* Title and Close Button */}

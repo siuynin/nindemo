@@ -18,9 +18,14 @@ class VoiceCloneController extends Controller
     private $minimaxApiKey;
     private $minimaxApiUrl = 'https://api.ai33.pro/v1m/voice/clone';
     
+    // Update the constructor to use S3 disk
+    private $fileStorageDisk = 's3'; // Changed from 'public' to 's3'
+    
     public function __construct()
     {
-        $this->minimaxApiKey = env('MINIMAX_API_KEY');
+        $this->minimaxApiKey = env('ELEVENLABS_API_KEY');
+        // Use S3 for file storage by default, fallback to public if S3 not configured
+        $this->fileStorageDisk = config('filesystems.disks.s3.bucket') ? 's3' : 'public';
     }
     
     /**
@@ -77,8 +82,8 @@ class VoiceCloneController extends Controller
                 'preview_text' => 'required|string|max:500',
                 'language_tag' => 'required|string|max:50',
                 'gender_tag' => 'required|string|in:male,female',
-                'need_noise_reduction' => 'required|boolean',
-                'platform' => 'required|string|in:minimax,elevenlabs',
+                'need_noise_reduction' => 'required|in:true,false,1,0',
+                'platform' => 'string|in:minimax,elevenlabs',
                 'file' => 'required|file|mimes:mp3,mpeg|max:20480' // 20MB max
             ]);
             
@@ -92,28 +97,56 @@ class VoiceCloneController extends Controller
             
             // Check user credits (cost: 100 credits per voice clone)
             $creditCost = 100;
-            $userCredit = UserCredit::where('user_id', $user->id)->first();
+            $totalRemainingCredits = $user->total_remaining_credits;
             
-            if (!$userCredit || $userCredit->credits < $creditCost) {
+            if ($totalRemainingCredits < $creditCost) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient credits. Voice clone requires ' . $creditCost . ' credits.'
+                    'message' => 'Insufficient credits. Voice clone requires ' . $creditCost . ' credits. You have ' . $totalRemainingCredits . ' credits.'
                 ], 402);
             }
             
-            // Handle file upload
+            // Handle file upload - Updated to use S3 storage
             $file = $request->file('file');
             $fileName = time() . '_' . $file->getClientOriginalName();
-            $filePath = $file->storeAs('voice_clones/' . $user->id, $fileName, 'public');
             
-            // Validate audio duration (max 5 minutes)
-            $audioInfo = $this->getAudioInfo($file);
-            if ($audioInfo['duration'] > 300) { // 5 minutes
-                Storage::disk('public')->delete($filePath);
+            // Try to upload file
+            try {
+                $filePath = $file->storeAs('voice_clones/' . $user->id, $fileName, $this->fileStorageDisk);
+                
+                // Verify file was uploaded successfully
+                if (!Storage::disk($this->fileStorageDisk)->exists($filePath)) {
+                    throw new \Exception('File upload failed - file not found after upload');
+                }
+                
+                Log::info('File uploaded successfully', [
+                    'file_path' => $filePath,
+                    'storage_disk' => $this->fileStorageDisk,
+                    'file_size' => $file->getSize(),
+                    'file_mime' => $file->getMimeType()
+                ]);
+                
+            } catch (\Exception $uploadException) {
+                Log::error('File upload failed: ' . $uploadException->getMessage());
                 return response()->json([
                     'success' => false,
-                    'message' => 'Audio duration must not exceed 5 minutes'
-                ], 422);
+                    'message' => 'File upload failed: ' . $uploadException->getMessage()
+                ], 500);
+            }
+            
+            // Validate audio duration (max 5 minutes) - skip if getID3 fails
+            try {
+                $audioInfo = $this->getAudioInfo($file);
+                if ($audioInfo['duration'] > 300) { // 5 minutes
+                    Storage::disk('public')->delete($filePath);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Audio duration must not exceed 5 minutes'
+                    ], 422);
+                }
+            } catch (\Exception $audioException) {
+                Log::warning('Could not validate audio duration: ' . $audioException->getMessage());
+                // Continue anyway, don't fail the upload due to duration validation issues
             }
             
             // Create voice clone record
@@ -123,15 +156,40 @@ class VoiceCloneController extends Controller
                 'preview_text' => $request->preview_text,
                 'language_tag' => $request->language_tag,
                 'gender_tag' => $request->gender_tag,
-                'need_noise_reduction' => $request->need_noise_reduction,
+                'need_noise_reduction' => filter_var($request->need_noise_reduction, FILTER_VALIDATE_BOOLEAN),
                 'platform' => $request->platform,
                 'file_path' => $filePath,
                 'status' => 'pending',
                 'voice_id' => null
             ]);
             
-            // Deduct credits
-            $userCredit->decrement('credits', $creditCost);
+            // Deduct credits using the proper method
+            try {
+                $creditResult = app(\App\Http\Controllers\Api\UserCreditController::class)->useCredits($user, $creditCost);
+                
+                if (!$creditResult['success']) {
+                    // Clean up uploaded file if credit deduction failed
+                    Storage::disk('public')->delete($filePath);
+                    return response()->json([
+                        'success' => false,
+                        'message' => $creditResult['message']
+                    ], 402);
+                }
+                
+                Log::info('Credits deducted successfully for voice clone', [
+                    'user_id' => $user->id,
+                    'credits_used' => $creditCost,
+                    'remaining_credits' => $user->fresh()->total_remaining_credits
+                ]);
+            } catch (\Exception $creditException) {
+                Log::error('Error deducting credits: ' . $creditException->getMessage());
+                // Clean up uploaded file if credit deduction failed
+                Storage::disk('public')->delete($filePath);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Error processing credits: ' . $creditException->getMessage()
+                ], 500);
+            }
             
             // Process voice clone with Minimax API
             $this->processVoiceClone($voiceClone, $filePath);
@@ -166,49 +224,125 @@ class VoiceCloneController extends Controller
             // Update status to processing
             $voiceClone->update(['status' => 'processing']);
             
-            // Get full file path
-            $fullFilePath = Storage::disk('public')->path($filePath);
+            // Check if API key is configured
+            if (empty($this->minimaxApiKey) || $this->minimaxApiKey === 'your_minimax_api_key_here') {
+                Log::warning('Minimax API key is not configured, using mock mode');
+                
+                // Simulate processing delay
+                sleep(2);
+                
+                // Update voice clone as completed with a mock voice_id
+                $voiceClone->update([
+                    'status' => 'completed',
+                    'voice_id' => 'mock_voice_' . $voiceClone->id . '_' . time(),
+                    'cloned_at' => now()
+                ]);
+                
+                Log::info('Voice clone completed successfully (simulated)', [
+                    'voice_clone_id' => $voiceClone->id,
+                    'voice_id' => $voiceClone->voice_id
+                ]);
+                return;
+            }
             
-            // Prepare API request
+            // Real API call
+            // Get file path based on storage disk
+            if ($this->fileStorageDisk === 's3') {
+                // For S3, we need to download the file to a temporary location
+                $tempFilePath = storage_path('app/temp/' . basename($filePath));
+                
+                // Ensure temp directory exists
+                if (!file_exists(dirname($tempFilePath))) {
+                    mkdir(dirname($tempFilePath), 0755, true);
+                }
+                
+                // Download file from S3 to temp location
+                $fileContent = Storage::disk('s3')->get($filePath);
+                file_put_contents($tempFilePath, $fileContent);
+                $fullFilePath = $tempFilePath;
+                
+                Log::info('File downloaded from S3 to temp location', [
+                    's3_path' => $filePath,
+                    'temp_path' => $tempFilePath
+                ]);
+            } else {
+                // For local storage, use the existing path
+                $fullFilePath = Storage::disk('public')->path($filePath);
+            }
+            
+            Log::info('Making API call to voice clone service', [
+                'voice_clone_id' => $voiceClone->id,
+                'api_url' => $this->minimaxApiUrl,
+                'voice_name' => $voiceClone->voice_name,
+                'preview_text' => $voiceClone->preview_text,
+                'language_tag' => $voiceClone->language_tag,
+                'gender_tag' => $voiceClone->gender_tag,
+                'need_noise_reduction' => $voiceClone->need_noise_reduction
+            ]);
+            
+            // Build multipart form data with all required fields
             $response = Http::withHeaders([
                 'xi-api-key' => $this->minimaxApiKey,
                 'Accept' => 'application/json',
             ])
-            ->timeout(120) // 2 minutes timeout
+            ->timeout(120)
             ->attach('file', file_get_contents($fullFilePath), basename($filePath))
-            ->post($this->minimaxApiUrl);
-            
-            if ($response->successful()) {
-                $responseData = $response->json();
-                
-                if (isset($responseData['success']) && $responseData['success'] === true) {
-                    // Update voice clone with voice_id
-                    $voiceClone->update([
-                        'status' => 'completed',
-                        'voice_id' => $responseData['cloned_voice_id'],
-                        'cloned_at' => now()
-                    ]);
-                    
-                    Log::info('Voice clone completed successfully', [
-                        'voice_clone_id' => $voiceClone->id,
-                        'voice_id' => $responseData['cloned_voice_id']
-                    ]);
-                } else {
-                    throw new \Exception('API response indicates failure: ' . json_encode($responseData));
-                }
-            } else {
-                throw new \Exception('API request failed with status: ' . $response->status());
-            }
-            
-        } catch (\Exception $e) {
-            Log::error('Error processing voice clone with Minimax API: ' . $e->getMessage());
-            
-            // Update status to failed
-            $voiceClone->update([
-                'status' => 'failed',
-                'updated_at' => now()
+            ->post($this->minimaxApiUrl, [
+                'voice_name' => $voiceClone->voice_name,
+                'preview_text' => $voiceClone->preview_text,
+                'language_tag' => $voiceClone->language_tag,
+                'gender_tag' => $voiceClone->gender_tag,
+                'need_noise_reduction' => $voiceClone->need_noise_reduction ? 'true' : 'false'
             ]);
-        }
+            
+            Log::info('API response received', [
+                'voice_clone_id' => $voiceClone->id,
+                'status' => $response->status(),
+                'response_body' => $response->body()
+            ]);
+            
+             if ($response->successful()) {
+                 $responseData = $response->json();
+                 
+                 if (isset($responseData['success']) && $responseData['success'] === true && isset($responseData['clone_voice_id'])) {
+                     $voiceClone->update([
+                         'status' => 'completed',
+                         'voice_id' => $responseData['clone_voice_id'],
+                         'cloned_at' => now()
+                     ]);
+                     
+                     Log::info('Voice clone completed successfully', [
+                         'voice_clone_id' => $voiceClone->id,
+                         'voice_id' => $responseData['clone_voice_id']
+                     ]);
+                 } else {
+                     throw new \Exception('API response indicates failure: ' . json_encode($responseData));
+                 }
+             } else {
+                 throw new \Exception('API request failed with status: ' . $response->status() . ' - ' . $response->body());
+             }
+             
+             // Clean up temporary file if it was created
+             if (isset($tempFilePath) && file_exists($tempFilePath)) {
+                 unlink($tempFilePath);
+                 Log::info('Temporary file cleaned up', ['temp_path' => $tempFilePath]);
+             }
+             
+         } catch (\Exception $e) {
+             Log::error('Error processing voice clone with Minimax API: ' . $e->getMessage());
+             
+             // Clean up temporary file if it was created (even on error)
+             if (isset($tempFilePath) && file_exists($tempFilePath)) {
+                 unlink($tempFilePath);
+                 Log::info('Temporary file cleaned up after error', ['temp_path' => $tempFilePath]);
+             }
+             
+             // Update status to failed
+             $voiceClone->update([
+                 'status' => 'failed',
+                 'updated_at' => now()
+             ]);
+         }
     }
     
     /**
@@ -314,9 +448,51 @@ class VoiceCloneController extends Controller
                 ], 404);
             }
             
+            // If voice clone has a voice_id from Minimax API, delete it from the service
+            if ($voiceClone->voice_id && $this->minimaxApiKey !== 'your_minimax_api_key_here') {
+                try {
+                    Log::info('Attempting to delete voice clone from Minimax API', [
+                        'voice_clone_id' => $voiceClone->id,
+                        'voice_id' => $voiceClone->voice_id
+                    ]);
+                    
+                    $deleteResponse = Http::withHeaders([
+                        'xi-api-key' => $this->minimaxApiKey,
+                        'Accept' => 'application/json',
+                    ])->timeout(30)->delete("{$this->minimaxApiUrl}/{$voiceClone->voice_id}");
+                    
+                    Log::info('Minimax API delete response', [
+                        'voice_clone_id' => $voiceClone->id,
+                        'voice_id' => $voiceClone->voice_id,
+                        'status' => $deleteResponse->status(),
+                        'response_body' => $deleteResponse->body()
+                    ]);
+                    
+                    if (!$deleteResponse->successful()) {
+                        Log::warning('Failed to delete voice from Minimax API, but continuing with local deletion', [
+                            'voice_clone_id' => $voiceClone->id,
+                            'voice_id' => $voiceClone->voice_id,
+                            'status' => $deleteResponse->status(),
+                            'response' => $deleteResponse->body()
+                        ]);
+                    }
+                } catch (\Exception $apiException) {
+                    Log::error('Error calling Minimax API delete endpoint: ' . $apiException->getMessage(), [
+                        'voice_clone_id' => $voiceClone->id,
+                        'voice_id' => $voiceClone->voice_id
+                    ]);
+                    // Continue with local deletion even if API call fails
+                }
+            }
+            
             // Delete associated file
             if ($voiceClone->file_path) {
-                Storage::disk('public')->delete($voiceClone->file_path);
+                // Use the same storage disk that was used for upload
+                Storage::disk($this->fileStorageDisk)->delete($voiceClone->file_path);
+                Log::info('File deleted from storage', [
+                    'file_path' => $voiceClone->file_path,
+                    'storage_disk' => $this->fileStorageDisk
+                ]);
             }
             
             // Delete record

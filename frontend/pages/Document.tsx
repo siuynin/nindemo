@@ -1210,68 +1210,88 @@ const Document: React.FC = () => {
            title={imageModal.title}
            size="xl"
          >
-           <div className="space-y-4">
-             {/* Image Display */}
-             <div className="relative">
-               <img
-                 src={imageModal.images[imageModal.currentIndex]}
-                 alt={`Image ${imageModal.currentIndex + 1}`}
-                 className="w-full h-auto max-h-96 object-contain rounded-lg"
-               />
-               
-               {/* Image Counter */}
-               {imageModal.images.length > 1 && (
-                 <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
-                   theme === 'dark' ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'
-                 } backdrop-blur-sm`}>
-                   {imageModal.currentIndex + 1} / {imageModal.images.length}
-                 </div>
-               )}
+           <div className="flex flex-col lg:flex-row gap-6 max-h-[80vh]">
+             {/* Image Section */}
+             <div className="lg:w-2/3 flex items-center justify-center">
+               <div className="relative">
+                 <img
+                   src={imageModal.images[imageModal.currentIndex]}
+                   alt={`Image ${imageModal.currentIndex + 1}`}
+                   className="max-h-[70vh] w-auto object-contain rounded-lg"
+                 />
+                 
+                 {/* Image Counter */}
+                 {imageModal.images.length > 1 && (
+                   <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
+                     theme === 'dark' ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'
+                   } backdrop-blur-sm`}>
+                     {imageModal.currentIndex + 1} / {imageModal.images.length}
+                   </div>
+                 )}
+               </div>
              </div>
 
-             {/* Navigation Buttons */}
-             {imageModal.images.length > 1 && (
-               <div className="flex justify-center space-x-4">
+             {/* Info Section */}
+             <div className="lg:w-1/3 flex flex-col justify-center space-y-4">
+               {/* Navigation Buttons */}
+               {imageModal.images.length > 1 && (
+                 <div className="flex flex-col space-y-2">
+                   <h4 className={`text-sm font-medium ${
+                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                   }`}>
+                     Navigation
+                   </h4>
+                   <div className="flex space-x-2">
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setImageModal(prev => ({
+                         ...prev,
+                         currentIndex: prev.currentIndex > 0 ? prev.currentIndex - 1 : prev.images.length - 1
+                       }))}
+                       className="flex-1"
+                     >
+                       ← Previous
+                     </Button>
+                     <Button
+                       variant="outline"
+                       size="sm"
+                       onClick={() => setImageModal(prev => ({
+                         ...prev,
+                         currentIndex: prev.currentIndex < prev.images.length - 1 ? prev.currentIndex + 1 : 0
+                       }))}
+                       className="flex-1"
+                     >
+                       Next →
+                     </Button>
+                   </div>
+                 </div>
+               )}
+
+               {/* Download Button */}
+               <div className="space-y-2">
+                 <h4 className={`text-sm font-medium ${
+                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                 }`}>
+                   Actions
+                 </h4>
                  <Button
-                   variant="outline"
+                   variant="primary"
                    size="sm"
-                   onClick={() => setImageModal(prev => ({
-                     ...prev,
-                     currentIndex: prev.currentIndex > 0 ? prev.currentIndex - 1 : prev.images.length - 1
-                   }))}
+                   onClick={() => {
+                     const link = document.createElement('a');
+                     link.href = imageModal.images[imageModal.currentIndex];
+                     link.download = `image-${imageModal.currentIndex + 1}.jpg`;
+                     document.body.appendChild(link);
+                     link.click();
+                     document.body.removeChild(link);
+                   }}
+                   className="w-full"
                  >
-                   ← Previous
-                 </Button>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => setImageModal(prev => ({
-                     ...prev,
-                     currentIndex: prev.currentIndex < prev.images.length - 1 ? prev.currentIndex + 1 : 0
-                   }))}
-                 >
-                   Next →
+                   <DownloadIcon className="w-4 h-4 mr-2" />
+                   Download Image
                  </Button>
                </div>
-             )}
-
-             {/* Download Button */}
-             <div className="flex justify-center">
-               <Button
-                 variant="primary"
-                 size="sm"
-                 onClick={() => {
-                   const link = document.createElement('a');
-                   link.href = imageModal.images[imageModal.currentIndex];
-                   link.download = `image-${imageModal.currentIndex + 1}.jpg`;
-                   document.body.appendChild(link);
-                   link.click();
-                   document.body.removeChild(link);
-                 }}
-               >
-                 <DownloadIcon className="w-4 h-4 mr-2" />
-                 Download Image
-               </Button>
              </div>
            </div>
          </Modal>

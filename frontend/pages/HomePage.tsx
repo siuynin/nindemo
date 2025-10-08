@@ -355,32 +355,32 @@ const HomePage: React.FC = () => {
       {/* Modal popup */}
       {showModal && selectedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className={`max-w-6xl w-full max-h-[90vh] overflow-y-auto  rounded-xl  ${
+          <div className={`relative max-w-6xl w-full max-h-[90vh] rounded-xl overflow-hidden ${
             theme === 'dark' ? 'bg-gray-800' : 'bg-white'
           }`}>
-            <div className="flex flex-col lg:flex-row">
+            {/* Close button at modal corner */}
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full flex items-center justify-center transition-all duration-200"
+            >
+              ✕
+            </button>
+            
+            <div className="flex flex-col lg:flex-row h-full max-h-[90vh]">
               {/* Image Section */}
-              <div className="lg:w-2/3 ">
-                <div className="relative">
+              <div className="lg:w-2/3 p-6 flex items-center justify-center overflow-hidden">
+                <div className="w-full h-full flex items-center justify-center">
                   <img
                     src={getImageUrl(selectedImage.result_url)}
                     alt={selectedImage.name}
-                    className="w-full h-auto object-cover "
+                    className="max-h-[90vh] w-auto object-contain rounded-lg"
                   />
-                  <button
-                    onClick={() => setShowModal(false)}
-                    className="absolute top-4 right-4 w-10 h-10 bg-black bg-opacity-50 hover:bg-opacity-75 text-white rounded-full flex items-center justify-center transition-all duration-200"
-                  >
-                    ✕
-                  </button>
                 </div>
               </div>
               
               {/* Content Section */}
-              <div className="lg:w-1/3 p-6 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
-                <div className="space-y-6">
-                  
-
+              <div className="lg:w-1/3 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+                <div className="p-6 space-y-6">
                   {/* Prompt Section */}
                   <div>
                     <h3 className={`text-lg font-semibold mb-3 ${
@@ -389,7 +389,7 @@ const HomePage: React.FC = () => {
                       Prompt
                     </h3>
                     <div className={`p-4 rounded-lg ${
-                      theme === 'dark' ? 'bg-gray-700' : 'bg-gray-50'
+                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
                     }`}>
                       <p className={`text-sm leading-relaxed ${
                         theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
@@ -449,28 +449,33 @@ const HomePage: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                   {/* About */}
-                  <div> 
-                    <div className="flex items-center space-x-2 text-sm">
-                      <span className={`${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+
+                  {/* Creator Info */}
+                  <div className="space-y-3">
+                    <div className={`p-3 rounded-lg ${
+                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
+                    }`}>
+                      <h4 className={`text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        Tạo bởi:
-                      </span>
-                      <span className={`font-medium ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
+                        Tạo bởi
+                      </h4>
+                      <p className={`text-sm font-medium ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-800'
                       }`}>
                         {selectedImage.user?.name || 'Anonymous'}
-                      </span>
+                      </p>
                     </div>
-                    <div className="flex items-center space-x-2 text-sm mt-1">
-                      <span className={`${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                    <div className={`p-3 rounded-lg ${
+                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
+                    }`}>
+                      <h4 className={`text-xs font-medium mb-1 ${
+                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
                       }`}>
-                        Ngày tạo:
-                      </span>
-                      <span className={`${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
+                        Ngày tạo
+                      </h4>
+                      <p className={`text-sm font-medium ${
+                        theme === 'dark' ? 'text-white' : 'text-gray-800'
                       }`}>
                         {new Date(selectedImage.created_at).toLocaleDateString('vi-VN', {
                           year: 'numeric',
@@ -479,11 +484,12 @@ const HomePage: React.FC = () => {
                           hour: '2-digit',
                           minute: '2-digit'
                         })}
-                      </span>
+                      </p>
                     </div>
-                  </div>     
+                  </div>
+
                   {/* Action Buttons */}
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col space-y-3 pt-4">
                     <button
                       onClick={() => {
                         const link = document.createElement('a');
@@ -491,16 +497,19 @@ const HomePage: React.FC = () => {
                         link.download = `${selectedImage.name}.png`;
                         link.click();
                       }}
-                      className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
+                      className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center space-x-2"
                     >
-                      Tải xuống
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-4-4m4 4l4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>Tải xuống</span>
                     </button>
                     <button
                       onClick={() => setShowModal(false)}
-                      className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors duration-200 ${
+                      className={`w-full px-4 py-3 rounded-lg font-medium transition-colors duration-200 ${
                         theme === 'dark' 
-                          ? 'border-gray-600 text-gray-300 hover:bg-gray-700' 
-                          : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
+                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
                       }`}
                     >
                       Đóng

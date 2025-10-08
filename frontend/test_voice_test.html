@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Voice Clone Integration</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #555;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .local-storage-data {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice Clone Integration Test</h1>
+        
+        <div class="test-section">
+            <h3>Test Local Storage Voice Selection</h3>
+            <p>This simulates the voice selection from VoiceClone.tsx when clicking "Test" button.</p>
+            
+            <button onclick="simulateVoiceSelection()">Simulate Voice Selection</button>
+            <button onclick="clearLocalStorage()">Clear Local Storage</button>
+            <button onclick="checkLocalStorage()">Check Local Storage</button>
+            
+            <div id="localStorageData" class="local-storage-data" style="display: none;"></div>
+            <div id="status1" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Navigation to Minimax</h3>
+            <p>After simulating voice selection, you can navigate to the Minimax page to see if the voice is automatically selected.</p>
+            
+            <button onclick="navigateToMinimax()">Go to Minimax Page</button>
+            <div id="status2" class="status"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test Voice Data</h3>
+            <p>Sample voice data for testing:</p>
+            <ul>
+                <li><strong>Voice ID:</strong> 564917</li>
+                <li><strong>Voice Name:</strong> Test Cloned Voice</li>
+                <li><strong>Preview Text:</strong> Hello world, this is my cloned voice for testing.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        function showStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.className = `status ${type}`;
+            element.textContent = message;
+        }
+        
+        function simulateVoiceSelection() {
+            try {
+                // Simulate the voice selection from VoiceClone.tsx
+                const voiceData = {
+                    voice_id: '564917',
+                    voice_name: 'Test Cloned Voice',
+                    preview_text: 'Hello world, this is my cloned voice for testing.'
+                };
+                
+                // Store in localStorage (same as handleTestVoice function)
+                localStorage.setItem('selected_voice_id', voiceData.voice_id);
+                localStorage.setItem('selected_voice_name', voiceData.voice_name);
+                localStorage.setItem('selected_voice_preview', voiceData.preview_text);
+                
+                showStatus('status1', '✅ Voice selection simulated successfully!', 'success');
+                checkLocalStorage();
+                
+            } catch (error) {
+                showStatus('status1', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLocalStorage() {
+            try {
+                localStorage.removeItem('selected_voice_id');
+                localStorage.removeItem('selected_voice_name');
+                localStorage.removeItem('selected_voice_preview');
+                
+                showStatus('status1', '🗑️ Local storage cleared', 'info');
+                checkLocalStorage();
+                
+            } catch (error) {
+                showStatus('status1', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function checkLocalStorage() {
+            try {
+                const voiceId = localStorage.getItem('selected_voice_id');
+                const voiceName = localStorage.getItem('selected_voice_name');
+                const previewText = localStorage.getItem('selected_voice_preview');
+                
+                const data = {
+                    'selected_voice_id': voiceId || 'null',
+                    'selected_voice_name': voiceName || 'null',
+                    'selected_voice_preview': previewText || 'null'
+                };
+                
+                document.getElementById('localStorageData').textContent = JSON.stringify(data, null, 2);
+                document.getElementById('localStorageData').style.display = 'block';
+                
+                if (voiceId && voiceName) {
+                    showStatus('status1', '✅ Voice data found in local storage', 'success');
+                } else {
+                    showStatus('status1', 'ℹ️ No voice data in local storage', 'info');
+                }
+                
+            } catch (error) {
+                showStatus('status1', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function navigateToMinimax() {
+            try {
+                const voiceId = localStorage.getItem('selected_voice_id');
+                const voiceName = localStorage.getItem('selected_voice_name');
+                
+                if (voiceId && voiceName) {
+                    showStatus('status2', '🚀 Navigating to Minimax page...', 'info');
+                    setTimeout(() => {
+                        window.location.href = '/minimax';
+                    }, 1000);
+                } else {
+                    showStatus('status2', '⚠️ No voice data found. Please simulate voice selection first.', 'error');
+                }
+            } catch (error) {
+                showStatus('status2', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Check local storage on page load
+        window.addEventListener('load', function() {
+            checkLocalStorage();
+        });
+    </script>
+</body>
+</html>

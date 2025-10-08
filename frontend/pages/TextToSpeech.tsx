@@ -77,7 +77,7 @@ const TextToSpeech: React.FC = () => {
     },
     {
       id: 'minmax',
-      name: 'Min Max',
+      name: 'Minimax',
       description: t.textToSpeech?.minmaxDesc || 'Advanced voice synthesis technology',
       icon: <SpeakerIcon className="w-8 h-8" />,
       color: 'from-orange-500 to-red-500',

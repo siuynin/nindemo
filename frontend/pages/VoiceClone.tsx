@@ -40,6 +40,7 @@ const VoiceClone: React.FC = () => {
     type: 'success', 
     visible: false 
   });
+  const [statusCheckInterval, setStatusCheckInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Audio file constraints
   const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
@@ -108,6 +109,34 @@ const VoiceClone: React.FC = () => {
       fetchUserVoices();
     }
   }, [isAuthenticated]);
+
+  // Auto-check status for processing/pending voice clones
+  useEffect(() => {
+    const checkProcessingVoices = async () => {
+      const processingVoices = userVoices.filter(voice => 
+        voice.status === 'processing' || voice.status === 'pending'
+      );
+      
+      if (processingVoices.length > 0) {
+        console.log(`Found ${processingVoices.length} processing/pending voice clones, checking status...`);
+        await fetchUserVoices();
+      }
+    };
+    
+    // Check immediately when component mounts or when userVoices changes
+    checkProcessingVoices();
+    
+    // Set up interval to check every 10 seconds
+    const interval = setInterval(checkProcessingVoices, 10000);
+    setStatusCheckInterval(interval);
+    
+    return () => {
+      if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+        setStatusCheckInterval(null);
+      }
+    };
+  }, [userVoices]);
   
   const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
     setToast({ message, type, visible: true });
@@ -158,6 +187,20 @@ const VoiceClone: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     
+    // Quick size check first
+    if (file.size > MAX_FILE_SIZE) {
+      showToast('File size must not exceed 20MB', 'error');
+      e.target.value = '';
+      return;
+    }
+    
+    // Quick type check
+    if (!ALLOWED_FILE_TYPES.includes(file.type) && !file.name.toLowerCase().endsWith('.mp3')) {
+      showToast('Only MP3 files are allowed', 'error');
+      e.target.value = '';
+      return;
+    }
+    
     const isValid = await validateAudioFile(file);
     if (isValid) {
       setSelectedFile(file);
@@ -184,12 +227,19 @@ const VoiceClone: React.FC = () => {
       }));
     }
   };
+
+  const handleSelectChange = (name: string) => (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
   
   const fetchUserVoices = async () => {
     try {
-      const response = await fetch('/api/voice-clones', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/voice-clones`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -230,6 +280,17 @@ const VoiceClone: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Debug logging
+      console.log('Submitting voice clone with data:', {
+        voice_name: formData.voice_name,
+        preview_text: formData.preview_text,
+        language_tag: formData.language_tag,
+        gender_tag: formData.gender_tag,
+        need_noise_reduction: formData.need_noise_reduction,
+        platform: 'minimax',
+        file: selectedFile?.name
+      });
+      
       // Create FormData for multipart upload
       const formDataToSend = new FormData();
       formDataToSend.append('file', selectedFile);
@@ -240,15 +301,43 @@ const VoiceClone: React.FC = () => {
       formDataToSend.append('need_noise_reduction', String(formData.need_noise_reduction));
       formDataToSend.append('platform', 'minimax');
       
-      const response = await fetch('/api/voice-clones', {
+      const apiUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/voice-clones`;
+      const token = localStorage.getItem('auth_token');
+      
+      console.log('API URL:', apiUrl);
+      console.log('Token available:', !!token);
+      
+      // Simple request without CSRF for now
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 1 minute timeout
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
-        body: formDataToSend
+        body: formDataToSend,
+        signal: controller.signal
       });
       
-      const result = await response.json();
+      clearTimeout(timeoutId);
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
+      // Handle different response types
+      let result;
+      const contentType = response.headers.get('content-type');
+      
+      if (contentType && contentType.includes('application/json')) {
+        result = await response.json();
+      } else {
+        const text = await response.text();
+        console.log('Non-JSON response:', text);
+        result = { success: false, message: text || 'Unknown error' };
+      }
+      
+      console.log('Response result:', result);
       
       if (response.ok && result.success) {
         showToast('Voice clone request submitted successfully', 'success');
@@ -282,10 +371,10 @@ const VoiceClone: React.FC = () => {
     }
     
     try {
-      const response = await fetch(`/api/voice-clones/${voiceId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/voice-clones/${voiceId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
           'Content-Type': 'application/json'
         }
       });
@@ -304,9 +393,21 @@ const VoiceClone: React.FC = () => {
   
   const handleTestVoice = (voice: VoiceClone) => {
     if (voice.status === 'completed' && voice.voice_id) {
-      // Test voice with preview text
+      // Navigate to Minimax page and set the selected voice
       console.log('Testing voice:', voice.voice_name, 'with text:', voice.preview_text);
-      showToast('Voice test functionality will be implemented soon', 'info');
+      
+      // Store the voice selection in localStorage for Minimax page to pick up
+      localStorage.setItem('selected_voice_id', voice.voice_id);
+      localStorage.setItem('selected_voice_name', voice.voice_name);
+      localStorage.setItem('selected_voice_preview', voice.preview_text);
+      
+      // Show success message
+      showToast(`Voice "${voice.voice_name}" selected for testing in Minimax`, 'success');
+      
+      // Navigate to Minimax page after a short delay to allow toast to show
+      setTimeout(() => {
+        window.location.href = '/minimax';
+      }, 1500);
     } else {
       showToast('Voice clone is not ready for testing', 'warning');
     }
@@ -364,7 +465,7 @@ const VoiceClone: React.FC = () => {
                         <p className="pl-1">or drag and drop</p>
                       </div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        MP3 up to 20MB and 5 minutes
+                        MP3 max 20MB and min 10s - 5 minutes
                       </p>
                       {selectedFile && (
                         <p className="text-sm text-green-600 dark:text-green-400 font-medium">
@@ -403,7 +504,7 @@ const VoiceClone: React.FC = () => {
                   label="Language"
                   name="language_tag"
                   value={formData.language_tag}
-                  onChange={handleInputChange}
+                  onChange={handleSelectChange('language_tag')}
                   options={languageOptions}
                   required
                   disabled={isLoading}
@@ -414,7 +515,7 @@ const VoiceClone: React.FC = () => {
                   label="Gender"
                   name="gender_tag"
                   value={formData.gender_tag}
-                  onChange={handleInputChange}
+                  onChange={handleSelectChange('gender_tag')}
                   options={genderOptions}
                   required
                   disabled={isLoading}
@@ -523,7 +624,7 @@ const VoiceClone: React.FC = () => {
                           className="flex-1"
                         >
                           <PlayIcon className="w-3 h-3 mr-1" />
-                          Test
+                          Use Voice
                         </Button>
                         <Button
                           size="sm"

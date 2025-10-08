@@ -365,7 +365,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   : "justify-start"
               }`}>
                 {isExpanded || isHovered || isMobileOpen ? (
-                  t.sidebar?.menu || "MENU"
+                  t.sidebar?.menu || "CONTENT"
                 ) : (
                   <div className="w-6 h-1 bg-current rounded-full" />
                 )}

@@ -843,81 +843,88 @@ const ImageCreator: React.FC = () => {
         isOpen={showImagePopup}
         onClose={closeImagePopup}
         title="Image Details"
-        size="lg"
+        size="xl"
       >
         {selectedImage && (
-          <div className="space-y-4">
-            {/* Image Display */}
-            <div className="relative">
-              <img
-                src={selectedImage.url}
-                alt={selectedImage.prompt}
-                className="w-full max-h-96 object-contain rounded-lg"
-              />
+          <div className="flex flex-col lg:flex-row gap-6 max-h-[90vh] overflow-hidden">
+            {/* Image Section - Left Column */}
+            <div className="lg:w-2/3 flex items-center justify-center">
+              <div className="relative">
+                <img
+                  src={selectedImage.url}
+                  alt={selectedImage.prompt}
+                  className="max-h-[90vh] w-auto object-contain rounded-lg"
+                />
+              </div>
             </div>
             
-            {/* Image Information */}
-            <div className={`p-4 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-              <h3 className={`font-medium mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                Prompt
-              </h3>
-              <p className={`text-sm ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
-                "{selectedImage.prompt}"
-              </p>
-            </div>
-            
-            {/* Image Details */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
-                  Dimensions
-                </h4>
-                <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {selectedImage.width} × {selectedImage.height}
+            {/* Information Section - Right Column */}
+            <div className="lg:w-1/3 flex flex-col space-y-4 overflow-y-auto">
+              {/* Image Information */}
+              <div className={`p-4 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                <h3 className={`font-medium mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  Prompt
+                </h3>
+                <p className={`text-sm ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
+                  "{selectedImage.prompt}"
                 </p>
               </div>
-              <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
-                  Created
-                </h4>
-                <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                  {selectedImage.createdAt.toLocaleDateString()}
-                </p>
-              </div>
-              {selectedImage.seed && (
+              
+              {/* Image Details */}
+              <div className="space-y-3">
                 <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
                   <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
-                    Seed
+                    Dimensions
                   </h4>
                   <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
-                    {selectedImage.seed}
+                    {selectedImage.width} × {selectedImage.height}
                   </p>
                 </div>
-              )}
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button
-                variant="outline"
-                onClick={closeImagePopup}
-              >
-                Close
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => downloadImage(
-                  selectedImage.url, 
-                  `generated-image-${selectedImage.id}.jpg`
+                <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                  <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                    Created
+                  </h4>
+                  <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                    {selectedImage.createdAt.toLocaleDateString()}
+                  </p>
+                </div>
+                {selectedImage.seed && (
+                  <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
+                    <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                      Seed
+                    </h4>
+                    <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                      {selectedImage.seed}
+                    </p>
+                  </div>
                 )}
-                startIcon={
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-4-4m4 4l4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-              >
-                Download
-              </Button>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex flex-col space-y-3 pt-4 mt-auto">
+                <Button
+                  variant="primary"
+                  onClick={() => downloadImage(
+                    selectedImage.url, 
+                    `generated-image-${selectedImage.id}.jpg`
+                  )}
+                  startIcon={
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-4-4m4 4l4-4m5-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  }
+                  className="w-full"
+                >
+                  Download
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={closeImagePopup}
+                  className="w-full"
+                >
+                  Close
+                </Button>
+              </div>
             </div>
           </div>
         )}

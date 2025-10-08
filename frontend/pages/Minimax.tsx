@@ -39,6 +39,37 @@ const Minimax: React.FC = () => {
     document.title = 'Minimax TTS - AI App';
   }, []);
 
+  // Check for voice selection from VoiceClone page
+  useEffect(() => {
+    const selectedVoiceId = localStorage.getItem('selected_voice_id');
+    const selectedVoiceName = localStorage.getItem('selected_voice_name');
+    const selectedVoicePreview = localStorage.getItem('selected_voice_preview');
+    
+    if (selectedVoiceId && selectedVoiceName) {
+      // Update voice settings with the selected voice
+      setVoiceSettings(prev => ({
+        ...prev,
+        voice_id: selectedVoiceId
+      }));
+      setSelectedVoiceName(selectedVoiceName);
+      
+      // Optionally set the preview text as content
+      if (selectedVoicePreview) {
+        setFormData(prev => ({
+          ...prev,
+          content: selectedVoicePreview
+        }));
+      }
+      
+      // Clear the localStorage after using the values
+      localStorage.removeItem('selected_voice_id');
+      localStorage.removeItem('selected_voice_name');
+      localStorage.removeItem('selected_voice_preview');
+      
+      showToast(`Voice "${selectedVoiceName}" selected from Voice Clone`, 'success');
+    }
+  }, []);
+
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -85,6 +116,9 @@ const Minimax: React.FC = () => {
     audioUrl: '',
     generateId: undefined
   });
+
+  // Auto-hide timeout state
+  const [lastGenerateTimeout, setLastGenerateTimeout] = useState<NodeJS.Timeout | null>(null);
 
   // Available models
   const availableModels = [
@@ -202,6 +236,32 @@ const Minimax: React.FC = () => {
   useEffect(() => {
     fetchUserGenerates();
   }, [isAuthenticated, user]);
+
+  // Auto-hide last generate result after 10 seconds
+  useEffect(() => {
+    if (lastGenerateResult && lastGenerateResult.id) {
+      // Clear any existing timeout
+      if (lastGenerateTimeout) {
+        clearTimeout(lastGenerateTimeout);
+        setLastGenerateTimeout(null);
+      }
+      
+      // Set new timeout to hide the latest task after 10 seconds
+      const timeout = setTimeout(() => {
+        setLastGenerateResult(null);
+        setLastGenerateTimeout(null);
+      }, 10000);
+      
+      setLastGenerateTimeout(timeout);
+      
+      // Cleanup function
+      return () => {
+        if (timeout) {
+          clearTimeout(timeout);
+        }
+      };
+    }
+  }, [lastGenerateResult]);
 
   // Auto-check status for processing generates
   useEffect(() => {
@@ -381,20 +441,38 @@ const Minimax: React.FC = () => {
                     className="w-full"
                   />
 
-                  {/* Model Selection */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Model Selection
-                      <span className="text-red-500 ml-1">*</span>
-                    </label>
+                  {/* Model Selection and Language Boost - 2 Column Layout */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Model Selection */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Model Selection
+                        <span className="text-red-500 ml-1">*</span>
+                      </label>
+                      
+                      <Select
+                        options={availableModels}
+                        defaultValue={selectedModel}
+                        onChange={(value) => setSelectedModel(value)}
+                        placeholder="Select a model"
+                        className="w-full"
+                      />
+                    </div>
                     
-                    <Select
-                      options={availableModels}
-                      defaultValue={selectedModel}
-                      onChange={(value) => setSelectedModel(value)}
-                      placeholder="Select a model"
-                      className="w-full"
-                    />
+                    {/* Language Boost */}
+                    <div className="space-y-3">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Language Boost
+                      </label>
+                      
+                      <Select
+                        options={languageBoostOptions}
+                        defaultValue={languageBoost}
+                        onChange={(value) => setLanguageBoost(value)}
+                        placeholder="Select language boost"
+                        className="w-full"
+                      />
+                    </div>
                   </div>
 
                   {/* Voice Selection */}
@@ -413,22 +491,7 @@ const Minimax: React.FC = () => {
                       <SpeakerIcon className="w-4 h-4" />
                     </Button>
                   </div>
-
-                  {/* Language Boost */}
-                  <div className="space-y-3">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                      Language Boost
-                    </label>
-                    
-                    <Select
-                      options={languageBoostOptions}
-                      defaultValue={languageBoost}
-                      onChange={(value) => setLanguageBoost(value)}
-                      placeholder="Select language boost"
-                      className="w-full"
-                    />
-                  </div>
-
+ 
                   {/* Voice Settings */}
                   <div className="space-y-4">
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -590,53 +653,124 @@ const Minimax: React.FC = () => {
                 )}
 
                 {/* User Generates List */}
-                <div className="space-y-3  overflow-y-auto">
-                  {userGenerates.length > 0 ? (
-                    userGenerates.map((generate) => (
-                      <div
-                        key={generate.id}
-                        className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                              {generate.name}
-                            </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {new Date(generate.created_at).toLocaleDateString()}
-                            </p>
-                            <div className="flex items-center space-x-2 mt-2">
-                              <Badge 
-                                variant={generate.status === 'completed' ? 'success' : 
-                                        generate.status === 'failed' ? 'error' : 'warning'}
-                                size="sm"
-                              >
-                                {generate.status}
-                              </Badge>
-                              {generate.status === 'completed' && generate.result_url && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePlayAudio(generate)}
-                                  className="p-1 h-6 w-6"
-                                >
-                                  <PlayIcon className="w-3 h-3" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <SpeakerIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        No audio generations yet
-                      </p>
+                {!isAuthenticated ? (
+                  <div className="text-center py-8">
+                    <div className="inline-flex p-3 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                      <SpeakerIcon className="w-6 h-6 text-gray-400" />
                     </div>
-                  )}
-                </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Sign in to view your generation history
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setIsAuthModalOpen(true)}
+                    >
+                      Sign In
+                    </Button>
+                  </div>
+                ) : userGenerates.length > 0 ? (
+                  <div className="space-y-3  overflow-y-auto">
+                    {userGenerates.map((generate) => (
+                      <Card key={generate.id} padding="sm" className="hover:shadow-md transition-shadow">
+                        <div className="space-y-3">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">
+                                {generate.name}
+                              </h4>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                {new Date(generate.created_at).toLocaleDateString('vi-VN', {
+                                  day: '2-digit',
+                                  month: '2-digit',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </p>
+                            </div>
+                            <Badge
+                              variant="light"
+                              color={
+                                generate.status === 'processing' ? 'warning' :
+                                generate.status === 'completed' ? 'success' :
+                                generate.status === 'failed' ? 'error' : 'light'
+                              }
+                              size="sm"
+                            >
+                              {generate.status === 'processing' ? 'Đang xử lý' :
+                               generate.status === 'completed' ? 'Hoàn thành' :
+                               generate.status === 'failed' ? 'Thất bại' :
+                               generate.status === 'pending' ? 'Chờ xử lý' : generate.status}
+                            </Badge>
+                          </div>
+                          
+                          {generate.status === 'completed' && (
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    const audioBlob = await generateService.downloadGenerate(generate.id);
+                                    const audioUrl = URL.createObjectURL(audioBlob);
+                                    
+                                    setAudioPlayer({
+                                      isVisible: true,
+                                      title: generate.name,
+                                      audioUrl: audioUrl,
+                                      generateId: generate.id
+                                    });
+                                  } catch (error) {
+                                    console.error('Error loading audio:', error);
+                                    showToast('Không thể tải audio', 'error');
+                                  }
+                                }}
+                                startIcon={<PlayIcon className="w-3 h-3" />}
+                                className="flex-1"
+                              >
+                                Play
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={async () => {
+                                  try {
+                                    const audioBlob = await generateService.downloadGenerate(generate.id);
+                                    const url = URL.createObjectURL(audioBlob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `${generate.name}.mp3`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                    URL.revokeObjectURL(url);
+                                    showToast('Tải xuống thành công!', 'success');
+                                  } catch (error) {
+                                    console.error('Error downloading:', error);
+                                    showToast('Lỗi khi tải xuống', 'error');
+                                  }
+                                }}
+                                startIcon={<DownloadIcon className="w-3 h-3" />}
+                                className="flex-1"
+                              >
+                                Download
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="inline-flex p-3 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+                      <SpeakerIcon className="w-6 h-6 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      No audio generations yet
+                    </p>
+                  </div>
+                )}
               </Card>
             </div>
           </div>
@@ -682,8 +816,10 @@ const Minimax: React.FC = () => {
           <ModernAudioPlayer
             title={audioPlayer.title}
             audioUrl={audioPlayer.audioUrl}
+            isVisible={audioPlayer.isVisible}
             onClose={() => setAudioPlayer(prev => ({ ...prev, isVisible: false }))}
             generateId={audioPlayer.generateId}
+            autoPlay={true}
           />
         )}
       </div>

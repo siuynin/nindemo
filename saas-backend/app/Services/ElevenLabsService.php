@@ -194,21 +194,35 @@ class ElevenLabsService
     public function calculateCreditCost($text, $model)
     {
         // Get model pricing from database
-        $aiModel = \App\Models\AIModel::where('slug', $model)->first();
+        $aiModel = \App\Models\AIModel::where('slug', $model)
+                                     ->orWhere('name', $model)
+                                     ->first();
         
         if (!$aiModel) {
-            // Fallback pricing if model not found
+            // Fallback pricing if model not found - prices per character
             $modelPrices = [
-                'eleven_turbo_v2_5' => 0.015,
-                'eleven_v3' => 0.021
+                'eleven_turbo_v2_5' => 0.015, // $0.02 per 1000 characters
+                'eleven_v3' => 0.021,         // $0.03 per 1000 characters
+                
             ];
-            $pricePerChar = $modelPrices[$model] ?? 0.021;
+            $pricePerChar = $modelPrices[$model] ?? 0.02; // Default to $0.03 per 1000 chars
         } else {
             $pricePerChar = $aiModel->credit_price;
         }
         
         $characterCount = strlen($text);
-        return $characterCount * $pricePerChar;
+        $totalCost = $characterCount * $pricePerChar;
+        
+        // Log for debugging
+        Log::info('ElevenLabs Credit Calculation', [
+            'model' => $model,
+            'character_count' => $characterCount,
+            'price_per_char' => $pricePerChar,
+            'total_cost' => $totalCost,
+            'model_found_in_db' => $aiModel ? true : false
+        ]);
+        
+        return round($totalCost, 6); // Round to 6 decimal places for precision
     }
 
     /**
@@ -221,7 +235,7 @@ class ElevenLabsService
     {
         // ElevenLabs charges approximately $0.18 per 1000 characters
         $characterCount = strlen($text);
-        $costPer1000Chars = 0.18;
+        $costPer1000Chars = 1.8;
         
         return ($characterCount / 1000) * $costPer1000Chars;
     }

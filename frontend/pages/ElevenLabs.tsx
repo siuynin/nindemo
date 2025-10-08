@@ -61,6 +61,7 @@ const ElevenLabs: React.FC = () => {
   const [userGenerates, setUserGenerates] = useState<Generate[]>([]);
   
   const [isLoading, setIsLoading] = useState(false);
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -87,8 +88,15 @@ const ElevenLabs: React.FC = () => {
 
   // Handle voice selection
   const handleVoiceSelect = (voice: ElevenLabsVoice) => {
+    console.log('ElevenLabs: handleVoiceSelect called with voice:', voice);
+    console.log('ElevenLabs: Setting selectedVoice to:', voice);
+    
     setSelectedVoice(voice);
+    console.log('ElevenLabs: selectedVoice state updated');
+    
+    console.log('ElevenLabs: Setting isVoiceModalOpen to false');
     setIsVoiceModalOpen(false);
+    console.log('ElevenLabs: isVoiceModalOpen state updated');
   };
 
   // Handle model change and reset voice settings
@@ -212,33 +220,50 @@ const ElevenLabs: React.FC = () => {
   }, [userGenerates, lastGenerateResult, isAuthenticated, user]);
 
   // Handle voice preview
-  const handleVoicePreview = (voiceId: string) => {
+  const handleVoicePreview = (voiceId: string, previewUrl?: string) => {
+    console.log('ElevenLabs handleVoicePreview called:', { voiceId, previewUrl, currentPlaying: isPlaying });
+    
+    // Stop current audio if playing
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      setCurrentAudio(null);
+    }
+    
     if (isPlaying === voiceId) {
+      console.log('Stopping current audio');
       setIsPlaying(null);
-      // Stop audio playback
-      const audioElements = document.querySelectorAll('audio');
-      audioElements.forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
-      });
     } else {
       setIsPlaying(voiceId);
+      
       // Find preview URL for this voice
-      let previewUrl = '';
-      if (selectedVoice && selectedVoice.voice_id === voiceId) {
-        previewUrl = selectedVoice.preview_url;
+      let audioUrl = previewUrl;
+      if (!audioUrl && selectedVoice && selectedVoice.voice_id === voiceId) {
+        audioUrl = selectedVoice.preview_url;
       }
       
-      if (previewUrl) {
-        const audio = new Audio(previewUrl);
+      console.log('Playing audio with URL:', audioUrl);
+      
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        setCurrentAudio(audio);
+        
         audio.play().catch(error => {
           console.error('Error playing audio:', error);
           showToast('Không thể phát audio preview', 'error');
+          setIsPlaying(null);
+          setCurrentAudio(null);
         });
         
-        audio.onended = () => setIsPlaying(null);
-        audio.onerror = () => {
+        audio.onended = () => {
+          console.log('Audio ended');
           setIsPlaying(null);
+          setCurrentAudio(null);
+        };
+        audio.onerror = () => {
+          console.log('Audio error');
+          setIsPlaying(null);
+          setCurrentAudio(null);
           showToast('Lỗi khi tải audio preview', 'error');
         };
       } else {
@@ -825,6 +850,8 @@ const ElevenLabs: React.FC = () => {
         onClose={() => setIsVoiceModalOpen(false)}
         onSelectVoice={handleVoiceSelect}
         selectedVoiceId={selectedVoice?.voice_id}
+        onVoicePreview={handleVoicePreview}
+        playingVoiceId={isPlaying}
       />
 
       {/* Audio Player */}
