@@ -319,3 +319,151 @@ body {
   justify-content: center;
  
 }
+
+/* ===== CUSTOM SCROLLBAR STYLES ===== */
+/* Modern, beautiful scrollbar for the entire application */
+
+/* Global scrollbar styles for webkit browsers */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-brand-400) var(--color-gray-100);
+}
+
+/* Webkit scrollbar styles */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--color-gray-100);
+  border-radius: 10px;
+  margin: 2px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
+  border-radius: 10px;
+  border: 1px solid var(--color-gray-200);
+  transition: all 0.3s ease;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(70, 95, 255, 0.3);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-700));
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--color-gray-100);
+}
+
+/* Dark mode scrollbar styles */
+.dark * {
+  scrollbar-color: var(--color-brand-400) var(--color-gray-800);
+}
+
+.dark *::-webkit-scrollbar-track {
+  background: var(--color-gray-800);
+  border: 1px solid var(--color-gray-700);
+}
+
+.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
+  border: 1px solid var(--color-gray-600);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--color-brand-300), var(--color-brand-400));
+  box-shadow: 0 2px 8px rgba(70, 95, 255, 0.4);
+}
+
+.dark *::-webkit-scrollbar-corner {
+  background: var(--color-gray-800);
+}
+
+/* Thin scrollbar variant for compact areas */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-brand-400);
+  border-radius: 6px;
+  border: none;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Hide scrollbar but keep functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animated scrollbar for special areas */
+.scrollbar-animated::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, 
+    var(--color-brand-400), 
+    var(--color-brand-500), 
+    var(--color-brand-600), 
+    var(--color-brand-500)
+  );
+  background-size: 300% 300%;
+  animation: scrollbar-gradient 3s ease infinite;
+}
+
+@keyframes scrollbar-gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Hover effects for better UX */
+.scrollbar-hover-visible::-webkit-scrollbar {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.scrollbar-hover-visible:hover::-webkit-scrollbar {
+  opacity: 1;
+}
+
+/* Custom scrollbar for specific components */
+.modal-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-gray-400);
+  border-radius: 8px;
+}
+
+.modal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+/* Sidebar scrollbar */
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 3px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-brand-300);
+  border-radius: 6px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}

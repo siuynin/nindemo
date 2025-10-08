@@ -50,9 +50,9 @@ class SePayController extends Controller
 
             // Thông tin chuyển khoản
             $bankInfo = [
-                'bank_name' => 'Vietcombank',
-                'account_number' => '1234567890',
-                'account_name' => 'CONG TY AI APP',
+                'bank_name' => 'Ngân Hàng Á Châu - ACB',
+                'account_number' => '32495337',
+                'account_name' => 'SIU Y NIN',
                 'amount' => $request->amount,
                 'transfer_content' => 'SE' . $bill->id,
                 'qr_code' => $this->generateQRCode($bill)
