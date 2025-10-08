@@ -88,7 +88,7 @@ const HomePage: React.FC = () => {
       } else {
         setLoading(true);
       }
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/api/public-generates?page=${page}&per_page=20&type=image`);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/public-generates?page=${page}&per_page=20&type=image`);
       const data = await response.json();
 
       if (data.success) {
