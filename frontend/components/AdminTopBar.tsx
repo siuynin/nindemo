@@ -128,7 +128,7 @@ const AdminTopBar: React.FC<AdminTopBarProps> = ({
             {/* Logo - Mobile */}
             <div className="lg:hidden">
               <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                NinDemo
+                NDhubs
               </h1>
             </div>
 
