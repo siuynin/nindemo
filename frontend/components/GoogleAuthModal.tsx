@@ -44,7 +44,7 @@ const GoogleAuthModal: React.FC<GoogleAuthModalProps> = ({ isOpen, onClose, onSu
     if (isOpen && window.google) {
       try {
         window.google.accounts.id.initialize({
-          client_id: 'YOUR_GOOGLE_CLIENT_ID', // Replace with actual client ID
+          client_id: '1075819608928-6cl3bneibe8ik6b8jppr62f905gerasg.apps.googleusercontent.com', // Replace with actual client ID
           callback: handleGoogleResponse,
           auto_select: false,
           cancel_on_tap_outside: false,
