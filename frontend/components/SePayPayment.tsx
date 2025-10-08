@@ -397,7 +397,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
                 Quét mã QR để chuyển khoản nhanh
               </div>
               <img 
-                src={`https://img.vietqr.io/image/vcb-${bankInfo.account_number}-compact2.png?amount=${bankInfo.amount}&addInfo=${bankInfo.transfer_content}&accountName=${bankInfo.account_name}`} 
+                src={`https://img.vietqr.io/image/acb-${bankInfo.account_number}-compact2.png?amount=${bankInfo.amount}&addInfo=${bankInfo.transfer_content}&accountName=${bankInfo.account_name}`} 
                 alt="QR Code" 
                 className={`mx-auto border rounded max-w-full h-auto ${
                   theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
