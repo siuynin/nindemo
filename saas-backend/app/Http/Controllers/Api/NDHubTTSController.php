@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\UserGenerate;
+use App\Models\Generate;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -50,32 +50,35 @@ class NDHubTTSController extends Controller
             $creditCost = $contentLength * 0.01;
 
             // Check if user has enough credits
-            if ($user->credits < $creditCost) {
+            $userCredits = $user->total_remaining_credits;
+            if ($userCredits < $creditCost) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Insufficient credits. Required: ' . $creditCost . ', Available: ' . $user->credits
+                    'message' => 'Insufficient credits. Required: ' . $creditCost . ', Available: ' . $userCredits
                 ], 400);
             }
 
             // Create generate record
-            $generate = UserGenerate::create([
+            $generate = Generate::create([
                 'user_id' => $user->id,
-                'type' => 'ndhub-tts',
+                'type' => 'audio',
                 'name' => $validated['name'],
                 'content' => $validated['content'],
                 'status' => 'processing',
                 'credit_cost' => $creditCost,
-                'task_id' => Str::uuid(),
-                'settings' => json_encode([
-                    'lang' => $validated['lang'],
-                    'voice' => $validated['voices'],
-                    'format' => $validated['audio_format'],
-                    'speed' => $validated['speed']
-                ])
+                'task_id' => Str::uuid(), 
             ]);
 
-            // Deduct credits from user
-            $user->decrement('credits', $creditCost);
+            // Deduct credits from user using proper credit system
+            $userCreditController = new \App\Http\Controllers\Api\UserCreditController();
+            $creditResult = $userCreditController->useCredits($user, $creditCost);
+            
+            if (!$creditResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $creditResult['message']
+                ], 400);
+            }
 
             // Make API call to NDHub TTS service
             try {
@@ -110,25 +113,21 @@ class NDHubTTSController extends Controller
                     
                     if ($audioStorageService->isS3Configured()) {
                         try {
-                            // Upload to S3
-                            $s3Result = $audioStorageService->uploadAudioContent(
+                            // Upload to S3 - uploadAudioContent returns URL string directly
+                            $resultUrl = $audioStorageService->uploadAudioContent(
                                 $audioContent,
-                                $filename,
-                                $validated['audio_format']
+                                $validated['audio_format'],
+                                'ndhub-tts'
                             );
                             
-                            if ($s3Result['success']) {
-                                $resultUrl = $s3Result['url'];
-                                $filePath = $s3Result['path'];
-                                
-                                Log::info('Audio uploaded to S3 successfully', [
-                                    'generate_id' => $generate->id,
-                                    'file_path' => $filePath,
-                                    'url' => $resultUrl
-                                ]);
-                            } else {
-                                throw new \Exception('S3 upload failed: ' . $s3Result['error']);
-                            }
+                            // Extract filename from URL for logging
+                            $filePath = 'ndhub-tts/' . $generate->id . '_' . time() . '.' . $validated['audio_format'];
+                            
+                            Log::info('Audio uploaded to S3 successfully', [
+                                'generate_id' => $generate->id,
+                                'file_path' => $filePath,
+                                'url' => $resultUrl
+                            ]);
                         } catch (\Exception $e) {
                             Log::warning('S3 upload failed, falling back to local storage', [
                                 'generate_id' => $generate->id,
@@ -275,8 +274,8 @@ class NDHubTTSController extends Controller
             $perPage = $request->query('per_page', 10);
             $page = $request->query('page', 1);
 
-            $generates = UserGenerate::where('user_id', $user->id)
-                ->where('type', 'ndhub-tts')
+            $generates = Generate::where('user_id', $user->id)
+                ->where('type', 'audio')
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage, ['*'], 'page', $page);
 
@@ -316,8 +315,8 @@ class NDHubTTSController extends Controller
 
             $user = Auth::user();
 
-            $generate = UserGenerate::where('user_id', $user->id)
-                ->where('type', 'ndhub-tts')
+            $generate = Generate::where('user_id', $user->id)
+                ->where('type', 'audio')
                 ->where('id', $id)
                 ->first();
 
@@ -365,8 +364,8 @@ class NDHubTTSController extends Controller
 
             $user = Auth::user();
 
-            $generate = UserGenerate::where('user_id', $user->id)
-                ->where('type', 'ndhub-tts')
+            $generate = Generate::where('user_id', $user->id)
+                ->where('type', 'audio')
                 ->where('id', $id)
                 ->first();
 

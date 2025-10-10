@@ -1,7 +1,7 @@
 import React from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { ImagePreview, Point } from '../types';
-import { CheckIcon, TrashIcon, PlusIcon } from './icons';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { ImagePreview, Point } from '@/types';
+import { CheckIcon, TrashIcon, PlusIcon } from '@/components/icons';
 
 interface ReplacementConfirmationProps {
   preview: ImagePreview;

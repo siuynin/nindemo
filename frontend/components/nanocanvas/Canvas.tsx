@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { CanvasItem, Point, SelectionRect, InteractionMode, DrawingItem, TextItem, DrawingOptions, TextOptions, ImageItem, MagicFillState, VideoItem, GridOptions } from '../types';
-import { isItemInSelection, getBoundingBox, getCenter, rotatePoint, getRotatedBoundingBox, isPointInBox } from '../utils/geometry';
+import { CanvasItem, Point, SelectionRect, InteractionMode, DrawingItem, TextItem, DrawingOptions, TextOptions, ImageItem, MagicFillState, VideoItem, GridOptions } from '@/types';
+import { isItemInSelection, getBoundingBox, getCenter, rotatePoint, getRotatedBoundingBox, isPointInBox } from '@/utils/geometry';
 
 export type Handle = 'n' | 's' | 'e' | 'w' | 'nw' | 'ne' | 'sw' | 'se' | 'rotate';
 
@@ -101,6 +101,9 @@ const Canvas: React.FC<CanvasProps> = ({
   const [originalItemState, setOriginalItemState] = useState<any>(null);
   const [expansionGhostRect, setExpansionGhostRect] = useState<SelectionRect | null>(null);
   const gestureDidCommit = useRef(false);
+  
+  // State for delayed context menu
+  const contextMenuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const getCanvasPoint = (e: React.MouseEvent | MouseEvent): Point => {
     const canvasRect = canvasRef.current?.getBoundingClientRect();
@@ -250,6 +253,30 @@ const Canvas: React.FC<CanvasProps> = ({
     const clickedItem = findItemAtPoint(point);
 
     if (clickedItem) {
+        // Clear any existing timeout
+        if (contextMenuTimeoutRef.current) {
+            clearTimeout(contextMenuTimeoutRef.current);
+            contextMenuTimeoutRef.current = null;
+        }
+        
+        // Set timeout to show context menu after 2 seconds if it's an image
+        if (clickedItem.type === 'image') {
+            contextMenuTimeoutRef.current = setTimeout(() => {
+                const canvasRect = canvasRef.current?.getBoundingClientRect();
+                if (canvasRect) {
+                    const screenX = point.x * zoom + pan.x + canvasRect.left;
+                    const screenY = point.y * zoom + pan.y + canvasRect.top;
+                    onShowContextMenu({
+                        x: screenX,
+                        y: screenY,
+                        canvasPoint: point,
+                        item: clickedItem
+                    });
+                }
+                contextMenuTimeoutRef.current = null;
+            }, 2000);
+        }
+        
         onModeChange();
         onSelectionChange(null, [clickedItem]); // Clear marquee selection, set single selection
         setSinglySelectedItemId(clickedItem.id);
@@ -258,6 +285,12 @@ const Canvas: React.FC<CanvasProps> = ({
         setStartPoint(point);
         setOriginalItemState(clickedItem);
     } else {
+        // Clear timeout when clicking on empty space
+        if (contextMenuTimeoutRef.current) {
+            clearTimeout(contextMenuTimeoutRef.current);
+            contextMenuTimeoutRef.current = null;
+        }
+        
         onModeChange();
         setSinglySelectedItemId(null);
         setInteractionMode('selecting');
@@ -491,9 +524,23 @@ const Canvas: React.FC<CanvasProps> = ({
         };
     }, [isSpacePanning, interactionMode]);
     
+    // Cleanup timeout on unmount
+    useEffect(() => {
+        return () => {
+            if (contextMenuTimeoutRef.current) {
+                clearTimeout(contextMenuTimeoutRef.current);
+            }
+        };
+    }, []);
     const handleContextMenu = (e: React.MouseEvent) => {
         e.preventDefault();
         if (editingTextItem || isDrawingMode || isTextMode || expansionState.isActive) return;
+        
+        // Clear any existing timeout when right-clicking
+        if (contextMenuTimeoutRef.current) {
+            clearTimeout(contextMenuTimeoutRef.current);
+            contextMenuTimeoutRef.current = null;
+        }
         
         const point = getCanvasPoint(e);
         const item = findItemAtPoint(point);

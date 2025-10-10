@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { ModelSettings, AVAILABLE_MODELS } from '../types';
-import { SettingsIcon } from './icons';
+import { ModelSettings, AVAILABLE_MODELS } from '@/types';
+import { SettingsIcon } from '../icons';
 
 interface SettingsModalProps {
   isOpen: boolean;

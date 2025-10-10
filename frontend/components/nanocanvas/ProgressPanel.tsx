@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { GenerationTask } from '../types';
-import { LoadingSpinner, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, GenerateIcon, SettingsIcon, SaveIcon } from './icons';
+import { GenerationTask } from '@/types';
+import { LoadingSpinner, ChevronDoubleLeftIcon, ChevronDoubleRightIcon, GenerateIcon, SettingsIcon, SaveIcon } from '@/components/icons';
 
 interface ProgressPanelProps {
   tasks: GenerationTask[];

@@ -65,7 +65,7 @@ const TextToSpeech: React.FC = () => {
       description: t.textToSpeech?.ndhubDesc || 'Professional Vietnamese TTS service',
       icon: <SpeakerIcon className="w-8 h-8" />,
       color: 'from-green-500 to-teal-500',
-      url: 'https://ndhub.vn'
+      url: '/ndhub-tts'
     },
     {
       id: 'elevenlabs',
@@ -73,7 +73,7 @@ const TextToSpeech: React.FC = () => {
       description: t.textToSpeech?.elevenlabsDesc || 'High-quality AI voice generation',
       icon: <SpeakerIcon className="w-8 h-8" />,
       color: 'from-blue-500 to-indigo-500',
-      url: 'https://elevenlabs.io'
+      url: '/elevenlabs'
     },
     {
       id: 'minmax',

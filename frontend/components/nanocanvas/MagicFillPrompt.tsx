@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ImageItem, Point } from '../types';
-import { SendIcon } from './icons';
+import { ImageItem, Point } from '../../types';
+import { SendIcon } from '../icons';
 
 interface MagicFillPromptProps {
   targetItem: ImageItem;

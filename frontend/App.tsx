@@ -1,14 +1,14 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import Canvas, { Handle } from './components/Canvas';
-import Toolbar, { MagicFillMode } from './components/Toolbar';
-import ProgressPanel from './components/ProgressPanel';
-import ReplacementConfirmation from './components/ReplacementConfirmation';
-import ContextMenu from './components/ContextMenu';
-import PromptModal from './components/PromptModal';
-import SettingsModal from './components/SettingsModal';
-import MagicFillPrompt from './components/MagicFillPrompt';
-import WriteAssistant from './components/WriteAssistant';
-import ImageCreator from './pages/ImageCreator';
+import Canvas, { Handle } from './components/nanocanvas/Canvas';
+import Toolbar, { MagicFillMode } from './components/nanocanvas/Toolbar';
+import ProgressPanel from './components/nanocanvas/ProgressPanel';
+import ReplacementConfirmation from './components/nanocanvas/ReplacementConfirmation';
+import ContextMenu from './components/nanocanvas/ContextMenu';
+import PromptModal from './components/nanocanvas/PromptModal';
+import SettingsModal from './components/nanocanvas/SettingsModal';
+import MagicFillPrompt from './components/nanocanvas/MagicFillPrompt' 
+import RecentImagePanel, { addToRecentImages } from './components/nanocanvas/RecentImagePanel';
+import GuideModal from './components/nanocanvas/GuideModal';
 import { useLanguage } from './contexts/LanguageContext';
 
 import { CanvasItem, ImageItem, SelectionRect, TextItem, DrawingOptions, TextOptions, GenerationTask, ImagePreview, Point, DrawingItem, MagicFillState, VideoItem, GridOptions, ModelSettings, AVAILABLE_MODELS } from './types';
@@ -360,6 +360,7 @@ function App({ pageOverride }: AppProps = {}) {
   const [generationPromptModal, setGenerationPromptModal] = useState<{isOpen: boolean; position: Point | null}>({isOpen: false, position: null});
   const [isApiKeyConfigured, setIsApiKeyConfigured] = useState(true);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isGuideModalOpen, setIsGuideModalOpen] = useState(false);
   
   const [modelSettings, setModelSettings] = useState<ModelSettings>(() => loadState('modelSettings', {
     textToImage: AVAILABLE_MODELS.textToImage[0],
@@ -447,10 +448,52 @@ function App({ pageOverride }: AppProps = {}) {
           prompt: file.name || 'pasted/dropped image',
           rotation: 0,
         };
+        
+        // Thêm ảnh vào danh sách recent images
+        addToRecentImages(convertedSrc, file.name || 'uploaded image', 'Upload');
+        
         setItems(prev => [...prev, newImage]);
     } catch (error) {
         console.error("Error adding image to canvas:", error);
         alert("Sorry, there was an issue processing that image. It might be in an unsupported format or corrupt.");
+    }
+  }, [zoom, pan, setItems]);
+
+  // Function to add image from URL (for recent images)
+  const addImageFromUrl = useCallback(async (imageUrl: string) => {
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const image = new Image();
+        image.onload = () => resolve(image);
+        image.onerror = (err) => reject(new Error('Failed to load image from URL: ' + err));
+        image.src = imageUrl;
+        image.crossOrigin = 'anonymous'; // Handle CORS if needed
+      });
+      
+      const maxWidth = 300;
+      const newWidth = img.width > maxWidth ? maxWidth : img.width;
+      const newHeight = img.height * (newWidth / img.width);
+      
+      const canvasCenterX = (window.innerWidth / 2 - pan.x) / zoom;
+      const canvasCenterY = (window.innerHeight / 2 - pan.y) / zoom;
+
+      const newImage: ImageItem = {
+        id: `img_${Date.now()}`,
+        type: 'image',
+        x: canvasCenterX - newWidth / 2,
+        y: canvasCenterY - newHeight / 2,
+        width: newWidth,
+        height: newHeight,
+        src: imageUrl,
+        mimeType: 'image/png', // Default mime type for URLs
+        prompt: 'Recent image',
+        rotation: 0,
+      };
+      
+      setItems(prev => [...prev, newImage]);
+    } catch (error) {
+      console.error("Error adding image from URL to canvas:", error);
+      alert("Sorry, there was an issue loading that image. It might not be accessible or in an unsupported format.");
     }
   }, [zoom, pan, setItems]);
 
@@ -534,6 +577,9 @@ function App({ pageOverride }: AppProps = {}) {
                 src: `data:${result.mimeType};base64,${result.base64}`,
                 mimeType: result.mimeType, prompt: finalPrompt!, rotation: 0,
             };
+            
+            // Thêm ảnh vào danh sách recent images
+            addToRecentImages(newImage.src, finalPrompt, modelToUse);
             
             setImagePreview({ newImage, itemsToReplace: itemsForTask });
         };
@@ -851,6 +897,9 @@ function App({ pageOverride }: AppProps = {}) {
     } else {
         setMagicFillState({ isActive: false, targetItemId: null, sourceItemId: null, maskDrawing: null });
     }
+    
+    // Đóng context menu sau khi thực hiện hành động
+    setContextMenu(null);
   }, [magicFillState.isActive, selectedItems]);
   
   const exitModes = useCallback(() => {
@@ -1220,25 +1269,11 @@ function App({ pageOverride }: AppProps = {}) {
   const activeGenerationTasks = generationTasks.filter(t => t.status === 'interpreting' || t.status === 'generating');
 
   const renderPageContent = () => {
-    if (currentPage === 'write') {
-      return (
-        <div className="flex-1 h-full">
-          <WriteAssistant />
-        </div>
-      );
-    }
-
-    if (currentPage === 'image-creator') {
-      return (
-        <div className="flex-1 h-full">
-          <ImageCreator />
-        </div>
-      );
-    }
-
+  
     // Default canvas page
     return (
       <>
+      <div className="relative w-full h-full">
         <Canvas 
         items={items} 
         setItems={setItems} 
@@ -1272,7 +1307,23 @@ function App({ pageOverride }: AppProps = {}) {
         onSetMagicFillMode={handleSetMagicFillMode} isMagicFillMode={magicFillState.isActive}
         magicFillMode={magicFillMode}
         gridOptions={gridOptions} onGridOptionsChange={handleGridOptionsChange}
+        onOpenPromptModal={() => setGenerationPromptModal({ isOpen: true, position: { x: 400, y: 300 } })}
       />
+      <RecentImagePanel onAddImageToCanvas={addImageFromUrl} />
+       
+      {/* Nút Hướng dẫn ở góc phải trên */}
+      <button
+        onClick={() => setIsGuideModalOpen(true)}
+        className="absolute top-4 right-4 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors duration-200 flex items-center gap-2 z-30"
+        title="Hướng dẫn sử dụng"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Hướng dẫn
+      </button>
+      </div>
+       
       {selectionRect && !isDrawingMode && !isTextMode && !imagePreview && (
         <SelectionPromptBar
             selectionRect={selectionRect}
@@ -1331,6 +1382,7 @@ function App({ pageOverride }: AppProps = {}) {
           onExpand={handleStartExpansionMode}
           onDownload={handleDownloadImage}
           onUpscale={handleUpscaleImage}
+          onSetMagicFillMode={handleSetMagicFillMode}
           itemType={contextMenu.item?.type}
           isGenerationDisabled={!isApiKeyConfigured}
         />
@@ -1347,6 +1399,10 @@ function App({ pageOverride }: AppProps = {}) {
         onClose={() => setIsSettingsModalOpen(false)}
         settings={modelSettings}
         onSettingsChange={setModelSettings}
+      />
+      <GuideModal
+        isOpen={isGuideModalOpen}
+        onClose={() => setIsGuideModalOpen(false)}
       />
       <ProgressPanel 
           tasks={generationTasks} isOpen={isPanelOpen}

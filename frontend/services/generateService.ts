@@ -121,7 +121,7 @@ class GenerateService {
     speed?: number;
   }): Promise<{ success: boolean; data: Generate; message: string }> {
     // For NDHub TTS, use specific endpoint
-    if (data.type === 'ndhub-tts') {
+    if (data.type === 'audio' && data.lang && data.voices) {
       const ndhubUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ndhub-tts`;
       return this.makeRequest(ndhubUrl, {
         method: 'POST',

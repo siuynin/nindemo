@@ -1,7 +1,7 @@
 import React from 'react';
-import { ImageIcon, PencilIcon, TypeTextIcon, UndoIcon, RedoIcon, MagicWandIcon, GridIcon } from './icons';
-import { DrawingOptions, GridOptions, TextOptions } from '../types';
-import { useLanguage } from '../contexts/LanguageContext';
+import { ImageIcon, PencilIcon, TypeTextIcon, UndoIcon, RedoIcon, MagicWandIcon, GridIcon } from '@/components/icons';
+import { DrawingOptions, GridOptions, TextOptions } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export type MagicFillMode = 'disabled' | 'fill' | 'replace';
 
@@ -25,6 +25,7 @@ interface ToolbarProps {
   magicFillMode: MagicFillMode;
   gridOptions: GridOptions;
   onGridOptionsChange: (newOptions: Partial<GridOptions>) => void;
+  onOpenPromptModal: () => void;
 }
 
 const COLORS = ['#FFFFFF', '#EF4444', '#F97316', '#EAB308', '#22C55E', '#3B82F6', '#8B5CF6'];
@@ -127,7 +128,8 @@ const Toolbar: React.FC<ToolbarProps> = ({
   onSetTextMode, isTextMode, textOptions, onTextOptionsChange, showTextToolbar,
   onUndo, onRedo, canUndo, canRedo,
   onSetMagicFillMode, isMagicFillMode, magicFillMode,
-  gridOptions, onGridOptionsChange
+  gridOptions, onGridOptionsChange,
+  onOpenPromptModal
 }) => {
   const { t } = useLanguage();
   const baseButtonClass = "p-3 rounded-lg flex items-center justify-center transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900";
@@ -144,7 +146,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
   }
 
   return (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gray-800/50 backdrop-blur-md rounded-xl shadow-2xl p-2 flex items-center space-x-2 border border-gray-700 z-20">
+    <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-gray-800/50 backdrop-blur-md rounded-xl shadow-2xl p-2 flex items-center space-x-2 border border-gray-700 z-20">
       {/* Undo/Redo */}
       <button
         onClick={onUndo}
@@ -166,6 +168,15 @@ const Toolbar: React.FC<ToolbarProps> = ({
       <div className="h-8 w-px bg-gray-600 mx-2"></div>
 
       {/* Main Tools */}
+       
+      <button 
+        onClick={onOpenPromptModal} 
+        title="Generate New Image"
+        className={`${baseButtonClass} text-gray-300 hover:bg-green-500 hover:text-white focus:ring-green-500`}
+      >
+        <span className="text-2xl line-height-1.5 font-bold">+</span>
+      </button>
+
       <button 
         onClick={onAddImage} 
         title={t.imageCanvas?.toolbar?.uploadImage || 'Upload Image'}
@@ -173,6 +184,7 @@ const Toolbar: React.FC<ToolbarProps> = ({
       >
         <ImageIcon className={iconClass} />
       </button>
+
        <button 
         onClick={onSetTextMode} 
         title={t.imageCanvas?.toolbar?.addText || 'Add Text'}

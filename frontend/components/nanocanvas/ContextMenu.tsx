@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BringToFrontIcon, DuplicateIcon, GenerateIcon, SendToBackIcon, TrashIcon, ExpandIcon, DownloadIcon, UpscaleIcon } from './icons';
-import { CanvasItem } from '../types';
+import { BringToFrontIcon, DuplicateIcon, GenerateIcon, SendToBackIcon, TrashIcon, ExpandIcon, DownloadIcon, UpscaleIcon, PencilIcon } from '@/components/icons';
+import { CanvasItem } from '@/types';
 
 interface ContextMenuProps {
     x: number;
@@ -14,12 +14,13 @@ interface ContextMenuProps {
     onExpand: () => void;
     onDownload: () => void;
     onUpscale: () => void;
+    onSetMagicFillMode: () => void;
     itemType?: CanvasItem['type'];
     isGenerationDisabled?: boolean;
 }
 
 const ContextMenu: React.FC<ContextMenuProps> = ({ 
-    x, y, onClose, onBringToFront, onSendToBack, onDuplicate, onDelete, onGenerateImage, onExpand, onDownload, onUpscale, itemType, isGenerationDisabled = false
+    x, y, onClose, onBringToFront, onSendToBack, onDuplicate, onDelete, onGenerateImage, onExpand, onDownload, onUpscale, onSetMagicFillMode, itemType, isGenerationDisabled = false
 }) => {
     const menuRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -77,6 +78,11 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
                     <>
                         {itemType === 'image' && (
                             <>
+                                <li>
+                                    <button onClick={onSetMagicFillMode} className={menuItemClass}>
+                                        <PencilIcon className={iconClass} />Inpaint
+                                    </button>
+                                </li>
                                 <li>
                                     <button onClick={onExpand} className={menuItemClass}>
                                         <ExpandIcon className={iconClass} /> Expand

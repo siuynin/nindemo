@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { MagicWandIcon, SendIcon } from './icons';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { MagicWandIcon, SendIcon } from '@/components/icons';
 
 interface PromptModalProps {
   isOpen: boolean;
