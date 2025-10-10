@@ -14,6 +14,7 @@ import CreativeEditor from './pages/CreativeEditor';
 import ImageTools from './pages/ImageTools';
 import UserCredit from './pages/UserCredit';
 import VideoGeneration from './pages/VideoGeneration';
+import NDHubTTS from './pages/NDHubTTS';
 import App from './App';
 import DebugRunware from './debug-runware';
 import UpScaler from './pages/image-tool/UpScaler';
@@ -72,6 +73,10 @@ export const router = createBrowserRouter([
       {
         path: 'text-to-speech',
         element: <TextToSpeech />,
+      },
+      {
+        path: 'ndhub-tts',
+        element: <NDHubTTS />,
       },
       {
         path: 'document',
@@ -167,6 +172,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <TextToSpeech />,
+      },
+    ],
+  },
+  {
+    path: '/ndhub-tts',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <NDHubTTS />,
       },
     ],
   },

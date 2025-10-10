@@ -176,6 +176,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/upscale', [App\Http\Controllers\Api\ImageGenerationController::class, 'upscaleImage']);
     });
 
+    // NDHub TTS Routes
+    Route::prefix('ndhub-tts')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\NDHubTTSController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\NDHubTTSController::class, 'create']);
+        Route::get('/{id}', [App\Http\Controllers\Api\NDHubTTSController::class, 'show']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\NDHubTTSController::class, 'destroy']);
+    });
+
     // Video Generation Routes
     Route::prefix('video')->group(function () {
         Route::post('/generate', [App\Http\Controllers\Api\VideoGenerationController::class, 'generateVideo']);

@@ -275,7 +275,7 @@ class AIService {
         throw new Error('No AI service available. Please configure Gemini or OpenAI API keys.');
       } catch (error) {
         // If it's a credit-related error, re-throw it
-        if (error instanceof Error && error.message.includes('Insufficient credits')) {
+        if (error instanceof Error && error.message.includes('Insufficient credits. Please top up your account.')) {
           throw error;
         }
         

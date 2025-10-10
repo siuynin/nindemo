@@ -119,7 +119,7 @@ class UserCreditController extends Controller
         if ($remainingAmount > 0) {
             return [
                 'success' => false,
-                'message' => 'Insufficient credits',
+                'message' => 'Insufficient credits. Please top up your account.',
                 'required' => $amount,
                 'available' => $amount - $remainingAmount
             ];

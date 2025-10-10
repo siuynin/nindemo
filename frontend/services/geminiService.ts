@@ -375,10 +375,17 @@ export const generateOutpaintedImage = async (
     }
 };
 
+// Creat new image fromt text   
 const generateImageFromText = async (
     prompt: string,
     model: string = 'imagen-4.0-generate-001'
 ): Promise<{ base64: string; mimeType: string; textResponse: string }> => {
+    // Check authentication and credits before API call
+    const creditCheck = await checkAuthAndCredits(80);
+    if (!creditCheck.success) {
+        throw new Error(creditCheck.message);
+    }
+
     const ai = getAiClient();
 
     if (model === 'gemini-2.5-flash-image-preview') {
@@ -390,6 +397,12 @@ const generateImageFromText = async (
 
         const part = response.candidates?.[0]?.content?.parts?.[0];
         if (part?.inlineData) {
+            // Deduct credits after successful image generation
+            const creditDeducted = await deductCreditsForGemini(`Image generation with ${model}`);
+            if (!creditDeducted) {
+                console.warn('Failed to deduct credits for image generation, but operation was successful');
+            }
+
             return {
                 base64: part.inlineData.data,
                 mimeType: part.inlineData.mimeType,
@@ -417,6 +430,12 @@ const generateImageFromText = async (
 
     if (!response.generatedImages || response.generatedImages.length === 0) {
         throw new Error("The model did not return an image. It may have been blocked for safety reasons.");
+    }
+
+    // Deduct credits after successful image generation
+    const creditDeducted = await deductCreditsForGemini(`Image generation with ${model}`);
+    if (!creditDeducted) {
+        console.warn('Failed to deduct credits for image generation, but operation was successful');
     }
 
     const base64ImageBytes: string = response.generatedImages[0].image.imageBytes;

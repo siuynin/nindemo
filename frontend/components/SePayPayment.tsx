@@ -254,9 +254,9 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
   }
 
   return (
-    <div className="p-6 min-w-[700px] max-w-4xl">
-      <div className="text-center mb-6">
-        <h3 className={`text-xl font-semibold mb-2 ${
+    <div className="p-4 sm:p-6 w-full">
+      <div className="text-center mb-4 sm:mb-6">
+        <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${
           theme === 'dark' ? 'text-white' : 'text-gray-900'
         }`}>Thông tin chuyển khoản</h3>
         {paymentStatus === 'checking' && (
@@ -277,32 +277,32 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
       </div>
 
       {/* Layout 2 cột: Thông tin chuyển khoản + QR Code */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
         {/* Cột trái: Thông tin chuyển khoản */}
-        <div className={`border rounded-lg p-6 ${
+        <div className={`border rounded-lg p-4 sm:p-6 ${
           theme === 'dark'
             ? 'border-gray-700 bg-gray-800/50'
             : 'border-gray-200 bg-white'
         }`}>
-          <h4 className={`font-semibold mb-4 text-center text-lg ${
+          <h4 className={`font-semibold mb-4 text-center text-base sm:text-lg ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>Chi tiết chuyển khoản</h4>
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className={`font-medium ${
+          <div className="space-y-3 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span className={`font-medium text-sm sm:text-base ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Ngân hàng:</span>
-              <span className={`font-semibold ${
+              <span className={`font-semibold text-sm sm:text-base ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>{bankInfo.bank_name}</span>
             </div>
             
-            <div className="flex justify-between items-center">
-              <span className={`font-medium ${
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span className={`font-medium text-sm sm:text-base ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Số tài khoản:</span>
               <div className="flex items-center">
-                <span className={`font-mono font-semibold ${
+                <span className={`font-mono font-semibold text-sm sm:text-base ${
                   theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
                 }`}>{bankInfo.account_number}</span>
                 <button
@@ -319,21 +319,21 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
               </div>
             </div> 
             
-            <div className="flex justify-between items-center">
-              <span className={`font-medium ${
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span className={`font-medium text-sm sm:text-base ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Tên tài khoản:</span>
-              <span className={`font-semibold ${
+              <span className={`font-semibold text-sm sm:text-base ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>{bankInfo.account_name}</span>
             </div>
             
-            <div className="flex justify-between items-center">
-              <span className={`font-medium ${
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span className={`font-medium text-sm sm:text-base ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Số tiền:</span>
               <div className="flex items-center">
-                <span className={`font-mono font-bold text-lg ${
+                <span className={`font-mono font-bold text-base sm:text-lg ${
                   theme === 'dark' ? 'text-red-400' : 'text-red-600'
                 }`}>
                   {bankInfo.amount.toLocaleString()} VND
@@ -352,12 +352,12 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
               </div>
             </div>
             
-            <div className="flex justify-between items-center">
-              <span className={`font-medium ${
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+              <span className={`font-medium text-sm sm:text-base ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
               }`}>Nội dung CK:</span>
               <div className="flex items-center">
-                <span className={`font-mono px-2 py-1 rounded text-sm font-semibold ${
+                <span className={`font-mono px-2 py-1 rounded text-xs sm:text-sm font-semibold ${
                   theme === 'dark'
                     ? 'bg-gray-700 text-yellow-400'
                     : 'bg-gray-100 text-gray-800'
@@ -382,16 +382,16 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
 
         {/* Cột phải: QR Code */}
         {bankInfo.qr_code && (
-          <div className={`border rounded-lg p-6 ${
+          <div className={`border rounded-lg p-4 sm:p-6 ${
             theme === 'dark'
               ? 'border-gray-700 bg-gray-800/50'
               : 'border-gray-200 bg-white'
           }`}>
-            <h4 className={`font-semibold mb-4 text-center text-lg ${
+            <h4 className={`font-semibold mb-4 text-center text-base sm:text-lg ${
               theme === 'dark' ? 'text-white' : 'text-gray-900'
             }`}>Quét mã QR</h4>
             <div className="text-center">
-              <div className={`mb-3 text-sm ${
+              <div className={`mb-3 text-xs sm:text-sm ${
                 theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
               }`}>
                 Quét mã QR để chuyển khoản nhanh
@@ -402,7 +402,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
                 className={`mx-auto border rounded max-w-full h-auto ${
                   theme === 'dark' ? 'border-gray-600' : 'border-gray-300'
                 }`}
-                style={{ maxWidth: '280px' }}
+                style={{ maxWidth: '250px' }}
               />
               <div className={`mt-3 text-xs ${
                 theme === 'dark' ? 'text-gray-500' : 'text-gray-500'
@@ -414,18 +414,18 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
         )}
       </div>
 
-      <div className={`border rounded-lg p-4 mb-4 ${
+      <div className={`border rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 ${
         theme === 'dark'
           ? 'bg-yellow-900/20 border-yellow-800'
           : 'bg-yellow-50 border-yellow-200'
       }`}>
         <div className="flex items-start">
-          <svg className={`w-5 h-5 mr-2 mt-0.5 ${
+          <svg className={`w-4 h-4 sm:w-5 sm:h-5 mr-2 mt-0.5 flex-shrink-0 ${
             theme === 'dark' ? 'text-yellow-400' : 'text-yellow-600'
           }`} fill="currentColor" viewBox="0 0 20 20">
             <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
           </svg>
-          <div className={`text-sm ${
+          <div className={`text-xs sm:text-sm ${
             theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'
           }`}>
             <div className="font-medium mb-1">Lưu ý quan trọng:</div>
@@ -444,12 +444,12 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
       </div>
 
       {error && (
-        <div className={`border rounded-lg p-4 mb-4 ${
+        <div className={`border rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 ${
           theme === 'dark'
             ? 'bg-red-900/20 border-red-800'
             : 'bg-red-50 border-red-200'
         }`}>
-          <div className={`text-sm ${
+          <div className={`text-xs sm:text-sm ${
             theme === 'dark' ? 'text-red-400' : 'text-red-800'
           }`}>{error}</div>
         </div>

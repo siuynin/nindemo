@@ -1,0 +1,538 @@
+[
+  
+  {
+    "lang": "en-us",
+    "voice": "af_heart",
+    "gender": "female",
+    "name": "Heart",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-heart-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_bella",
+    "gender": "female",
+    "name": "Bella",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-bella-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_michael",
+    "gender": "male",
+    "name": "Michael",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-michael-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_alloy",
+    "gender": "female",
+    "name": "Alloy",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-alloy-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  }, 
+  {
+    "lang": "en-us",
+    "voice": "af_aoede",
+    "gender": "female",
+    "name": "Aoede",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-aoede-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_kore",
+    "gender": "female",
+    "name": "Kore",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-kore-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_jessica",
+    "gender": "female",
+    "name": "Jessica",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-jessica-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_nicole",
+    "gender": "female",
+    "name": "Nicole",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-nicole-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_nova",
+    "gender": "female",
+    "name": "Nova",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-nova-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_river",
+    "gender": "female",
+    "name": "River",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-river-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_sarah",
+    "gender": "female",
+    "name": "Sarah",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-sarah-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "af_sky",
+    "gender": "female",
+    "name": "Sky",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-sky-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_echo",
+    "gender": "male",
+    "name": "Echo",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-echo-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_eric",
+    "gender": "male",
+    "name": "Eric",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-eric-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_fenrir",
+    "gender": "male",
+    "name": "Fenrir",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-fenrir-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_liam",
+    "gender": "male",
+    "name": "Liam",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-liam-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_onyx",
+    "gender": "male",
+    "name": "Onyx",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-onyx-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_puck",
+    "gender": "male",
+    "name": "Puck",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-puck-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_adam",
+    "gender": "male",
+    "name": "Adam",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-adam-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-us",
+    "voice": "am_santa",
+    "gender": "male",
+    "name": "Santa",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-santa-en-us.mp3",
+    "provider": "lemonfox",
+    "language": "English - America"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bf_alice",
+    "gender": "female",
+    "name": "Alice",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-alice-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bf_emma",
+    "gender": "female",
+    "name": "Emma",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-emma-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bf_isabella",
+    "gender": "female",
+    "name": "Isabella",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-isabella-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bf_lily",
+    "gender": "female",
+    "name": "Lily",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-lily-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bm_daniel",
+    "gender": "male",
+    "name": "Daniel",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-daniel-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bm_fable",
+    "gender": "male",
+    "name": "Fable",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-fable-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bm_george",
+    "gender": "male",
+    "name": "George",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-george-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  {
+    "lang": "en-gb",
+    "voice": "bm_lewis",
+    "gender": "male",
+    "name": "Lewis",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-lewis-en-gb.mp3",
+    "provider": "lemonfox",
+    "language": "English - British"
+  },
+  
+   {
+    "lang": "vi",
+    "voice": "mai",
+    "gender": "female",
+    "name": "Mai",
+    "demo_link": "https://gowithnd.com/demo/mai.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "hanh",
+    "gender": "female",
+    "name": "Ái Hạnh",
+    "demo_link": "https://gowithnd.com/demo/hanh.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "trung",
+    "gender": "male",
+    "name": "Trung Caha",
+    "demo_link": "https://gowithnd.com/demo/trung.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "hong_nhung",
+    "gender": "female",
+    "name": "Hồng Nhung",
+    "demo_link": "https://gowithnd.com/demo/hong_nhung.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "son",
+    "gender": "male",
+    "name": "Sơn",
+    "demo_link": "https://gowithnd.com/demo/son.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+ 
+  {
+    "lang": "vi",
+    "voice": "hoang_nam",
+    "gender": "male",
+    "name": "Hoàng Nam",
+    "demo_link": "https://gowithnd.com/demo/hoang_nam.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "ba_hoa",
+    "gender": "female",
+    "name": "Bà Hoa",
+    "demo_link": "https://gowithnd.com/demo/ba_hoa.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "kim_ngan",
+    "gender": "female",
+    "name": "Kim Ngân",
+    "demo_link": "https://gowithnd.com/demo/kim_ngan.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "linh_diep",
+    "gender": "female",
+    "name": "Linh Diệp",
+    "demo_link": "https://gowithnd.com/demo/linh_diep.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "linh_san",
+    "gender": "female",
+    "name": "Linh San",
+    "demo_link": "https://gowithnd.com/demo/linh_san.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "manh_tuan",
+    "gender": "male",
+    "name": "Mạnh Tuấn",
+    "demo_link": "https://gowithnd.com/demo/manh_tuan.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "mc_luan",
+    "gender": "male",
+    "name": "MC Luân",
+    "demo_link": "https://gowithnd.com/demo/mc_luan.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "ngoc_ngan",
+    "gender": "male",
+    "name": "Ng Ngọc Ngạn",
+    "demo_link": "https://gowithnd.com/demo/dem_ngoc_ngan.wav",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "minh_tuyet",
+    "gender": "female",
+    "name": "Minh Tuyết",
+    "demo_link": "https://gowithnd.com/demo/minh_tuyet.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "ngoc_anh",
+    "gender": "female",
+    "name": "Ngọc Anh",
+    "demo_link": "https://gowithnd.com/demo/ngoc_anh.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "quang_vinh",
+    "gender": "male",
+    "name": "Quang Vinh",
+    "demo_link": "https://gowithnd.com/demo/quang_vinh.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  },
+  {
+    "lang": "vi",
+    "voice": "tien_hiep",
+    "gender": "male",
+    "name": "Tiến Hiệp",
+    "demo_link": "https://gowithnd.com/demo/tien_hiep.mp3",
+    "provider": "ndgroup",
+    "language": "Tiếng Việt (Beta)"
+  }, 
+  {
+    "lang": "fr",
+    "voice": "ff_siwis",
+    "gender": "female",
+    "name": "Siwis",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-siwis-fr.mp3",
+    "provider": "lemonfox",
+    "language": "French"
+  },
+   
+  {
+    "lang": "es",
+    "voice": "ef_dora",
+    "gender": "female",
+    "name": "Dora",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-dora-es.mp3",
+    "provider": "lemonfox",
+    "language": "Spanish"
+  },
+  {
+    "lang": "es",
+    "voice": "em_alex",
+    "gender": "male",
+    "name": "Alex",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-alex-es.mp3",
+    "provider": "lemonfox",
+    "language": "Spanish"
+  },
+  {
+    "lang": "es",
+    "voice": "em_santa",
+    "gender": "male",
+    "name": "Noel",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-noel-es.mp3",
+    "provider": "lemonfox",
+    "language": "Spanish"
+  },
+  {
+    "lang": "hi",
+    "voice": "hf_alpha",
+    "gender": "female",
+    "name": "Priya",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-alpha-hi.mp3",
+    "provider": "lemonfox",
+    "language": "Hindi"
+  },
+  {
+    "lang": "hi",
+    "voice": "hf_beta",
+    "gender": "female",
+    "name": "Lakshmi",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-beta-hi.mp3",
+    "provider": "lemonfox",
+    "language": "Hindi"
+  },
+
+  {
+    "lang": "hi",
+    "voice": "hm_omega",
+    "gender": "male",
+    "name": "Vikram",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-omega-hi.mp3",
+    "provider": "lemonfox",
+    "language": "Hindi"
+  },
+  {
+    "lang": "hi",
+    "voice": "hm_omega",
+    "gender": "male",
+    "name": "Manuam",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-omega-hi.mp3",
+    "provider": "lemonfox",
+    "language": "Hindi"
+  },
+  {
+    "lang": "hi",
+    "voice": "hm_psi",
+    "gender": "male",
+    "name": "Psi",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-pis-hi.mp3",
+    "provider": "lemonfox",
+    "language": "Hindi"
+  },
+  {
+    "lang": "it",
+    "voice": "if_sara",
+    "gender": "female",
+    "name": "Sara",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-sara-it.mp3",
+    "provider": "lemonfox",
+    "language": "Italian"
+  },
+  {
+    "lang": "it",
+    "voice": "im_nicola",
+    "gender": "male",
+    "name": "Nicola",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-nicola-it.mp3",
+    "provider": "lemonfox",
+    "language": "Italian"
+  },
+  {
+    "lang": "pt-br",
+    "voice": "pf_dora",
+    "gender": "female",
+    "name": "Clara",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-clara-pt-br.mp3",
+    "provider": "lemonfox",
+    "language": "Portuguese (Brazil)"
+  },
+  {
+    "lang": "pt-br",
+    "voice": "pm_alex",
+    "gender": "male",
+    "name": "Tiago",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-tiago-pt-br.mp3",
+    "provider": "lemonfox",
+    "language": "Portuguese (Brazil)"
+  },
+  {
+    "lang": "pt-br",
+    "voice": "pm_santa",
+    "gender": "male",
+    "name": "Papai",
+    "demo_link": "https://www.lemonfox.ai/audio/tts-tiago-pt-br.mp3",
+    "provider": "lemonfox",
+    "language": "Portuguese (Brazil)"
+  }
+]

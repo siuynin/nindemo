@@ -361,13 +361,13 @@ class ImageGenerationController extends Controller
 
             $user = Auth::user();
             if (!$user) {
-                return response()->json(['error' => 'Unauthorized'], 401);
+                return response()->json(['error' => 'Unauthorized, please login.'], 401);
             }
 
             // Check user credits (upscale costs 5 credits)
             $creditCost = 5;
             if ($user->credits < $creditCost) {
-                return response()->json(['error' => 'Insufficient credits'], 400);
+                return response()->json(['error' => 'Insufficient credits. Please top up your account.'], 400);
             }
 
             // Create Generate record

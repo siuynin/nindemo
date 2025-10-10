@@ -55,7 +55,7 @@ class VideoGenerationController extends Controller
             $creditCost = $this->calculateVideoCreditCost($validatedData);
             if ($user->credits < $creditCost) {
                 return response()->json([
-                    'error' => 'Insufficient credits',
+                    'error' => 'Insufficient credits. Please top up your account.',
                     'required' => $creditCost,
                     'available' => $user->credits
                 ], 400);

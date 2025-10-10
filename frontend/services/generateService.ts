@@ -114,7 +114,21 @@ class GenerateService {
     task_id?: string;
     credit_cost?: number;
     result_url?: string;
+    // NDHub TTS specific parameters
+    lang?: string;
+    voices?: string;
+    audio_format?: string;
+    speed?: number;
   }): Promise<{ success: boolean; data: Generate; message: string }> {
+    // For NDHub TTS, use specific endpoint
+    if (data.type === 'ndhub-tts') {
+      const ndhubUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ndhub-tts`;
+      return this.makeRequest(ndhubUrl, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      });
+    }
+    
     return this.makeRequest(this.baseUrl, {
       method: 'POST',
       body: JSON.stringify(data),

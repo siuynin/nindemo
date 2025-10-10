@@ -24,6 +24,7 @@ interface AuthContextType {
     avatar?: string;
     preferences?: any;
   }) => Promise<{ success: boolean; message: string }>;
+  forgotPassword: (email: string) => Promise<{ success: boolean; message: string }>;
   refreshUser: () => Promise<void>;
 }
 
@@ -235,6 +236,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const forgotPassword = async (email: string) => {
+    try {
+      const response = await authService.forgotPassword(email);
+      
+      if (response.success) {
+        return { success: true, message: response.message || 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn' };
+      } else {
+        return { success: false, message: response.message || 'Gửi email thất bại' };
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      return { success: false, message: 'Đã xảy ra lỗi khi gửi email khôi phục' };
+    }
+  };
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -245,6 +261,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     updateProfile,
+    forgotPassword,
     refreshUser
   };
 

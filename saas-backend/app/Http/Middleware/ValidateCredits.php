@@ -29,7 +29,7 @@ class ValidateCredits
         if ($user->total_remaining_credits < $minCredits) {
             return response()->json([
                 'success' => false,
-                'message' => 'Insufficient credits',
+                'message' => 'Insufficient credits. Please top up your account.',
                 'required_credits' => $minCredits,
                 'available_credits' => $user->total_remaining_credits
             ], 402);

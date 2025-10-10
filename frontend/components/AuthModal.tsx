@@ -11,9 +11,9 @@ interface AuthModalProps {
 }
 
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'login' }) => {
-  const { login, register, loginWithGoogle, isLoading } = useAuth();
+  const { login, register, loginWithGoogle, forgotPassword, isLoading } = useAuth();
   const { t } = useLanguage();
-  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   
   const [loginData, setLoginData] = useState({
@@ -29,6 +29,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
     phone: ''
   });
 
+  const [forgotPasswordData, setForgotPasswordData] = useState({
+    email: ''
+  });
+
   // Reset form when modal opens/closes or mode changes
   useEffect(() => {
     if (isOpen) {
@@ -36,6 +40,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
       setMessage(null);
       setLoginData({ email: '', password: '' });
       setRegisterData({ name: '', email: '', password: '', password_confirmation: '', phone: '' });
+      setForgotPasswordData({ email: '' });
     }
   }, [isOpen, initialMode]);
 
@@ -60,6 +65,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
   const handleRegisterInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setRegisterData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleForgotPasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setForgotPasswordData(prev => ({
       ...prev,
       [name]: value
     }));
@@ -134,7 +147,32 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
     }
   };
 
-  const switchMode = (newMode: 'login' | 'register') => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    
+    // Validation
+    if (!forgotPasswordData.email.trim()) {
+      setMessage({ type: 'error', text: 'Vui lòng nhập địa chỉ email' });
+      return;
+    }
+    
+    try {
+      const result = await forgotPassword(forgotPasswordData.email.trim());
+      
+      if (result.success) {
+        setMessage({ type: 'success', text: result.message || 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn!' });
+        // Không đóng modal để người dùng có thể thấy thông báo thành công
+      } else {
+        setMessage({ type: 'error', text: result.message || 'Gửi email thất bại' });
+      }
+    } catch (error) {
+      console.error('Forgot password error:', error);
+      setMessage({ type: 'error', text: 'Có lỗi xảy ra khi gửi email khôi phục' });
+    }
+  };
+
+  const switchMode = (newMode: 'login' | 'register' | 'forgot-password') => {
     setMode(newMode);
     setMessage(null);
   };
@@ -147,7 +185,12 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            {mode === 'login' ? (t.auth?.login || 'Đăng nhập') : (t.auth?.register || 'Đăng ký')}
+            {mode === 'login' 
+              ? (t.auth?.login || 'Đăng nhập') 
+              : mode === 'register' 
+                ? (t.auth?.register || 'Đăng ký')
+                : 'Quên mật khẩu'
+            }
           </h2>
           <button
             onClick={onClose}
@@ -228,6 +271,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
               </div>
+
+              {/* Forgot Password Link */}
+              <div className="text-right">
+                <button
+                  type="button"
+                  onClick={() => switchMode('forgot-password')}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                >
+                  Quên mật khẩu?
+                </button>
+              </div>
               
               <button
                 type="submit"
@@ -242,7 +296,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                 )}
                 <span>{isLoading ? 'Đang đăng nhập...' : (t.auth?.login || 'Đăng nhập')}</span>
               </button>
-              
+               
               {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
@@ -400,6 +454,57 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
               </button>
             </form>
           )}
+
+          {/* Forgot Password Form */}
+          {mode === 'forgot-password' && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="text-center mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Nhập địa chỉ email của bạn và chúng tôi sẽ gửi cho bạn liên kết để đặt lại mật khẩu.
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Email <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={forgotPasswordData.email}
+                  onChange={handleForgotPasswordInputChange}
+                  required
+                  placeholder="example@email.com"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+              >
+                {isLoading && (
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                )}
+                <span>{isLoading ? 'Đang gửi...' : 'Gửi liên kết đặt lại'}</span>
+              </button>
+
+              {/* Back to login */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                >
+                  ← Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          )}
         </div>
 
         {/* Footer */}
@@ -415,7 +520,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                   {t.auth?.register || 'Đăng ký ngay'}
                 </button>
               </>
-            ) : (
+            ) : mode === 'register' ? (
               <>
                 {t.auth?.hasAccount || 'Đã có tài khoản?'}{' '}
                 <button
@@ -425,7 +530,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, initialMode = 'l
                   {t.auth?.login || 'Đăng nhập ngay'}
                 </button>
               </>
-            )}
+            ) : null}
           </p>
         </div>
       </div>

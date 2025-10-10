@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -211,17 +212,36 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Email không hợp lệ hoặc không tồn tại trong hệ thống',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        // TODO: Implement password reset email logic
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset link sent to your email'
-        ]);
+        try {
+            // Send password reset notification
+            $status = Password::sendResetLink(
+                $request->only('email')
+            );
+
+            if ($status === Password::RESET_LINK_SENT) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Liên kết đặt lại mật khẩu đã được gửi đến email của bạn'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Không thể gửi email khôi phục. Vui lòng thử lại sau'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Forgot password error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi gửi email khôi phục'
+            ], 500);
+        }
     }
 
     /**
@@ -238,17 +258,42 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
+                'message' => 'Dữ liệu không hợp lệ',
                 'errors' => $validator->errors()
             ], 422);
         }
 
-        // TODO: Implement password reset token validation and password update
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Password reset successfully'
-        ]);
+        try {
+            $status = Password::reset(
+                $request->only('email', 'password', 'password_confirmation', 'token'),
+                function ($user, $password) {
+                    $user->forceFill([
+                        'password' => Hash::make($password)
+                    ])->setRememberToken(Str::random(60));
+
+                    $user->save();
+                }
+            );
+
+            if ($status === Password::PASSWORD_RESET) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Mật khẩu đã được đặt lại thành công'
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Token không hợp lệ hoặc đã hết hạn'
+                ], 400);
+            }
+        } catch (\Exception $e) {
+            \Log::error('Reset password error: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Có lỗi xảy ra khi đặt lại mật khẩu'
+            ], 500);
+        }
     }
 
     /**
