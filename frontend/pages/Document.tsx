@@ -7,6 +7,7 @@ import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
 import { DownloadIcon, TrashIcon, PlusIcon } from '../components/icons';
 import AuthModal from '../components/AuthModal';
+import CreditModal from '../components/CreditModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
 
 interface FilterState {
@@ -72,6 +73,14 @@ const Document: React.FC = () => {
   
   // Auth modal state
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' as 'login' | 'register' });
+  
+  // Credit modal state
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalData, setCreditModalData] = useState<{
+    message?: string;
+    requiredCredits?: number;
+    currentCredits?: number;
+  }>({});
   
   // Modal state
   const [templateModal, setTemplateModal] = useState<TemplateModalState>({
@@ -334,7 +343,20 @@ const Document: React.FC = () => {
       
     } catch (error) {
       console.error('Error creating new document:', error);
-      showToast('Có lỗi xảy ra khi tạo document mới', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi tạo document mới';
+      
+      // Kiểm tra nếu lỗi liên quan đến credit
+      if (errorMessage.toLowerCase().includes('credit') || 
+          errorMessage.toLowerCase().includes('insufficient') ||
+          errorMessage.toLowerCase().includes('không đủ')) {
+        // Hiển thị modal thay vì toast cho lỗi credit
+        setCreditModalData({
+          message: errorMessage
+        });
+        setShowCreditModal(true);
+      } else {
+        showToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -566,7 +588,20 @@ const Document: React.FC = () => {
       }
     } catch (error) {
       console.error('Error creating content:', error);
-      showToast('Có lỗi xảy ra khi tạo nội dung', 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi tạo nội dung';
+      
+      // Kiểm tra nếu lỗi liên quan đến credit
+      if (errorMessage.toLowerCase().includes('credit') || 
+          errorMessage.toLowerCase().includes('insufficient') ||
+          errorMessage.toLowerCase().includes('không đủ')) {
+        // Hiển thị modal thay vì toast cho lỗi credit
+        setCreditModalData({
+          message: errorMessage
+        });
+        setShowCreditModal(true);
+      } else {
+        showToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -1296,6 +1331,19 @@ const Document: React.FC = () => {
            </div>
          </Modal>
        )}
+
+       {/* Credit Modal */}
+       <CreditModal
+         isOpen={showCreditModal}
+         onClose={() => setShowCreditModal(false)}
+         message={creditModalData.message}
+         requiredCredits={creditModalData.requiredCredits}
+         currentCredits={creditModalData.currentCredits}
+         onBuyCredits={() => {
+           setShowCreditModal(false);
+           window.location.href = '/price';
+         }}
+       />
      </div>
    );
  };

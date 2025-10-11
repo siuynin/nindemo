@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import generateService from '../services/generateService';
 import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
 import AuthModal from '../components/AuthModal';
+import CreditModal from '../components/CreditModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
 import MinimaxVoiceModal from '../components/MinimaxVoiceModal';
 import { Card, Button, Badge, Input, TextArea, Select } from '../components/ui';
@@ -96,6 +97,15 @@ const Minimax: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [selectedVoiceName, setSelectedVoiceName] = useState<string>('Default Voice');
+  
+  // Credit modal state
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalData, setCreditModalData] = useState<{
+    message?: string;
+    requiredCredits?: number;
+    currentCredits?: number;
+  }>({});
+  
   const [lastGenerateResult, setLastGenerateResult] = useState<{
     id: number;
     name: string;
@@ -372,7 +382,20 @@ const Minimax: React.FC = () => {
       fetchUserGenerates();
     } catch (error) {
       console.error('Error in submission process:', error);
-      showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Kiểm tra nếu lỗi liên quan đến credit
+      if (errorMessage.toLowerCase().includes('credit') || 
+          errorMessage.toLowerCase().includes('insufficient') ||
+          errorMessage.toLowerCase().includes('không đủ')) {
+        // Hiển thị modal thay vì toast cho lỗi credit
+        setCreditModalData({
+          message: errorMessage
+        });
+        setShowCreditModal(true);
+      } else {
+        showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -809,6 +832,19 @@ const Minimax: React.FC = () => {
             setSelectedVoiceName(voiceName);
           }}
           selectedVoiceId={voiceSettings.voice_id}
+        />
+
+        {/* Credit Modal */}
+        <CreditModal
+          isOpen={showCreditModal}
+          onClose={() => setShowCreditModal(false)}
+          message={creditModalData.message}
+          requiredCredits={creditModalData.requiredCredits}
+          currentCredits={creditModalData.currentCredits}
+          onBuyCredits={() => {
+            setShowCreditModal(false);
+            window.location.href = '/price';
+          }}
         />
 
         {/* Audio Player */}

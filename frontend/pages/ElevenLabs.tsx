@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import generateService from '../services/generateService';
 import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
 import AuthModal from '../components/AuthModal';
+import CreditModal from '../components/CreditModal';
 import VoiceSelectionModal from '../components/VoiceSelectionModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
 import { ElevenLabsVoice } from '../types';
@@ -65,6 +66,12 @@ const ElevenLabs: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalData, setCreditModalData] = useState<{
+    requiredCredits?: number;
+    currentCredits?: number;
+    message?: string;
+  }>({});
   const [lastGenerateResult, setLastGenerateResult] = useState<{
     id: number;
     name: string;
@@ -350,7 +357,20 @@ const ElevenLabs: React.FC = () => {
       fetchUserGenerates();
     } catch (error) {
       console.error('Error in submission process:', error);
-      showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Kiểm tra nếu lỗi liên quan đến credit
+      if (errorMessage.toLowerCase().includes('credit') || 
+          errorMessage.toLowerCase().includes('insufficient') ||
+          errorMessage.toLowerCase().includes('không đủ')) {
+        // Hiển thị modal thay vì toast cho lỗi credit
+        setCreditModalData({
+          message: errorMessage
+        });
+        setShowCreditModal(true);
+      } else {
+        showToast('Có lỗi xảy ra khi gửi yêu cầu: ' + errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -852,6 +872,19 @@ const ElevenLabs: React.FC = () => {
         selectedVoiceId={selectedVoice?.voice_id}
         onVoicePreview={handleVoicePreview}
         playingVoiceId={isPlaying}
+      />
+
+      {/* Credit Modal */}
+      <CreditModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        message={creditModalData.message}
+        requiredCredits={creditModalData.requiredCredits}
+        currentCredits={creditModalData.currentCredits}
+        onBuyCredits={() => {
+          setShowCreditModal(false);
+          window.location.href = '/price';
+        }}
       />
 
       {/* Audio Player */}

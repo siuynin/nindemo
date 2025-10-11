@@ -11,6 +11,7 @@ import Alert from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
 import AuthModal from '../components/AuthModal';
+import CreditModal from '../components/CreditModal';
 import '../styles/slider.css';
 
 interface AIModel {
@@ -69,6 +70,12 @@ const ImageCreator: React.FC = () => {
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalData, setCreditModalData] = useState<{
+    requiredCredits?: number;
+    currentCredits?: number;
+    message?: string;
+  }>({});
 
   useEffect(() => {
     fetchModels();
@@ -294,7 +301,18 @@ const ImageCreator: React.FC = () => {
     } catch (error) {
       console.error('Error generating image:', error);
       if (error instanceof Error) {
-        showToast('error', error.message);
+        // Kiểm tra nếu lỗi liên quan đến credit
+        if (error.message.toLowerCase().includes('credit') || 
+            error.message.toLowerCase().includes('insufficient') ||
+            error.message.toLowerCase().includes('không đủ')) {
+          // Hiển thị modal thay vì toast cho lỗi credit
+          setCreditModalData({
+            message: error.message
+          });
+          setShowCreditModal(true);
+        } else {
+          showToast('error', error.message);
+        }
       } else {
         showToast('error', 'Failed to generate image. Please try again.');
       }
@@ -947,6 +965,19 @@ const ImageCreator: React.FC = () => {
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
         initialMode="login"
+      />
+
+      {/* Credit Modal */}
+      <CreditModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        message={creditModalData.message}
+        requiredCredits={creditModalData.requiredCredits}
+        currentCredits={creditModalData.currentCredits}
+        onBuyCredits={() => {
+          // Redirect to credit purchase page
+          window.location.href = '/user-credit';
+        }}
       />
     </div>
   );

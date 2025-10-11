@@ -10,6 +10,8 @@ import MagicFillPrompt from './components/nanocanvas/MagicFillPrompt'
 import RecentImagePanel, { addToRecentImages } from './components/nanocanvas/RecentImagePanel';
 import GuideModal from './components/nanocanvas/GuideModal';
 import { useLanguage } from './contexts/LanguageContext';
+import ImageCreator from './pages/ImageCreator';
+import WriteAssistant from './components/WriteAssistant';
 
 import { CanvasItem, ImageItem, SelectionRect, TextItem, DrawingOptions, TextOptions, GenerationTask, ImagePreview, Point, DrawingItem, MagicFillState, VideoItem, GridOptions, ModelSettings, AVAILABLE_MODELS } from './types';
 import { interpretCanvas, generateImage, editImageWithMask, generateVideo, generateOutpaintedImage, interpretMagicFill } from './services/geminiService';
@@ -462,13 +464,62 @@ function App({ pageOverride }: AppProps = {}) {
   // Function to add image from URL (for recent images)
   const addImageFromUrl = useCallback(async (imageUrl: string) => {
     try {
+      // First try to fetch the image as blob to handle CORS issues
+      let imageSrc = imageUrl;
+      let mimeType = 'image/png';
+      
+      try {
+        const response = await fetch(imageUrl, {
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        if (response.ok) {
+          const blob = await response.blob();
+          mimeType = blob.type || 'image/png';
+          imageSrc = URL.createObjectURL(blob);
+        }
+      } catch (fetchError) {
+        console.warn('Failed to fetch image as blob, trying direct URL:', fetchError);
+        // Fallback to direct URL
+      }
+
       const img = await new Promise<HTMLImageElement>((resolve, reject) => {
         const image = new Image();
-        image.onload = () => resolve(image);
-        image.onerror = (err) => reject(new Error('Failed to load image from URL: ' + err));
-        image.src = imageUrl;
-        image.crossOrigin = 'anonymous'; // Handle CORS if needed
+        
+        image.onload = () => {
+          // Clean up blob URL if we created one
+          if (imageSrc !== imageUrl && imageSrc.startsWith('blob:')) {
+            URL.revokeObjectURL(imageSrc);
+          }
+          resolve(image);
+        };
+        
+        image.onerror = (err) => {
+          // Clean up blob URL if we created one
+          if (imageSrc !== imageUrl && imageSrc.startsWith('blob:')) {
+            URL.revokeObjectURL(imageSrc);
+          }
+          reject(new Error('Failed to load image from URL'));
+        };
+        
+        // Set crossOrigin before setting src
+        image.crossOrigin = 'anonymous';
+        image.src = imageSrc;
       });
+
+      // Convert image to canvas to get data URL for consistent handling
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        throw new Error('Could not create canvas context');
+      }
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      const dataUrl = canvas.toDataURL('image/png');
       
       const maxWidth = 300;
       const newWidth = img.width > maxWidth ? maxWidth : img.width;
@@ -484,8 +535,8 @@ function App({ pageOverride }: AppProps = {}) {
         y: canvasCenterY - newHeight / 2,
         width: newWidth,
         height: newHeight,
-        src: imageUrl,
-        mimeType: 'image/png', // Default mime type for URLs
+        src: dataUrl, // Use data URL instead of original URL
+        mimeType: 'image/png',
         prompt: 'Recent image',
         rotation: 0,
       };
@@ -493,7 +544,7 @@ function App({ pageOverride }: AppProps = {}) {
       setItems(prev => [...prev, newImage]);
     } catch (error) {
       console.error("Error adding image from URL to canvas:", error);
-      alert("Sorry, there was an issue loading that image. It might not be accessible or in an unsupported format.");
+      alert("Không thể tải ảnh này. Ảnh có thể không truy cập được hoặc có vấn đề về CORS.");
     }
   }, [zoom, pan, setItems]);
 
@@ -1269,6 +1320,15 @@ function App({ pageOverride }: AppProps = {}) {
   const activeGenerationTasks = generationTasks.filter(t => t.status === 'interpreting' || t.status === 'generating');
 
   const renderPageContent = () => {
+    // Handle image-creator page
+    if (currentPage === 'image-creator') {
+      return <ImageCreator />;
+    }
+    
+    // Handle write-assistant page
+    if (currentPage === 'write') {
+      return <WriteAssistant />;
+    }
   
     // Default canvas page
     return (

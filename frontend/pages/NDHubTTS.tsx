@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import generateService from '../services/generateService';
 import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
 import AuthModal from '../components/AuthModal';
+import CreditModal from '../components/CreditModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
 import { Card, Button, Badge, Input, TextArea, Select } from '../components/ui';
 import voiceData from '../voice1.json';
@@ -78,6 +79,12 @@ const NDHubTTS: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [showCreditModal, setShowCreditModal] = useState(false);
+  const [creditModalData, setCreditModalData] = useState<{
+    requiredCredits?: number;
+    currentCredits?: number;
+    message?: string;
+  }>({});
   const [lastGenerateResult, setLastGenerateResult] = useState<{
     id: number;
     name: string;
@@ -272,7 +279,20 @@ const NDHubTTS: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error creating TTS:', error);
-      showToast(error.response?.data?.message || 'Có lỗi xảy ra khi tạo TTS', 'error');
+      const errorMessage = error.response?.data?.message || 'Có lỗi xảy ra khi tạo TTS';
+      
+      // Kiểm tra nếu lỗi liên quan đến credit
+      if (errorMessage.toLowerCase().includes('credit') || 
+          errorMessage.toLowerCase().includes('insufficient') ||
+          errorMessage.toLowerCase().includes('không đủ')) {
+        // Hiển thị modal thay vì toast cho lỗi credit
+        setCreditModalData({
+          message: errorMessage
+        });
+        setShowCreditModal(true);
+      } else {
+        showToast(errorMessage, 'error');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -706,6 +726,19 @@ const NDHubTTS: React.FC = () => {
       <AuthModal 
         isOpen={isAuthModalOpen} 
         onClose={() => setIsAuthModalOpen(false)} 
+      />
+
+      {/* Credit Modal */}
+      <CreditModal
+        isOpen={showCreditModal}
+        onClose={() => setShowCreditModal(false)}
+        message={creditModalData.message}
+        requiredCredits={creditModalData.requiredCredits}
+        currentCredits={creditModalData.currentCredits}
+        onBuyCredits={() => {
+          // Redirect to credit purchase page
+          window.location.href = '/user-credit';
+        }}
       />
 
       {/* Audio Player */}
