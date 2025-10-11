@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Button } from './ui';
@@ -22,6 +23,7 @@ const CreditModal: React.FC<CreditModalProps> = ({
 }) => {
   const { theme } = useTheme();
   const { t } = useLanguage();
+  const navigate = useNavigate();
 
   if (!isOpen) return null;
 
@@ -119,7 +121,7 @@ const CreditModal: React.FC<CreditModalProps> = ({
           {onBuyCredits && (
             <Button
               onClick={() => {
-                onBuyCredits();
+                navigate('/price');
                 onClose();
               }}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"

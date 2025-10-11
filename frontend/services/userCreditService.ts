@@ -390,6 +390,48 @@ class UserCreditService {
   isValidCreditAmount(amount: number): boolean {
     return amount > 0 && Number.isFinite(amount) && amount <= 999999;
   }
+
+  // Activate free plan
+  async activateFreePlan(planId: number): Promise<{ success: boolean; message: string }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/pricing-plans/${planId}/activate-free`, {
+        method: 'POST',
+        headers: this.getAuthHeaders(),
+        signal: AbortSignal.timeout(10000), // 10 second timeout
+      });
+
+      // Handle 401 Unauthorized
+      if (response.status === 401) {
+        console.error('Unauthorized access - clearing token and redirecting to login');
+        localStorage.removeItem(this.tokenKey);
+        window.dispatchEvent(new CustomEvent('auth-required'));
+        return {
+          success: false,
+          message: 'Authentication required - please login again',
+        };
+      }
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP ${response.status}: Failed to activate free plan`);
+      }
+
+      // Clear cache to force refresh
+      this.clearCache();
+
+      return {
+        success: true,
+        message: data.message || 'Free plan activated successfully',
+      };
+    } catch (error) {
+      console.error('Error activating free plan:', error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : 'Failed to activate free plan',
+      };
+    }
+  }
 }
 
 // Export singleton instance

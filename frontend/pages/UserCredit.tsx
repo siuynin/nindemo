@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'; 
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { userCreditService, type CreditResponse, type CreditTransaction } from '../services/userCreditService';
 
@@ -24,6 +25,7 @@ interface CreditSummary {
 
 const UserCredit: React.FC = () => {
   const { theme } = useTheme();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [credits, setCredits] = useState<CreditItem[]>([]);
@@ -190,7 +192,10 @@ const UserCredit: React.FC = () => {
             <h1 className={`text-3xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
               Quản lý Credit
             </h1>
-            <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+            <button 
+              onClick={() => navigate('/price')}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            >
               Mua thêm Credit
             </button>
           </div>

@@ -112,7 +112,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const marketingItems: NavItem[] = [
     {
       icon: <DocumentIcon className="w-5 h-5" />,
-      name: t.sidebar?.document?.title || 'Auto Post',
+      name: t.sidebar?.document?.title || 'Auto Post (comming soon)',
       path: '#',
     },
     // {

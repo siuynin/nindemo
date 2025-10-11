@@ -21,6 +21,7 @@ class PricingPlan extends Model
         'currency',
         'billing_cycle',
         'credits',
+        'duration_days',
         'status',
         'is_popular',
         'features',

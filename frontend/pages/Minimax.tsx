@@ -4,6 +4,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext'; 
 import generateService from '../services/generateService';
+import userCreditService from '../services/userCreditService';
 import { SpeakerIcon, PlayIcon, PauseIcon, DownloadIcon, LoadingSpinner } from '../components/icons';
 import AuthModal from '../components/AuthModal';
 import CreditModal from '../components/CreditModal';
@@ -349,6 +350,21 @@ const Minimax: React.FC = () => {
     setIsLoading(true);
     
     try {
+      // Estimate credit cost based on content length (approximate)
+      const contentLength = formData.content.trim().length;
+      const estimatedCost = Math.ceil(contentLength / 100); // Rough estimate: 1 credit per 100 characters
+      
+      // Check if user has sufficient credits
+      const hasSufficientCredits = await userCreditService.checkSufficientCredits(estimatedCost);
+      if (!hasSufficientCredits) {
+        setCreditModalData({
+          message: `Bạn cần ít nhất ${estimatedCost} credits để tạo audio này. Vui lòng nạp thêm credits để tiếp tục.`
+        });
+        setShowCreditModal(true);
+        setIsLoading(false);
+        return;
+      }
+
       // Create generates record with status 'pending'
       const generateResponse = await generateService.createGenerate({
         name: formData.name.trim(),

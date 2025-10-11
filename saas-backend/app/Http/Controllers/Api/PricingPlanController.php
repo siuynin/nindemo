@@ -123,4 +123,65 @@ class PricingPlanController extends Controller
             'message' => 'Pricing plan deleted successfully'
         ]);
     }
+
+    /**
+     * Activate free pricing plan for the authenticated user.
+     */
+    public function activateFree(PricingPlan $pricingPlan)
+    {
+        try {
+            $user = auth()->user();
+            
+            // Check if the pricing plan is actually free
+            if ($pricingPlan->price > 0) {
+                return response()->json([
+                    'message' => 'This pricing plan is not free.',
+                    'success' => false
+                ], 400);
+            }
+            
+            // Update user's current pricing plan
+            $user->current_pricing_plan_id = $pricingPlan->id;
+            $user->plan_expires_at = $pricingPlan->duration_days ? now()->addDays($pricingPlan->duration_days) : null;
+            $user->save();
+            
+            // Add credits for the user (similar to SePay logic)
+            if ($pricingPlan->credits > 0) {
+                \App\Models\UserCredit::create([
+                    'user_id' => $user->id,
+                    'pricing_plan_id' => $pricingPlan->id,
+                    'total_credits' => $pricingPlan->credits,
+                    'used_credits' => 0,
+                    'remaining_credits' => $pricingPlan->credits,
+                    'expires_at' => $pricingPlan->duration_days ? now()->addDays($pricingPlan->duration_days) : now()->addDays(31),
+                    'credit_type' => 'monthly',
+                    'notes' => "Credits from {$pricingPlan->name} plan activation (free)"
+                ]);
+                
+                \Illuminate\Support\Facades\Log::info('Free plan activated with credits', [
+                    'user_id' => $user->id,
+                    'plan_id' => $pricingPlan->id,
+                    'credits_added' => $pricingPlan->credits,
+                    'expires_at' => $pricingPlan->duration_days ? now()->addDays($pricingPlan->duration_days)->toDateTimeString() : now()->addDays(31)->toDateTimeString()
+                ]);
+            }
+            
+            return response()->json([
+                'message' => 'Free pricing plan activated successfully.',
+                'success' => true,
+                'data' => [
+                    'user' => $user->load('pricingPlan'),
+                    'pricing_plan' => $pricingPlan,
+                    'credits_added' => $pricingPlan->credits ?? 0
+                ]
+            ], 200);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to activate free pricing plan.',
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -129,6 +129,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Pricing Plans Management (Admin only)
     Route::apiResource('pricing-plans', App\Http\Controllers\Api\PricingPlanController::class)->except(['index']);
     
+    // Activate free pricing plan
+    Route::post('/pricing-plans/{pricingPlan}/activate-free', [App\Http\Controllers\Api\PricingPlanController::class, 'activateFree']);
+    
     // File management
     Route::apiResource('files', App\Http\Controllers\Api\FileController::class);
     Route::post('/files/{file}/download', [App\Http\Controllers\Api\FileController::class, 'download']);

@@ -4,7 +4,7 @@ export interface PricingPlan {
   id: number;
   name: string;
   description: string;
-  price: number;
+  price: number | string; // API có thể trả về string hoặc number
   currency: string;
   billing_cycle: string;
   duration_days?: number;

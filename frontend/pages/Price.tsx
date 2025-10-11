@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { pricingService, PricingPlan } from '../services/pricingService';
 import { useAuth } from '../contexts/AuthContext';
-import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { pricingService, type PricingPlan } from '../services/pricingService';
+import { userCreditService } from '../services/userCreditService';
 import PaymentMethodModal from '../components/PaymentMethodModal';
 
 const Price: React.FC = () => {
-  const [pricingPlans, setPricingPlans] = useState<PricingPlan[]>([]);
+  const { theme } = useTheme();
+  const { user } = useAuth();
+  const [plans, setPlans] = useState<PricingPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<PricingPlan | null>(null);
-  const { user } = useAuth();
-  const { t } = useLanguage();
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [activatingFreePlan, setActivatingFreePlan] = useState<number | null>(null);
 
   useEffect(() => {
     fetchPricingPlans();
@@ -20,9 +22,8 @@ const Price: React.FC = () => {
   const fetchPricingPlans = async () => {
     try {
       setLoading(true);
-      setError(null);
-      const plans = await pricingService.getPublicPricingPlans();
-      setPricingPlans(plans);
+      const fetchedPlans = await pricingService.getPublicPricingPlans();
+      setPlans(fetchedPlans);
     } catch (err) {
       setError('Không thể tải danh sách gói giá. Vui lòng thử lại sau.');
       console.error('Error fetching pricing plans:', err);
@@ -57,13 +58,48 @@ const Price: React.FC = () => {
     return `${days} ngày`;
   };
 
-  const handleSelectPlan = (plan: PricingPlan) => {
+  const handleSelectPlan = async (plan: PricingPlan) => {
     if (!user) {
       alert('Vui lòng đăng nhập để chọn gói.');
       return;
     }
-    setSelectedPlan(plan);
-    setIsPaymentModalOpen(true);
+    
+    // Nếu là gói free (giá = 0), tự động kích hoạt
+    // Xử lý cả trường hợp price là string hoặc number
+    const price = typeof plan.price === 'string' ? parseFloat(plan.price) : plan.price;
+    if (price === 0) {
+      await handleActivateFreePlan(plan);
+    } else {
+      // Nếu là gói trả phí, mở modal thanh toán
+      setSelectedPlan(plan);
+      setShowPaymentModal(true);
+    }
+  };
+
+  const handleActivateFreePlan = async (plan: PricingPlan) => {
+    try {
+      setActivatingFreePlan(plan.id);
+      
+      // Gọi API để kích hoạt gói free
+      const response = await userCreditService.activateFreePlan(plan.id);
+      
+      if (response.success) {
+        alert('Gói miễn phí đã được kích hoạt thành công!');
+        // Refresh user data để cập nhật plan hiện tại
+        window.location.reload();
+      } else {
+        alert(response.message || 'Có lỗi xảy ra khi kích hoạt gói miễn phí');
+      }
+    } catch (error) {
+      console.error('Error activating free plan:', error);
+      alert('Có lỗi xảy ra khi kích hoạt gói miễn phí');
+    } finally {
+      setActivatingFreePlan(null);
+    }
+  };
+
+  const isCurrentPlan = (planId: number) => {
+    return user?.pricing_plan?.id === planId;
   };
 
   const handlePaymentMethodSelect = (method: 'paypal' | 'bank_transfer') => {
@@ -79,11 +115,8 @@ const Price: React.FC = () => {
       // TODO: Show bank transfer instructions
       alert(`Chức năng chuyển khoản ngân hàng sẽ được triển khai sau.`);
     }
-  };
-
-  const handleClosePaymentModal = () => {
-    setIsPaymentModalOpen(false);
-    setSelectedPlan(null);
+    
+    setShowPaymentModal(false);
   };
 
   if (loading) {
@@ -130,13 +163,11 @@ const Price: React.FC = () => {
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {pricingPlans.map((plan) => (
+          {plans.map((plan) => (
             <div
               key={plan.id}
               className={`relative bg-white dark:bg-gray-800 rounded-2xl shadow-lg border-2 transition-all duration-300 hover:shadow-xl ${
-                plan.features === 1
-                  ? 'border-gradient-to-r from-blue-500 via-purple-500 to-pink-500 ring-2 ring-blue-500 ring-opacity-30 hover:ring-opacity-50'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-blue-500'
+                plan.is_popular ? 'border-blue-500 scale-105' : 'border-gray-200 dark:border-gray-700'
               }`}
             > 
               {plan.features === 1 && (
@@ -212,13 +243,25 @@ const Price: React.FC = () => {
                 {/* CTA Button */}
                 <button
                   onClick={() => handleSelectPlan(plan)}
+                  disabled={isCurrentPlan(plan.id) || activatingFreePlan === plan.id}
                   className={`w-full py-3 px-6 rounded-lg font-semibold transition-all duration-300 ${
-                    plan.is_premium
-                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    isCurrentPlan(plan.id)
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : activatingFreePlan === plan.id
+                      ? 'bg-gray-400 text-white cursor-not-allowed'
+                      : plan.is_popular
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:from-blue-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
                 >
-                  {user ? 'Chọn gói này' : 'Đăng nhập để chọn'}
+                  {isCurrentPlan(plan.id)
+                    ? 'Current Plan'
+                    : activatingFreePlan === plan.id
+                    ? 'Đang kích hoạt...'
+                    : (typeof plan.price === 'string' ? parseFloat(plan.price) : plan.price) === 0
+                    ? 'Kích hoạt miễn phí'
+                    : 'Chọn gói này'
+                  }
                 </button>
               </div>
             </div>
@@ -226,7 +269,7 @@ const Price: React.FC = () => {
         </div>
 
         {/* Empty State */}
-        {pricingPlans.length === 0 && !loading && (
+        {plans.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">💰</div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
@@ -266,8 +309,8 @@ const Price: React.FC = () => {
       
       {/* Payment Method Modal */}
       <PaymentMethodModal
-        isOpen={isPaymentModalOpen}
-        onClose={handleClosePaymentModal}
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
         onPaymentMethodSelect={handlePaymentMethodSelect}
         selectedPlan={selectedPlan}
       />
