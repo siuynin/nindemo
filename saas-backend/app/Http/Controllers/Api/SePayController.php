@@ -40,6 +40,7 @@ class SePayController extends Controller
             // Tạo bill mới
             $bill = Bill::create([
                 'user_id' => $user->id,
+                'pricing_plan_id' => $request->plan_id,
                 'plan_name' => 'Premium Plan',
                 'amount' => $request->amount,
                 'currency' => $request->currency,
@@ -191,7 +192,7 @@ class SePayController extends Controller
                             'used_credits' => 0,
                             'remaining_credits' => $plan->credits ?? 0,
                             'expires_at' => now()->addDays(31), // 31 days from payment date
-                            'credit_type' => 'monthly',
+                            'credit_type' => 'purchased',
                             'notes' => "Credits from {$plan->name} plan purchase via SePay"
                         ]);
                         

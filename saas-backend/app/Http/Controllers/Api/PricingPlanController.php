@@ -154,7 +154,7 @@ class PricingPlanController extends Controller
                     'used_credits' => 0,
                     'remaining_credits' => $pricingPlan->credits,
                     'expires_at' => $pricingPlan->duration_days ? now()->addDays($pricingPlan->duration_days) : now()->addDays(31),
-                    'credit_type' => 'monthly',
+                    'credit_type' => 'free',
                     'notes' => "Credits from {$pricingPlan->name} plan activation (free)"
                 ]);
                 

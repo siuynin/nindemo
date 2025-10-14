@@ -598,8 +598,8 @@ const ElevenLabs: React.FC = () => {
                             </div>
                             <input
                               type="range"
-                              min="0"
-                              max="1"
+                              min="0.7"
+                              max="1.2"
                               step="0.01"
                               value={voiceSettings.speed}
                               onChange={(e) => setVoiceSettings(prev => ({

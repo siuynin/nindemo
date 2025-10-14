@@ -69,6 +69,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Get the current pricing plan that the user belongs to.
+     */
+    public function currentPricingPlan()
+    {
+        return $this->belongsTo(PricingPlan::class, 'current_pricing_plan_id');
+    }
+
+    /**
      * Get the user's credits.
      */
     public function credits()

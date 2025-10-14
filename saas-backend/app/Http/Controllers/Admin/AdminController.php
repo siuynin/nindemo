@@ -13,6 +13,30 @@ use Illuminate\Support\Facades\DB;
 class AdminController extends Controller
 {
     /**
+     * Search Users for Ajax
+     */
+    public function searchUsers(Request $request)
+    {
+        $query = $request->get('q', '');
+        
+        if (strlen($query) < 2) {
+            return response()->json(['users' => []]);
+        }
+        
+        $users = User::where(function($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('email', 'like', "%{$query}%");
+            })
+            ->where('role', 'user')
+            ->select('id', 'name', 'email', 'created_at')
+            ->orderBy('name')
+            ->limit(10)
+            ->get();
+            
+        return response()->json(['users' => $users]);
+    }
+
+    /**
      * Admin Dashboard
      */
     public function dashboard()
@@ -67,6 +91,7 @@ class AdminController extends Controller
         }
 
         $users = $query->withCount(['files', 'credits'])
+                      ->with(['currentPricingPlan'])
                       ->paginate(20);
 
         return view('admin.users.index', compact('users'));

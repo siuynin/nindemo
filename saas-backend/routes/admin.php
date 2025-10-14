@@ -43,6 +43,7 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     
     // Users Management
     Route::get('users', [AdminController::class, 'users'])->name('users.index');
+    Route::get('users/search', [AdminController::class, 'searchUsers'])->name('users.search');
     Route::get('users/{user}', [AdminController::class, 'userShow'])->name('users.show');
     Route::patch('users/{user}/role', [AdminController::class, 'updateUserRole'])->name('users.role.update');
     

@@ -317,7 +317,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
   return (
     <aside
-      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r lg:pt-0 ${
+      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-10 border-r lg:pt-0 ${
         theme === 'dark'
           ? 'bg-gray-900 border-gray-800 text-gray-100'
           : 'bg-white border-gray-200 text-gray-900'

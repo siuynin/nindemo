@@ -57,9 +57,11 @@ class UserCreditController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'user_id' => 'required|exists:users,id',
-            'pricing_plan_id' => 'required|exists:pricing_plans,id',
-            'total_credits' => 'nullable|integer|min:0',
-            'expires_at' => 'nullable|date|after:today'
+            'pricing_plan_id' => 'nullable|exists:pricing_plans,id',
+            'total_credits' => 'required|integer|min:1',
+            'credit_type' => 'required|in:free,purchased,bonus,refund',
+            'expires_at' => 'nullable|date|after:today',
+            'notes' => 'nullable|string|max:500'
         ]);
 
         if ($validator->fails()) {
@@ -68,14 +70,10 @@ class UserCreditController extends Controller
                            ->withInput();
         }
 
-        $pricingPlan = PricingPlan::findOrFail($request->pricing_plan_id);
-        
-        // Use custom credits if provided, otherwise use plan's default
-        $totalCredits = $request->total_credits ?? $pricingPlan->credits;
-        
         // Calculate expiry date if not provided
         $expiresAt = $request->expires_at;
-        if (!$expiresAt) {
+        if (!$expiresAt && $request->pricing_plan_id) {
+            $pricingPlan = PricingPlan::findOrFail($request->pricing_plan_id);
             switch ($pricingPlan->billing_cycle) {
                 case 'monthly':
                     $expiresAt = now()->addMonth();
@@ -92,13 +90,15 @@ class UserCreditController extends Controller
         UserCredit::create([
             'user_id' => $request->user_id,
             'pricing_plan_id' => $request->pricing_plan_id,
-            'total_credits' => $totalCredits,
+            'total_credits' => $request->total_credits,
             'used_credits' => 0,
-            'expires_at' => $expiresAt
+            'credit_type' => $request->credit_type,
+            'expires_at' => $expiresAt,
+            'notes' => $request->notes
         ]);
 
         return redirect()->route('admin.user-credits.index')
-                        ->with('success', 'User credits assigned successfully.');
+                        ->with('success', 'Credit đã được thêm thành công cho người dùng.');
     }
 
     /**

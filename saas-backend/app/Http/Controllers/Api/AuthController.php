@@ -44,6 +44,18 @@ class AuthController extends Controller
             'status' => 'active',
         ]);
 
+        // Thêm 200 credit bonus cho người dùng mới đăng ký
+        \App\Models\UserCredit::create([
+            'user_id' => $user->id,
+            'pricing_plan_id' => null,
+            'total_credits' => 200,
+            'used_credits' => 0,
+            'remaining_credits' => 200,
+            'expires_at' => now()->addYear(), // Hết hạn sau 1 năm
+            'credit_type' => 'bonus',
+            'notes' => 'Welcome bonus for new user registration'
+        ]);
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([

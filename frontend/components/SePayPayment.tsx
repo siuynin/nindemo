@@ -206,7 +206,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
 
   if (!bankInfo) {
     return (
-      <div className="min-w-[600px]">
+      <div className="min-w-[400px] max-w-[600px]">
         <div className="text-center mb-6">
           <h3 className={`text-lg font-semibold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
