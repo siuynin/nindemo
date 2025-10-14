@@ -60,11 +60,13 @@ const ImageCreator: React.FC = () => {
 
   const aspectRatios = [
     { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
-    { label: '16:9 (Landscape)', width: 1536, height: 896, ratio: '16:9' },
-    { label: '9:16 (Portrait)', width: 896, height: 1536, ratio: '9:16' },
-    { label: '4:3 (Standard)', width: 1024, height: 768, ratio: '4:3' },
-    { label: '3:4 (Portrait)', width: 768, height: 1024, ratio: '3:4' },
-    { label: '21:9 (Ultrawide)', width: 1344, height: 576, ratio: '21:9' }
+    { label: '3:4 (Portrait)', width: 864, height: 1152, ratio: '3:4' },
+    { label: '4:3 (Standard)', width: 1152, height: 864, ratio: '4:3' },
+    { label: '16:9 (Landscape)', width: 1280, height: 720, ratio: '16:9' },
+    { label: '9:16 (Portrait)', width: 720, height: 1280, ratio: '9:16' },
+    { label: '2:3 (Portrait)', width: 832, height: 1248, ratio: '2:3' },
+    { label: '3:2 (Landscape)', width: 1248, height: 832, ratio: '3:2' },
+    { label: '21:9 (Ultrawide)', width: 1512, height: 648, ratio: '21:9' }
   ];
 
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);

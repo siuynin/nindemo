@@ -34,8 +34,8 @@ class ImageGenerationController extends Controller
             $validatedData = $request->validate([
                 'prompt' => 'required|string|max:1000',
                 'model' => 'required|string',
-                'width' => 'required|integer|min:256|max:2048',
-                'height' => 'required|integer|min:256|max:2048',
+                'width' => 'required|integer|min:512|max:1600',
+                'height' => 'required|integer|min:512|max:1600',
                 'numberResults' => 'required|integer|min:1|max:4',
                 'imageStyle' => 'nullable|string',
                 'name' => 'nullable|string|max:255',
