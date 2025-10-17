@@ -30,6 +30,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'credits' => \App\Http\Middleware\ValidateCredits::class,
             'admin' => \App\Http\Middleware\CheckAdminRole::class,
             'ngrok.bypass' => \App\Http\Middleware\NgrokBypass::class,
+            'sanitize.input' => \App\Http\Middleware\SanitizeInput::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

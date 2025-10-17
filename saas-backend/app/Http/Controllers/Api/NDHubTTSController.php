@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Generate;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Http\Requests\TTSRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Auth;
@@ -22,18 +23,11 @@ class NDHubTTSController extends Controller
      * @param Request $request
      * @return JsonResponse
      */
-    public function create(Request $request): JsonResponse
+    public function create(TTSRequest $request): JsonResponse
     {
         try {
-            // Validate request
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'content' => 'required|string|max:10000',
-                'lang' => 'required|string|max:10',
-                'voices' => 'required|string|max:50',
-                'audio_format' => 'required|string|in:mp3,wav,ogg',
-                'speed' => 'required|numeric|min:0.5|max:2.0'
-            ]);
+            // Get validated and sanitized data
+            $validated = $request->validated();
 
             // Check if user is authenticated
             if (!Auth::check()) {

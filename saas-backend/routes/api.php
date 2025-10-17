@@ -37,7 +37,7 @@ Route::get('/public-generates/{id}', [App\Http\Controllers\Api\PublicGenerateCon
 Route::get('/minimax/voices', [App\Http\Controllers\Api\MinimaxController::class, 'getVoices']);
 
 // ElevenLabs webhook
-Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook']);
+Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook'])->middleware('sanitize.input');
 
 // Debug route
 Route::get('/debug/generates', function() {
@@ -145,7 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     
     // User Generates Management
-    Route::prefix('generates')->group(function () {
+    Route::prefix('generates')->middleware('sanitize.input')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\UserGenerateController::class, 'index']);
         Route::post('/', [App\Http\Controllers\Api\UserGenerateController::class, 'store']);
         Route::get('/statistics', [App\Http\Controllers\Api\UserGenerateController::class, 'statistics']);
@@ -180,7 +180,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // NDHub TTS Routes
-    Route::prefix('ndhub-tts')->group(function () {
+    Route::prefix('ndhub-tts')->middleware('sanitize.input')->group(function () {
         Route::get('/', [App\Http\Controllers\Api\NDHubTTSController::class, 'index']);
         Route::post('/', [App\Http\Controllers\Api\NDHubTTSController::class, 'create']);
         Route::get('/{id}', [App\Http\Controllers\Api\NDHubTTSController::class, 'show']);
