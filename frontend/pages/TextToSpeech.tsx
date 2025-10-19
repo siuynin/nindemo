@@ -59,14 +59,14 @@ const TextToSpeech: React.FC = () => {
       color: 'from-purple-500 to-pink-500',
       url: '/voice-clone'
     },
-    {
-      id: 'ndhub',
-      name: 'NDhub',
-      description: t.textToSpeech?.ndhubDesc || 'Professional Vietnamese TTS service',
-      icon: <SpeakerIcon className="w-8 h-8" />,
-      color: 'from-green-500 to-teal-500',
-      url: '/ndhub-tts'
-    },
+    // {
+    //   id: 'ndhub',
+    //   name: 'NDhub',
+    //   description: t.textToSpeech?.ndhubDesc || 'Professional Vietnamese TTS service',
+    //   icon: <SpeakerIcon className="w-8 h-8" />,
+    //   color: 'from-green-500 to-teal-500',
+    //   url: '/ndhub-tts'
+    // },
     {
       id: 'elevenlabs',
       name: 'ElevenLabs',

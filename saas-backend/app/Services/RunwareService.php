@@ -13,10 +13,7 @@ class RunwareService
     public function __construct()
     {
         $this->apiKey = env('RUNWARE_API_KEY');
-        
-        if (!$this->apiKey) {
-            throw new \Exception('Runware API key is not configured');
-        }
+        // Gracefully handle missing API key at construction; validate on use
     }
 
     /**

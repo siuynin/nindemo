@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
 use App\Models\User;
-use App\Services\RunwareService;
+use App\Services\RunningHubService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,34 +15,24 @@ use Illuminate\Validation\ValidationException;
 
 class VideoGenerationController extends Controller
 {
-    protected $runwareService;
+    protected $runningHubService;
 
-    public function __construct(RunwareService $runwareService)
+    public function __construct(RunningHubService $runningHubService)
     {
-        $this->runwareService = $runwareService;
+        $this->runningHubService = $runningHubService;
     }
 
     /**
-     * Generate video using Runware API
+     * Generate video using RunningHub API
      */
     public function generateVideo(Request $request)
     {
         try {
             // Validate request
             $validatedData = $request->validate([
-                'taskType' => 'required|string|in:videoInference',
-                'duration' => 'required|integer|min:5|max:10',
-                'fps' => 'required|integer|in:24,30',
-                'model' => 'required|string',
-                'outputFormat' => 'required|string|in:mp4',
-                'height' => 'required|integer|in:720,1080',
-                'width' => 'required|integer|in:1280,1920',
-                'numberResults' => 'required|integer|in:1',
-                'includeCost' => 'required|boolean',
-                'outputQuality' => 'required|integer|min:70|max:95',
-                'positivePrompt' => 'required|string|max:1000',
-                'deliveryMethod' => 'required|string|in:async',
-                'taskUUID' => 'required|string',
+                'positivePrompt' => 'required|string|max:4000',
+                'duration' => 'nullable|integer|min:10|max:15',
+                'model' => 'nullable|string|in:portrait,landscape,portrait-hd,landscape-hd',
                 'inputImage' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
             ]);
 
@@ -67,30 +57,19 @@ class VideoGenerationController extends Controller
                 $inputImageUrl = $this->uploadInputImage($request->file('inputImage'));
             }
 
-            // Prepare Runware API request
-            $runwareData = [
-                'taskType' => $validatedData['taskType'],
-                'duration' => $validatedData['duration'],
-                'fps' => $validatedData['fps'],
-                'model' => $validatedData['model'],
-                'outputFormat' => $validatedData['outputFormat'],
-                'height' => $validatedData['height'],
-                'width' => $validatedData['width'],
-                'numberResults' => $validatedData['numberResults'],
-                'includeCost' => $validatedData['includeCost'],
-                'outputQuality' => $validatedData['outputQuality'],
+            // Prepare RunningHub API request
+            $runningHubData = [
+                'prompt' => $validatedData['positivePrompt'],
                 'positivePrompt' => $validatedData['positivePrompt'],
-                'deliveryMethod' => $validatedData['deliveryMethod'],
-                'taskUUID' => $validatedData['taskUUID'],
+                'duration' => $validatedData['duration'] ?? 10,
+                'model' => $validatedData['model'] ?? ($inputImageUrl ? 'landscape' : 'portrait'),
             ];
 
-            // Add frame images if input image is provided
+            // Add input image for image-to-video
             if ($inputImageUrl) {
-                $runwareData['frameImages'] = [
-                    [
-                        'inputImage' => $inputImageUrl
-                    ]
-                ];
+                // Extract filename from URL for RunningHub
+                $filename = basename(parse_url($inputImageUrl, PHP_URL_PATH));
+                $runningHubData['inputImage'] = $filename;
             }
 
             // Create generate record
@@ -100,15 +79,11 @@ class VideoGenerationController extends Controller
                 'type' => $inputImageUrl ? 'image-to-video' : 'text-to-video',
                 'status' => 'processing',
                 'prompt' => $validatedData['positivePrompt'],
-                'model' => $validatedData['model'],
+                'model' => $runningHubData['model'],
                 'settings' => json_encode([
-                    'duration' => $validatedData['duration'],
-                    'fps' => $validatedData['fps'],
-                    'width' => $validatedData['width'],
-                    'height' => $validatedData['height'],
-                    'outputQuality' => $validatedData['outputQuality'],
+                    'duration' => $runningHubData['duration'],
+                    'model' => $runningHubData['model'],
                     'inputImage' => $inputImageUrl,
-                    'taskUUID' => $validatedData['taskUUID']
                 ]),
                 'credit_cost' => $creditCost,
                 'share' => false
@@ -117,9 +92,9 @@ class VideoGenerationController extends Controller
             // Deduct credits
             $user->decrement('credits', $creditCost);
 
-            // Call Runware API
+            // Call RunningHub API
             try {
-                $response = $this->runwareService->generateVideo($runwareData);
+                $response = $this->runningHubService->generateVideo($runningHubData);
                 
                 if (isset($response['error'])) {
                     // Refund credits on API error
@@ -130,7 +105,8 @@ class VideoGenerationController extends Controller
                     ]);
                     
                     return response()->json([
-                        'error' => 'Video generation failed: ' . $response['error']
+                        'error' => 'Video generation failed: ' . $response['error'],
+                        'generate_id' => $generate->id
                     ], 500);
                 }
 
@@ -143,17 +119,16 @@ class VideoGenerationController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Video generation started successfully',
+                    'message' => 'Video generation completed successfully',
                     'generateId' => $generate->id,
-                    'taskUUID' => $validatedData['taskUUID'],
                     'videoUrl' => $response['videoUrl'] ?? null,
-                    'status' => $response['videoUrl'] ? 'completed' : 'processing',
+                    'status' => 'completed',
                     'creditCost' => $creditCost,
                     'remainingCredits' => $user->fresh()->credits
                 ]);
 
             } catch (\Exception $e) {
-                Log::error('Runware API Error: ' . $e->getMessage());
+                Log::error('RunningHub API Error: ' . $e->getMessage());
                 
                 // Refund credits on API error
                 $user->increment('credits', $creditCost);
@@ -163,7 +138,8 @@ class VideoGenerationController extends Controller
                 ]);
                 
                 return response()->json([
-                    'error' => 'Video generation service unavailable'
+                    'error' => 'Video generation service unavailable: ' . $e->getMessage(),
+                    'generate_id' => $generate->id
                 ], 500);
             }
 
@@ -256,23 +232,20 @@ class VideoGenerationController extends Controller
         $baseCost = 50;
         
         // Additional cost based on duration
-        $durationMultiplier = $data['duration'] / 5; // 5 seconds = 1x, 10 seconds = 2x
+        $duration = $data['duration'] ?? 10;
+        $durationMultiplier = $duration / 10; // 10 seconds = 1x, 15 seconds = 1.5x
         
-        // Additional cost based on resolution
-        $resolutionMultiplier = 1;
-        if ($data['width'] >= 1920 && $data['height'] >= 1080) {
-            $resolutionMultiplier = 1.5; // Full HD costs 50% more
-        }
-        
-        // Additional cost based on quality
+        // Additional cost based on model quality
+        $model = $data['model'] ?? 'portrait';
         $qualityMultiplier = 1;
-        if ($data['outputQuality'] >= 95) {
-            $qualityMultiplier = 1.3; // High quality costs 30% more
-        } elseif ($data['outputQuality'] >= 85) {
-            $qualityMultiplier = 1.1; // Medium quality costs 10% more
+        if (str_contains($model, 'hd')) {
+            $qualityMultiplier = 1.5; // HD models cost 50% more
         }
         
-        return ceil($baseCost * $durationMultiplier * $resolutionMultiplier * $qualityMultiplier);
+        // Image-to-video costs more than text-to-video
+        $typeMultiplier = !empty($data['inputImage']) ? 1.3 : 1.0;
+        
+        return ceil($baseCost * $durationMultiplier * $qualityMultiplier * $typeMultiplier);
     }
 
     /**

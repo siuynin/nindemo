@@ -6,14 +6,14 @@ $headers = @{
 
 $body = @{
     prompt = "A beautiful sunset over mountains"
-    model = "runware:101"
-    width = 512
-    height = 512
+    model = "nano-banana"
+    width = 864
+    height = 1152
     num_images = 1
 } | ConvertTo-Json
 
 try {
-    $response = Invoke-WebRequest -Uri "http://127.0.0.1:8000/api/images/create-image" -Method POST -Headers $headers -Body $body
+    $response = Invoke-WebRequest -Uri "http://127.0.0.1:8001/api/images/create-image" -Method POST -Headers $headers -Body $body
     Write-Host "Status Code: $($response.StatusCode)"
     Write-Host "Response: $($response.Content)"
 } catch {

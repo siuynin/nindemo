@@ -7,6 +7,7 @@ use App\Models\Generate;
 use App\Models\User;
 use App\Services\RunwareService;
 use App\Services\ImageStorageService;
+use App\Services\RunningHubService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -17,11 +18,13 @@ class ImageGenerationController extends Controller
 {
     protected $runwareService;
     protected $imageStorageService;
+    protected $runningHubService;
 
-    public function __construct(RunwareService $runwareService, ImageStorageService $imageStorageService)
+    public function __construct(RunwareService $runwareService, ImageStorageService $imageStorageService, RunningHubService $runningHubService)
     {
         $this->runwareService = $runwareService;
         $this->imageStorageService = $imageStorageService;
+        $this->runningHubService = $runningHubService;
     }
 
     /**
@@ -32,15 +35,20 @@ class ImageGenerationController extends Controller
         try {
             // Validate request
             $validatedData = $request->validate([
-                'prompt' => 'required|string|max:1000',
+                'prompt' => 'required|string|max:4000',
                 'model' => 'required|string',
-                'width' => 'required|integer|min:512|max:1600',
-                'height' => 'required|integer|min:512|max:1600',
-                'numberResults' => 'required|integer|min:1|max:4',
+                'width' => 'required|integer|min:64|max:4096',
+                'height' => 'required|integer|min:64|max:4096',
+                'numberResults' => 'nullable|integer|min:1|max:4',
                 'imageStyle' => 'nullable|string',
                 'name' => 'nullable|string|max:255',
-                'share' => 'nullable|boolean'
+                'share' => 'nullable|boolean',
+                'role' => 'nullable|string',
+                'aspect_ratio' => 'nullable|string',
             ]);
+
+            // Set default value for numberResults if not provided
+            $validatedData['numberResults'] = $validatedData['numberResults'] ?? 1;
 
             $user = Auth::user();
             if (!$user) {
@@ -116,6 +124,133 @@ class ImageGenerationController extends Controller
                 return response()->json(['error' => 'Failed to create generation record'], 500);
             }
 
+            // Decide provider by model slug
+            $runningHubSlugs = ['flux-kontext', 'nano-banana', 'midjourney', 'gpt-image-1'];
+            $useRunningHub = in_array($validatedData['model'], $runningHubSlugs, true);
+
+            if ($useRunningHub) {
+                // Validate & build RunningHub request
+                $hubValidated = $this->runningHubService->validateRequest($validatedData);
+                $hubRequest = $this->runningHubService->buildRequest($validatedData['model'], $hubValidated);
+
+                try {
+                    // Call RunningHub API
+                    $hubResponse = $this->runningHubService->generateImage($hubRequest);
+
+                    // Extract image URLs
+                    $imageResults = [];
+                    $imageUrls = $this->runningHubService->extractImageUrls($hubResponse);
+
+                    Log::info('Processing RunningHub response', ['urls_count' => count($imageUrls)]);
+
+                    // Upload images to S3 if available
+                    if ($this->imageStorageService->isS3Configured() && !empty($imageUrls)) {
+                        try {
+                            Log::info('Starting S3 upload process (RunningHub)', ['urls_count' => count($imageUrls)]);
+                            $uploadResult = $this->imageStorageService->uploadMultipleImagesFromUrls($imageUrls, 'generated-images');
+                            Log::info('S3 upload result (RunningHub)', ['result' => $uploadResult]);
+
+                            if (!empty($uploadResult['uploaded_urls'])) {
+                                foreach ($uploadResult['uploaded_urls'] as $s3Url) {
+                                    $imageResults[] = [
+                                        'seed' => null,
+                                        'url' => $s3Url
+                                    ];
+                                }
+                            } else {
+                                Log::warning('S3 upload failed, using RunningHub URLs as fallback');
+                                foreach ($imageUrls as $url) {
+                                    $imageResults[] = [
+                                        'seed' => null,
+                                        'url' => $url
+                                    ];
+                                }
+                            }
+                        } catch (\Exception $s3Error) {
+                            Log::error('S3 upload error (RunningHub), using original URLs', ['error' => $s3Error->getMessage()]);
+                            foreach ($imageUrls as $url) {
+                                $imageResults[] = [
+                                    'seed' => null,
+                                    'url' => $url
+                                ];
+                            }
+                        }
+                    } else {
+                        // No S3, use original URLs
+                        foreach ($imageUrls as $url) {
+                            $imageResults[] = [
+                                'seed' => null,
+                                'url' => $url
+                            ];
+                        }
+                    }
+
+                    Log::info('Extracted image results (RunningHub)', ['results' => $imageResults, 'count' => count($imageResults)]);
+
+                    if (empty($imageResults)) {
+                        throw new \Exception('No images returned from RunningHub API');
+                    }
+
+                    // Update Generate record
+                    $generate->update([
+                        'status' => 'completed',
+                        'result_url' => json_encode($imageResults),
+                        'file_patch' => json_encode(['runninghub_response' => $hubResponse])
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'id' => $generate->id,
+                            'status' => 'completed',
+                            'images' => $imageResults,
+                            'credit_cost' => $creditCost,
+                            'remaining_credits' => $user->fresh()->total_remaining_credits,
+                            'share' => $validatedData['share'] ?? 'private'
+                        ]
+                    ]);
+                } catch (\Exception $e) {
+                    // Update Generate record with error and refund credits
+                    $generate->update([
+                        'status' => 'failed',
+                        'file_patch' => json_encode(['error' => $e->getMessage()])
+                    ]);
+
+                    // Refund credits on failure
+                    DB::beginTransaction();
+                    try {
+                        $refundCredit = \App\Models\UserCredit::create([
+                            'user_id' => $user->id,
+                            'total_credits' => $creditCost,
+                            'used_credits' => 0,
+                            'remaining_credits' => $creditCost,
+                            'credit_type' => 'refund',
+                            'expires_at' => now()->addYear(),
+                            'notes' => 'Refund for failed image generation (Generate ID: ' . $generate->id . ')'
+                        ]);
+                        DB::commit();
+                        Log::info('Credits refunded due to RunningHub failure', [
+                            'user_id' => $user->id,
+                            'refunded_credits' => $creditCost,
+                            'refund_credit_id' => $refundCredit->id
+                        ]);
+                    } catch (\Exception $refundError) {
+                        DB::rollBack();
+                        Log::error('Failed to refund credits (RunningHub)', [
+                            'user_id' => $user->id,
+                            'credits' => $creditCost,
+                            'error' => $refundError->getMessage()
+                        ]);
+                    }
+
+                    return response()->json([
+                        'error' => 'Image generation failed: ' . $e->getMessage(),
+                        'generate_id' => $generate->id
+                    ], 500);
+                }
+            }
+
+            // Fallback: Runware provider
             // Validate Runware request
             $runwareValidated = $this->runwareService->validateRequest($validatedData);
             

@@ -21,8 +21,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS for all URLs and assets in production
-        if (config('app.env') === 'production' || request()->isSecure()) {
+        // Force HTTPS chỉ trong môi trường production
+        if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
 

@@ -142,7 +142,7 @@ class ImportOpenAIData extends Command
         // Prepare data for insertion
         $data = [
             'id' => (int) $row['id'],
-            'user_id' => $row['user_id'],
+            'user_id' => $row['user_id'] ? (int) $row['user_id'] : 2,
             'title' => $row['title'],
             'description' => $row['description'],
             'slug' => $row['slug'],
