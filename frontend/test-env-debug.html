@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Environment Variables Test</title>
+</head>
+<body>
+    <h1>Environment Variables Debug</h1>
+    <div id="output"></div>
+    
+    <script type="module">
+        const output = document.getElementById('output');
+        
+        // Test environment variables
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const mode = import.meta.env.MODE;
+        const dev = import.meta.env.DEV;
+        
+        output.innerHTML = `
+            <p><strong>VITE_API_URL:</strong> ${apiUrl || 'undefined'}</p>
+            <p><strong>MODE:</strong> ${mode}</p>
+            <p><strong>DEV:</strong> ${dev}</p>
+            <p><strong>All env vars:</strong> ${JSON.stringify(import.meta.env, null, 2)}</p>
+        `;
+        
+        console.log('Environment Variables:', {
+            VITE_API_URL: apiUrl,
+            MODE: mode,
+            DEV: dev,
+            all: import.meta.env
+        });
+    </script>
+</body>
+</html>

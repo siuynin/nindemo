@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { authService } from '../services/authService';
 
 interface BugReportModalProps {
   isOpen: boolean;
@@ -18,9 +19,9 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
   const { user, isAuthenticated } = useAuth();
   const { actualTheme } = useTheme();
   const { t } = useLanguage();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  
   const [formData, setFormData] = useState<BugReportData>({
     title: '',
     description: '',
@@ -52,6 +53,13 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
       return () => clearTimeout(timer);
     }
   }, [message]);
+
+  // Clean up preview URLs when component unmounts
+  useEffect(() => {
+    return () => {
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+    };
+  }, [previewUrls]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -104,13 +112,6 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
     setPreviewUrls(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Clean up preview URLs when component unmounts
-  useEffect(() => {
-    return () => {
-      previewUrls.forEach(url => URL.revokeObjectURL(url));
-    };
-  }, [previewUrls]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -128,8 +129,12 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
     setMessage(null);
 
     try {
-      const token = localStorage.getItem('token');
+      const token = authService.getToken();
       
+      if (!token) {
+        throw new Error('Authentication token not found');
+      }
+
       // Create FormData for file upload
       const submitData = new FormData();
       submitData.append('title', formData.title);
@@ -142,18 +147,25 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
         });
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8001/api'}/bug-reports`, {
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+      const response = await fetch(`${apiBaseUrl}/bug-reports`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
           // Don't set Content-Type for FormData, let browser set it with boundary
         },
         body: submitData,
       });
 
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+      }
+
       const data = await response.json();
 
-      if (response.ok) {
+      if (data.success) {
         setMessage({ type: 'success', text: t.bugReport?.submitSuccess || 'Bug report submitted successfully!' });
         setTimeout(() => {
           onClose();
@@ -168,7 +180,7 @@ const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose }) => {
       console.error('Error submitting bug report:', error);
       setMessage({ 
         type: 'error', 
-        text: t.bugReport?.networkError || 'Network error. Please try again.' 
+        text: error instanceof Error ? error.message : (t.bugReport?.networkError || 'Network error. Please try again.') 
       });
     } finally {
       setIsLoading(false);

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { XMarkIcon, PlayIcon, PauseIcon, LoadingSpinner } from './icons';
+import React, { useState, useEffect, useRef } from 'react';
+import { XMarkIcon, PlayIcon, PauseIcon, LoadingSpinner, ChevronDownIcon } from './icons';
 import { Button, Input } from './ui';
 
 interface Voice {
@@ -28,18 +28,68 @@ const MinimaxVoiceModal: React.FC<MinimaxVoiceModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([]);
+  const [selectedGenders, setSelectedGenders] = useState<string[]>([]);
+  const [selectedAges, setSelectedAges] = useState<string[]>([]);
+  const [selectedOtherTags, setSelectedOtherTags] = useState<string[]>([]);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  
+  // Dropdown states
+  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [isGenderDropdownOpen, setIsGenderDropdownOpen] = useState(false);
+  const [isAgeDropdownOpen, setIsAgeDropdownOpen] = useState(false);
+  const [isOtherTagsDropdownOpen, setIsOtherTagsDropdownOpen] = useState(false);
+  
+  // Refs for dropdown
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
+  const genderDropdownRef = useRef<HTMLDivElement>(null);
+  const ageDropdownRef = useRef<HTMLDivElement>(null);
+  const otherTagsDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Available tags for filtering
-  const availableTags = ['English', 'Male', 'Female', 'Young', 'Middle Age', 'Compelling', 'Persuasive', 'Gentle', 'Elegant'];
+  // Available filter options
+  const availableLanguages = [
+    'Vietnamese', 'English', 'Afrikaans', 'Arabic', 'Armenian', 'Assamese', 'Azerbaijani',
+    'Belarusian', 'Bengali', 'Bosnian', 'Bulgarian', 'Catalan', 'Cebuano', 'Chichewa',
+    'Chinese', 'Croatian', 'Czech', 'Danish', 'Dutch', 'Estonian', 'Filipino', 'Finnish',
+    'French', 'Galician', 'Georgian', 'German', 'Greek', 'Gujarati', 'Hausa', 'Hebrew',
+    'Hindi', 'Hungarian', 'Icelandic', 'Indonesian', 'Italian', 'Japanese', 'Korean',
+    'Malay', 'Portuguese', 'Polish', 'Russian', 'Romanian', 'Spanish', 'Swedish',
+    'Thai', 'Turkish', 'Ukrainian', 'Urdu'
+  ];
+  
+  const availableGenders = ['Male', 'Female'];
+  const availableAges = ['Young', 'Middle Age', 'Old', 'Child', 'Teen', 'Adult', 'Senior'];
+  const availableOtherTags = ['Compelling', 'Persuasive', 'Gentle', 'Elegant', 'Warm', 'Cool', 'Energetic', 'Calm', 'Professional', 'Casual'];
 
   useEffect(() => {
     if (isOpen) {
       fetchVoices();
     }
   }, [isOpen]);
+
+  // Handle click outside to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target as Node)) {
+        setIsLanguageDropdownOpen(false);
+      }
+      if (genderDropdownRef.current && !genderDropdownRef.current.contains(event.target as Node)) {
+        setIsGenderDropdownOpen(false);
+      }
+      if (ageDropdownRef.current && !ageDropdownRef.current.contains(event.target as Node)) {
+        setIsAgeDropdownOpen(false);
+      }
+      if (otherTagsDropdownRef.current && !otherTagsDropdownRef.current.contains(event.target as Node)) {
+        setIsOtherTagsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const fetchVoices = async () => {
     setLoading(true);
@@ -112,18 +162,135 @@ const MinimaxVoiceModal: React.FC<MinimaxVoiceModalProps> = ({
     onClose();
   };
 
-  const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
+  const toggleLanguage = (language: string) => {
+    setSelectedLanguages(prev => 
+      prev.includes(language) 
+        ? prev.filter(l => l !== language)
+        : [...prev, language]
+    );
+  };
+
+  const toggleGender = (gender: string) => {
+    setSelectedGenders(prev => 
+      prev.includes(gender) 
+        ? prev.filter(g => g !== gender)
+        : [...prev, gender]
+    );
+  };
+
+  const toggleAge = (age: string) => {
+    setSelectedAges(prev => 
+      prev.includes(age) 
+        ? prev.filter(a => a !== age)
+        : [...prev, age]
+    );
+  };
+
+  const toggleOtherTag = (tag: string) => {
+    setSelectedOtherTags(prev => 
       prev.includes(tag) 
         ? prev.filter(t => t !== tag)
         : [...prev, tag]
     );
   };
 
+  const clearAllFilters = () => {
+    setSelectedLanguages([]);
+    setSelectedGenders([]);
+    setSelectedAges([]);
+    setSelectedOtherTags([]);
+    // Close all dropdowns
+    setIsLanguageDropdownOpen(false);
+    setIsGenderDropdownOpen(false);
+    setIsAgeDropdownOpen(false);
+    setIsOtherTagsDropdownOpen(false);
+  };
+
+  // Multi-select dropdown component
+  const MultiSelectDropdown: React.FC<{
+    label: string;
+    options: string[];
+    selectedValues: string[];
+    onToggle: (value: string) => void;
+    isOpen: boolean;
+    onToggleOpen: () => void;
+    dropdownRef: React.RefObject<HTMLDivElement>;
+    color: string;
+  }> = ({ label, options, selectedValues, onToggle, isOpen, onToggleOpen, dropdownRef, color }) => {
+    const getColorClasses = (color: string, isSelected: boolean) => {
+      const colorMap = {
+        blue: isSelected ? 'bg-blue-500 text-white' : 'hover:bg-blue-50 dark:hover:bg-blue-900/20',
+        green: isSelected ? 'bg-green-500 text-white' : 'hover:bg-green-50 dark:hover:bg-green-900/20',
+        orange: isSelected ? 'bg-orange-500 text-white' : 'hover:bg-orange-50 dark:hover:bg-orange-900/20',
+        purple: isSelected ? 'bg-purple-500 text-white' : 'hover:bg-purple-50 dark:hover:bg-purple-900/20',
+      };
+      return colorMap[color as keyof typeof colorMap] || colorMap.blue;
+    };
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          {label}:
+        </label>
+        <button
+          onClick={onToggleOpen}
+          className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 flex items-center justify-between"
+        >
+          <span className="text-gray-700 dark:text-gray-300">
+            {selectedValues.length > 0 
+              ? `${selectedValues.length} selected` 
+              : `Select ${label.toLowerCase()}`
+            }
+          </span>
+          <ChevronDownIcon className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        
+        {isOpen && (
+          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg max-h-60 overflow-y-auto">
+            {options.map(option => {
+              const isSelected = selectedValues.includes(option);
+              return (
+                <div
+                  key={option}
+                  onClick={() => onToggle(option)}
+                  className={`px-3 py-2 cursor-pointer transition-colors ${getColorClasses(color, isSelected)} ${
+                    !isSelected ? 'text-gray-700 dark:text-gray-300' : ''
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => {}} // Handled by parent onClick
+                      className="mr-2 rounded"
+                    />
+                    {option}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const filteredVoices = voices.filter(voice => {
     const matchesSearch = voice.voice_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTags = selectedTags.length === 0 || selectedTags.some(tag => voice.tag_list.includes(tag));
-    return matchesSearch && matchesTags;
+    
+    const matchesLanguage = selectedLanguages.length === 0 || 
+      selectedLanguages.some(lang => voice.tag_list.includes(lang));
+    
+    const matchesGender = selectedGenders.length === 0 || 
+      selectedGenders.some(gender => voice.tag_list.includes(gender));
+    
+    const matchesAge = selectedAges.length === 0 || 
+      selectedAges.some(age => voice.tag_list.includes(age));
+    
+    const matchesOtherTags = selectedOtherTags.length === 0 || 
+      selectedOtherTags.some(tag => voice.tag_list.includes(tag));
+    
+    return matchesSearch && matchesLanguage && matchesGender && matchesAge && matchesOtherTags;
   });
 
   if (!isOpen) return null;
@@ -155,26 +322,68 @@ const MinimaxVoiceModal: React.FC<MinimaxVoiceModalProps> = ({
               className="w-full"
             />
 
-            {/* Tag Filters */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Filter by tags:
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {availableTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1 rounded-full text-sm transition-colors ${
-                      selectedTags.includes(tag)
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
+            {/* Clear All Filters Button */}
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Filters
+              </h3>
+              <button
+                onClick={clearAllFilters}
+                className="text-sm text-purple-500 hover:text-purple-600 transition-colors"
+              >
+                Clear All
+              </button>
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Language Filter */}
+              <MultiSelectDropdown
+                label="Languages"
+                options={availableLanguages}
+                selectedValues={selectedLanguages}
+                onToggle={toggleLanguage}
+                isOpen={isLanguageDropdownOpen}
+                onToggleOpen={() => setIsLanguageDropdownOpen(!isLanguageDropdownOpen)}
+                dropdownRef={languageDropdownRef}
+                color="blue"
+              />
+
+              {/* Gender Filter */}
+              <MultiSelectDropdown
+                label="Gender"
+                options={availableGenders}
+                selectedValues={selectedGenders}
+                onToggle={toggleGender}
+                isOpen={isGenderDropdownOpen}
+                onToggleOpen={() => setIsGenderDropdownOpen(!isGenderDropdownOpen)}
+                dropdownRef={genderDropdownRef}
+                color="green"
+              />
+
+              {/* Age Filter */}
+              <MultiSelectDropdown
+                label="Age"
+                options={availableAges}
+                selectedValues={selectedAges}
+                onToggle={toggleAge}
+                isOpen={isAgeDropdownOpen}
+                onToggleOpen={() => setIsAgeDropdownOpen(!isAgeDropdownOpen)}
+                dropdownRef={ageDropdownRef}
+                color="orange"
+              />
+
+              {/* Style & Tone Filter */}
+              <MultiSelectDropdown
+                label="Style & Tone"
+                options={availableOtherTags}
+                selectedValues={selectedOtherTags}
+                onToggle={toggleOtherTag}
+                isOpen={isOtherTagsDropdownOpen}
+                onToggleOpen={() => setIsOtherTagsDropdownOpen(!isOtherTagsDropdownOpen)}
+                dropdownRef={otherTagsDropdownRef}
+                color="purple"
+              />
             </div>
           </div>
         </div>

@@ -23,7 +23,7 @@ const BugReportBubble: React.FC<BugReportBubbleProps> = ({ className = '' }) => 
     <>
       {/* Floating Bug Report Bubble */}
       <div
-        className={`fixed right-6 z-50 ${className || 'bottom-6'}`}
+        className={`fixed right-4 z-50 ${className || 'bottom-6'}`}
         style={{ zIndex: 9999 }}
       >
         <button

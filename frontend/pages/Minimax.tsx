@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -130,6 +130,55 @@ const Minimax: React.FC = () => {
 
   // Auto-hide timeout state
   const [lastGenerateTimeout, setLastGenerateTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  // Textarea ref for SSML tag insertion
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // SSML breaktime tags
+  const ssmlBreaktimeTags = [
+    { label: '0.5s', value: '<#0.5#>' },
+    { label: '1s', value: '<#1#>' },
+    { label: '1.5s', value: '<#1.5#>' },
+    { label: '2s', value: '<#2#>' },
+    { label: '3s', value: '<#3#>' },
+    { label: '5s', value: '<#5#>' }
+  ];
+
+  // Function to insert SSML tag at cursor position
+  const insertSSMLTag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const currentContent = formData.content;
+    
+    // Check if adding the tag would exceed character limit
+    if (currentContent.length + tag.length > CHARACTER_LIMIT) {
+      showToast('Không thể thêm tag vì sẽ vượt quá giới hạn ký tự', 'warning');
+      return;
+    }
+
+    // Get current cursor position from the actual textarea element
+    const start = textarea.selectionStart || 0;
+    const end = textarea.selectionEnd || 0;
+
+    // Create new content with tag inserted
+    const newContent = currentContent.substring(0, start) + tag + currentContent.substring(end);
+    
+    // Update form data
+    setFormData(prev => ({
+      ...prev,
+      content: newContent
+    }));
+
+    // Use requestAnimationFrame to ensure DOM is updated before setting cursor
+    requestAnimationFrame(() => {
+      if (textarea) {
+        textarea.focus();
+        const newCursorPos = start + tag.length;
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    });
+  };
 
   // Available models
   const availableModels = [
@@ -393,8 +442,8 @@ const Minimax: React.FC = () => {
       
       showToast(`Yêu cầu tạo audio đã được gửi thành công! Task ID: ${generateResponse.data.task_id || 'N/A'}`, 'success');
       
-      // Reset form and refresh generates list
-      setFormData({ name: '', content: '' });
+      // Keep form values after successful submission - don't reset
+      // setFormData({ name: '', content: '' });
       fetchUserGenerates();
     } catch (error) {
       console.error('Error in submission process:', error);
@@ -619,8 +668,33 @@ const Minimax: React.FC = () => {
                     </div>
                   </div>
 
+                  {/* SSML Breaktime Tags */}
+                  <div className="space-y-3">
+                    
+                    <div className="flex flex-wrap gap-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      SSML Breaktime Tags
+                      </label>
+                      {ssmlBreaktimeTags.map((tag) => (
+                        <button
+                          key={tag.value}
+                          type="button"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insertSSMLTag(tag.value)}
+                          className="px-3 py-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-md hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                        >
+                          {tag.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Click on a tag to insert it at your cursor position in the text content below.
+                    </p>
+                  </div>
+
                   {/* Text Content */}
                   <TextArea
+                    ref={textareaRef}
                     label="Text Content"
                     name="content"
                     value={formData.content}

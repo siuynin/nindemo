@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -28,6 +28,9 @@ const ElevenLabs: React.FC = () => {
   const { t } = useLanguage();
   const { user, isAuthenticated } = useAuth();
   const location = useLocation();
+  
+  // Add textarea ref for SSML tag insertion
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   // Set page title
   useEffect(() => {
@@ -145,6 +148,38 @@ const ElevenLabs: React.FC = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  // Insert SSML tag at cursor position
+  const insertSSMLTag = (tag: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const currentValue = formData.content;
+    
+    const newValue = currentValue.substring(0, start) + tag + currentValue.substring(end);
+    
+    // Check character limit
+    const maxLength = selectedModel === 'eleven_turbo_v2_5' ? 20000 : 3000;
+    if (newValue.length > maxLength) {
+      return;
+    }
+    
+    setFormData(prev => ({
+      ...prev,
+      content: newValue
+    }));
+    
+    // Restore cursor position after the inserted tag
+    requestAnimationFrame(() => {
+      if (textarea) {
+        const newCursorPosition = start + tag.length;
+        textarea.setSelectionRange(newCursorPosition, newCursorPosition);
+        textarea.focus();
+      }
+    });
   };
 
   // Fetch user generates
@@ -661,6 +696,7 @@ const ElevenLabs: React.FC = () => {
                   
                   {/* Text Content */}
                   <TextArea
+                    ref={textareaRef}
                     label="Text Content"
                     name="content"
                     value={formData.content}
@@ -670,6 +706,260 @@ const ElevenLabs: React.FC = () => {
                     hint={`${formData.content.length}/${selectedModel === 'eleven_turbo_v2_5' ? 20000 : 3000} characters`}
                     className="w-full"
                   />
+
+                  {/* SSML Tags */}
+                  <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                      SSML Tags
+                    </label>
+                    
+                    {selectedModel === 'eleven_turbo_v2_5' ? (
+                      // Break tags for turbo_v2_5
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insertSSMLTag('<break time="0.5s" />')}
+                          className="text-xs"
+                        >
+                          Break 0.5s
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insertSSMLTag('<break time="1s" />')}
+                          className="text-xs"
+                        >
+                          Break 1s
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => insertSSMLTag('<break time="2s" />')}
+                          className="text-xs"
+                        >
+                          Break 2s
+                        </Button>
+                      </div>
+                    ) : (
+                      // Emotional and reaction tags for eleven_v3
+                      <div className="space-y-3">
+                        {/* Emotional states */}
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Emotional states:</div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[excited]')}
+                              className="text-xs"
+                            >
+                              [excited]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[nervous]')}
+                              className="text-xs"
+                            >
+                              [nervous]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[frustrated]')}
+                              className="text-xs"
+                            >
+                              [frustrated]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[sorrowful]')}
+                              className="text-xs"
+                            >
+                              [sorrowful]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[calm]')}
+                              className="text-xs"
+                            >
+                              [calm]
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Reactions */}
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Reactions:</div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[sigh]')}
+                              className="text-xs"
+                            >
+                              [sigh]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[laughs]')}
+                              className="text-xs"
+                            >
+                              [laughs]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[gulps]')}
+                              className="text-xs"
+                            >
+                              [gulps]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[gasps]')}
+                              className="text-xs"
+                            >
+                              [gasps]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[whispers]')}
+                              className="text-xs"
+                            >
+                              [whispers]
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Cognitive beats */}
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Cognitive beats:</div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[pauses]')}
+                              className="text-xs"
+                            >
+                              [pauses]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[hesitates]')}
+                              className="text-xs"
+                            >
+                              [hesitates]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[stammers]')}
+                              className="text-xs"
+                            >
+                              [stammers]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[resigned tone]')}
+                              className="text-xs"
+                            >
+                              [resigned tone]
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Tone cues */}
+                        <div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Tone cues:</div>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[cheerfully]')}
+                              className="text-xs"
+                            >
+                              [cheerfully]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[flatly]')}
+                              className="text-xs"
+                            >
+                              [flatly]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[deadpan]')}
+                              className="text-xs"
+                            >
+                              [deadpan]
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => insertSSMLTag('[playfully]')}
+                              className="text-xs"
+                            >
+                              [playfully]
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                   
                   {/* Generate Button */}
                   <div className="flex justify-center pt-4">

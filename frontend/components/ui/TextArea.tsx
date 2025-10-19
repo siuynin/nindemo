@@ -6,6 +6,9 @@ interface TextAreaProps {
   placeholder?: string;
   value?: string;
   onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  onSelect?: (e: React.SyntheticEvent<HTMLTextAreaElement>) => void;
+  onKeyUp?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLTextAreaElement>) => void;
   className?: string;
   disabled?: boolean;
   rows?: number;
@@ -14,14 +17,18 @@ interface TextAreaProps {
   error?: boolean;
   hint?: string;
   label?: string;
+  required?: boolean;
 }
 
-const TextArea: React.FC<TextAreaProps> = ({
+const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(({
   id,
   name,
   placeholder,
   value,
   onChange,
+  onSelect,
+  onKeyUp,
+  onClick,
   className = '',
   disabled = false,
   rows = 4,
@@ -30,7 +37,8 @@ const TextArea: React.FC<TextAreaProps> = ({
   error = false,
   hint,
   label,
-}) => {
+  required = false,
+}, ref) => {
   let textareaClasses = `w-full rounded-lg border appearance-none px-4 py-2.5 text-sm shadow-theme-xs placeholder:text-gray-400 focus:outline-hidden focus:ring-3 dark:bg-gray-900 dark:text-white/90 dark:placeholder:text-white/30 resize-vertical ${className}`;
 
   if (disabled) {
@@ -51,14 +59,19 @@ const TextArea: React.FC<TextAreaProps> = ({
         </label>
       )}
       <textarea
+        ref={ref}
         id={id}
         name={name}
         placeholder={placeholder}
         value={value}
         onChange={onChange}
+        onSelect={onSelect}
+        onKeyUp={onKeyUp}
+        onClick={onClick}
         disabled={disabled}
         rows={rows}
         cols={cols}
+        required={required}
         className={textareaClasses}
       />
       {hint && (
@@ -76,6 +89,8 @@ const TextArea: React.FC<TextAreaProps> = ({
       )}
     </div>
   );
-};
+});
+
+TextArea.displayName = 'TextArea';
 
 export default TextArea;

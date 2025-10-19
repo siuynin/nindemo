@@ -10,6 +10,21 @@
         </button>
     </div>
 </div>
+<!-- Image Modal -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">Screenshot</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modalImage" src="" alt="" class="img-fluid" style="max-height: 70vh;">
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('content')
@@ -219,6 +234,26 @@ function viewBugReport(id) {
         .then(data => {
             if (data.success) {
                 const report = data.data;
+                const screenshotsHtml = report.screenshots && report.screenshots.length > 0 ? `
+                    <div class="col-12 mt-3">
+                        <h6>Screenshots</h6>
+                        <div class="row">
+                            ${report.screenshots.map((screenshot, index) => `
+                                <div class="col-md-3 col-sm-6 mb-3">
+                                    <div class="card">
+                                        <img src="${screenshot}" class="card-img-top" alt="Screenshot ${index + 1}" 
+                                             style="height: 150px; object-fit: cover; cursor: pointer;" 
+                                             onclick="showImageModal('${screenshot}', 'Screenshot ${index + 1}')">
+                                        <div class="card-body p-2">
+                                            <small class="text-muted">Screenshot ${index + 1}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                ` : '';
+
                 const detailsHtml = `
                     <div class="row">
                         <div class="col-md-6">
@@ -242,6 +277,7 @@ function viewBugReport(id) {
                                 <p class="text-muted">${report.admin_notes}</p>
                             ` : ''}
                         </div>
+                        ${screenshotsHtml}
                     </div>
                 `;
                 document.getElementById('bugReportDetails').innerHTML = detailsHtml;
@@ -338,6 +374,13 @@ function markAsCompleted(id) {
             alert('Có lỗi xảy ra khi cập nhật');
         });
     }
+}
+
+// Show image in modal
+function showImageModal(imageSrc, imageTitle) {
+    document.getElementById('modalImage').src = imageSrc;
+    document.getElementById('imageModalLabel').textContent = imageTitle;
+    new bootstrap.Modal(document.getElementById('imageModal')).show();
 }
 
 // Delete bug report
