@@ -39,6 +39,10 @@ Route::get('/minimax/voices', [App\Http\Controllers\Api\MinimaxController::class
 // ElevenLabs webhook
 Route::post('/getaudio', [App\Http\Controllers\Api\ElevenLabsWebhookController::class, 'handleWebhook'])->middleware('sanitize.input');
 
+// RunningHub webhooks
+Route::post('/runninghub/video-webhook', [App\Http\Controllers\Api\RunningHubWebhookController::class, 'handleVideoWebhook']);
+Route::post('/runninghub/webhook-details', [App\Http\Controllers\Api\RunningHubWebhookController::class, 'getWebhookDetails']);
+
 // Debug route
 Route::get('/debug/generates', function() {
     $generates = App\Models\Generate::all();

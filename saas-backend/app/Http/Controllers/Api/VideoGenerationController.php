@@ -43,11 +43,12 @@ class VideoGenerationController extends Controller
 
             // Check user credits (video generation costs more than images)
             $creditCost = $this->calculateVideoCreditCost($validatedData);
-            if ($user->credits < $creditCost) {
+            $userCredits = $user->total_remaining_credits;
+            if ($userCredits < $creditCost) {
                 return response()->json([
                     'error' => 'Insufficient credits. Please top up your account.',
                     'required' => $creditCost,
-                    'available' => $user->credits
+                    'available' => $userCredits
                 ], 400);
             }
 
@@ -89,49 +90,51 @@ class VideoGenerationController extends Controller
                 'share' => false
             ]);
 
-            // Deduct credits
-            $user->decrement('credits', $creditCost);
+            // Deduct credits using UserCreditController
+            $userCreditController = app(\App\Http\Controllers\Api\UserCreditController::class);
+            $creditResult = $userCreditController->useCredits($user, $creditCost);
 
             // Call RunningHub API
             try {
+                // Set longer execution time for video generation
+                set_time_limit(300); // 5 minutes
+                
                 $response = $this->runningHubService->generateVideo($runningHubData);
                 
-                if (isset($response['error'])) {
-                    // Refund credits on API error
-                    $user->increment('credits', $creditCost);
-                    $generate->update([
-                        'status' => 'failed',
-                        'error_message' => $response['error']
-                    ]);
-                    
-                    return response()->json([
-                        'error' => 'Video generation failed: ' . $response['error'],
-                        'generate_id' => $generate->id
-                    ], 500);
-                }
-
-                // Update generate record with API response
+                // Store task_id for webhook tracking
                 $generate->update([
-                    'status' => 'completed',
-                    'result_url' => $response['videoUrl'] ?? null,
+                    'status' => 'processing',
+                    'task_id' => $response['taskId'],
                     'api_response' => json_encode($response)
                 ]);
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Video generation completed successfully',
-                    'generateId' => $generate->id,
-                    'videoUrl' => $response['videoUrl'] ?? null,
-                    'status' => 'completed',
-                    'creditCost' => $creditCost,
-                    'remainingCredits' => $user->fresh()->credits
+                    'message' => 'Video generation started successfully',
+                    'data' => [
+                        'id' => $generate->id,
+                        'taskId' => $response['taskId'],
+                        'status' => 'processing',
+                        'remainingCredits' => $user->fresh()->total_remaining_credits,
+                        'webhook_info' => 'Results will be delivered automatically when ready'
+                    ]
                 ]);
 
             } catch (\Exception $e) {
                 Log::error('RunningHub API Error: ' . $e->getMessage());
                 
-                // Refund credits on API error
-                $user->increment('credits', $creditCost);
+                // Refund credits on error
+                UserCredit::create([
+                    'user_id' => $user->id,
+                    'pricing_plan_id' => null,
+                    'total_credits' => $creditCost,
+                    'used_credits' => 0,
+                    'remaining_credits' => $creditCost,
+                    'expires_at' => now()->addDays(31),
+                    'credit_type' => 'refund',
+                    'notes' => 'Refund for failed video generation'
+                ]);
+                
                 $generate->update([
                     'status' => 'failed',
                     'error_message' => $e->getMessage()
@@ -150,6 +153,19 @@ class VideoGenerationController extends Controller
             ], 422);
         } catch (\Exception $e) {
             Log::error('Video Generation Error: ' . $e->getMessage());
+            
+            // Refund credits on error
+            UserCredit::create([
+                'user_id' => $user->id,
+                'pricing_plan_id' => null,
+                'total_credits' => $creditCost,
+                'used_credits' => 0,
+                'remaining_credits' => $creditCost,
+                'expires_at' => now()->addDays(31),
+                'credit_type' => 'refund',
+                'notes' => 'Refund for failed video generation'
+            ]);
+            
             return response()->json([
                 'error' => 'An unexpected error occurred'
             ], 500);

@@ -1,6 +1,6 @@
 # Test Video Generation API with RunningHub
-$baseUrl = "http://localhost:8000/api"
-$token = "1|laravel_sanctum_token_here"
+$baseUrl = "http://localhost:8001/api"
+$token = "98|qBrI7Lq7Cg5xEXOluOOscP3GIXpFr8sfptpyzCNyb5c427b8"
 
 # Test Text-to-Video
 Write-Host "Testing Text-to-Video Generation..." -ForegroundColor Green
@@ -23,7 +23,14 @@ try {
 } catch {
     Write-Host "Text-to-Video Error:" -ForegroundColor Red
     Write-Host "Status Code: $($_.Exception.Response.StatusCode.value__)"
-    Write-Host "Response: $($_.Exception.Response | ConvertFrom-Json | ConvertTo-Json -Depth 10)"
+    if ($_.Exception.Response) {
+        $errorStream = $_.Exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($errorStream)
+        $errorBody = $reader.ReadToEnd()
+        Write-Host "Response: $errorBody"
+    } else {
+        Write-Host "No response body available"
+    }
 }
 
 Write-Host "`n" + "="*50 + "`n"
@@ -49,5 +56,12 @@ try {
 } catch {
     Write-Host "Image-to-Video Error:" -ForegroundColor Red
     Write-Host "Status Code: $($_.Exception.Response.StatusCode.value__)"
-    Write-Host "Response: $($_.Exception.Response | ConvertFrom-Json | ConvertTo-Json -Depth 10)"
+    if ($_.Exception.Response) {
+        $errorStream = $_.Exception.Response.GetResponseStream()
+        $reader = New-Object System.IO.StreamReader($errorStream)
+        $errorBody = $reader.ReadToEnd()
+        Write-Host "Response: $errorBody"
+    } else {
+        Write-Host "No response body available"
+    }
 }

@@ -333,7 +333,7 @@ class RunningHubService
     }
 
     /**
-     * Generate video using RunningHub API
+     * Generate video using RunningHub API with webhook support
      * Supports both text-to-video and image-to-video
      */
     public function generateVideo(array $data): array
@@ -407,14 +407,20 @@ class RunningHubService
                 ];
             }
 
-            // Build request payload
+            // Build request payload with webhook URL
+            $webhookUrl = config('app.url') . '/api/runninghub/video-webhook';
+            
             $requestData = [
                 'webappId' => $webappId,
                 'apiKey' => $this->apiKey,
-                'nodeInfoList' => $nodeInfoList
+                'nodeInfoList' => $nodeInfoList,
+                'webhookUrl' => $webhookUrl  // Add webhook URL
             ];
 
-            Log::info('RunningHub Video API Request', ['request' => $requestData]);
+            Log::info('RunningHub Video API Request with Webhook', [
+                'request' => $requestData,
+                'webhook_url' => $webhookUrl
+            ]);
 
             // Make API call
             $response = Http::withHeaders([
@@ -438,16 +444,20 @@ class RunningHubService
                 throw new \Exception('RunningHub Video API error: ' . ($responseData['msg'] ?? 'Unknown error'));
             }
 
-            // Extract task ID for polling
+            // Extract task ID
             $taskId = $responseData['data']['taskId'] ?? null;
             if (!$taskId) {
                 throw new \Exception('No task ID returned from RunningHub Video API');
             }
 
-            // Poll for results
-            $result = $this->pollVideoTaskResult($taskId);
-            
-            return $result;
+            // Return task ID immediately - webhook will handle completion
+            return [
+                'success' => true,
+                'taskId' => $taskId,
+                'status' => 'processing',
+                'message' => 'Video generation started. Results will be delivered via webhook.',
+                'webhook_url' => $webhookUrl
+            ];
 
         } catch (\Exception $e) {
             Log::error('RunningHub Video Generation Error', ['error' => $e->getMessage()]);
@@ -458,7 +468,7 @@ class RunningHubService
     /**
      * Poll RunningHub video task result
      */
-    private function pollVideoTaskResult(string $taskId, int $maxAttempts = 60, int $delaySeconds = 5): array
+    private function pollVideoTaskResult(string $taskId, int $maxAttempts = 30, int $delaySeconds = 3): array
     {
         $pollUrl = 'https://www.runninghub.ai/task/openapi/outputs';
         
@@ -466,7 +476,7 @@ class RunningHubService
             try {
                 Log::info("Polling RunningHub video task (attempt {$attempt}/{$maxAttempts})", ['taskId' => $taskId]);
 
-                $response = Http::withHeaders([
+                $response = Http::timeout(30)->withHeaders([
                     'Host' => 'www.runninghub.ai',
                     'Content-Type' => 'application/json',
                 ])->post($pollUrl, [
