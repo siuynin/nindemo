@@ -296,6 +296,35 @@ export const vi = {
     unknownError: 'Lỗi không xác định'
   },
 
+  // Bug Report
+  bugReport: {
+    title: 'Báo Cáo Lỗi',
+    reportBug: 'Báo Cáo Lỗi',
+    bugTitle: 'Tiêu đề lỗi',
+    bugTitlePlaceholder: 'Mô tả ngắn gọn về lỗi...',
+    description: 'Mô tả chi tiết',
+    descriptionPlaceholder: 'Mô tả chi tiết về lỗi bạn gặp phải...',
+    stepsToReproduce: 'Các bước tái hiện',
+    stepsPlaceholder: 'Liệt kê các bước để tái hiện lỗi...',
+    expectedBehavior: 'Hành vi mong đợi',
+    expectedPlaceholder: 'Mô tả những gì bạn mong đợi sẽ xảy ra...',
+    actualBehavior: 'Hành vi thực tế',
+    actualPlaceholder: 'Mô tả những gì thực sự xảy ra...',
+    priority: 'Độ ưu tiên',
+    priorityLow: 'Thấp',
+    priorityMedium: 'Trung bình',
+    priorityHigh: 'Cao',
+    priorityCritical: 'Nghiêm trọng',
+    currentUrl: 'URL hiện tại',
+    browserInfo: 'Thông tin trình duyệt',
+    submit: 'Gửi Báo Cáo',
+    submitting: 'Đang gửi...',
+    submitSuccess: 'Báo cáo lỗi đã được gửi thành công!',
+    submitError: 'Có lỗi xảy ra khi gửi báo cáo. Vui lòng thử lại.',
+    loginRequired: 'Vui lòng đăng nhập để báo cáo lỗi',
+    allFieldsRequired: 'Vui lòng điền đầy đủ thông tin'
+  },
+
   // Install Prompt
   installApp: 'Cài đặt ứng dụng',
   installAppDescription: 'Truy cập nhanh hơn, hoạt động offline',

@@ -6,6 +6,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import AdminSidebar from './AdminSidebar';
 import AdminTopBar from './AdminTopBar';
 import BubbleChatbot from './BubbleChatbot';
+import BugReportBubble from './BugReportBubble';
 
 // Custom CSS for smooth animations
 const backgroundAnimationStyles = `
@@ -193,6 +194,9 @@ const AdminLayoutContent: React.FC = () => {
 
         {/* Chatbot - Ẩn cho CreativeEditor */}
         {!isCreativeEditorPage && <BubbleChatbot />}
+        
+        {/* Bug Report Bubble - Ẩn cho CreativeEditor */}
+        {!isCreativeEditorPage && <BugReportBubble className="bottom-20" />}
       </div>
     </div>
   );

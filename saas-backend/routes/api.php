@@ -212,6 +212,24 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [App\Http\Controllers\Api\VoiceCloneController::class, 'destroy']);
     });
     
+    // Bug Reports Routes (User)
+    Route::prefix('bug-reports')->middleware('ngrok.bypass')->group(function () {
+        Route::get('/', [App\Http\Controllers\Api\BugReportController::class, 'index']);
+        Route::post('/', [App\Http\Controllers\Api\BugReportController::class, 'store']);
+        Route::get('/{id}', [App\Http\Controllers\Api\BugReportController::class, 'show']);
+        Route::put('/{id}', [App\Http\Controllers\Api\BugReportController::class, 'update']);
+        Route::delete('/{id}', [App\Http\Controllers\Api\BugReportController::class, 'destroy']);
+    });
+    
+    // Admin Bug Reports Routes (Admin only)
+    Route::prefix('admin/bug-reports')->middleware('admin')->group(function () {
+        Route::get('/', [App\Http\Controllers\Admin\AdminBugReportController::class, 'index']);
+        Route::get('/statistics', [App\Http\Controllers\Admin\AdminBugReportController::class, 'statistics']);
+        Route::get('/{id}', [App\Http\Controllers\Admin\AdminBugReportController::class, 'show']);
+        Route::put('/{id}', [App\Http\Controllers\Admin\AdminBugReportController::class, 'update']);
+        Route::delete('/{id}', [App\Http\Controllers\Admin\AdminBugReportController::class, 'destroy']);
+    });
+    
     // Note: Admin functionality is handled through web routes with Blade views
     // This API is specifically designed for frontend application consumption
 });

@@ -77,7 +77,7 @@ class VideoGenerationController extends Controller
             $generate = Generate::create([
                 'user_id' => $user->id,
                 'name' => 'Video Generation - ' . substr($validatedData['positivePrompt'], 0, 50),
-                'type' => $inputImageUrl ? 'image-to-video' : 'text-to-video',
+                'type' => 'video',
                 'status' => 'processing',
                 'prompt' => $validatedData['positivePrompt'],
                 'model' => $runningHubData['model'],
@@ -217,7 +217,7 @@ class VideoGenerationController extends Controller
             $perPage = $request->get('per_page', 10);
             
             $generations = Generate::where('user_id', $user->id)
-                ->whereIn('type', ['text-to-video', 'image-to-video'])
+                ->whereIn('type', ['video'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 

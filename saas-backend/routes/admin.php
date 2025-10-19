@@ -8,6 +8,7 @@ use App\Http\Controllers\Admin\AIModelController;
 use App\Http\Controllers\Admin\AdminOpenAIController;
 use App\Http\Controllers\Admin\GenerateController;
 use App\Http\Controllers\Admin\BillController;
+use App\Http\Controllers\Admin\AdminBugReportController;
 use App\Http\Controllers\VoiceController;
 
 /*
@@ -67,6 +68,12 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     Route::get('transactions/create', [BillController::class, 'createTransaction'])->name('transactions.create');
     Route::post('transactions', [BillController::class, 'storeTransaction'])->name('transactions.store');
     Route::get('transactions/{transaction}', [BillController::class, 'showTransaction'])->name('transactions.show');
+    
+    // Bug Reports Management
+    Route::get('bug-reports', [AdminBugReportController::class, 'index'])->name('bug-reports.index');
+    Route::get('bug-reports/{id}', [AdminBugReportController::class, 'show'])->name('bug-reports.show');
+    Route::put('bug-reports/{id}', [AdminBugReportController::class, 'update'])->name('bug-reports.update');
+    Route::delete('bug-reports/{id}', [AdminBugReportController::class, 'destroy'])->name('bug-reports.destroy');
     
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');

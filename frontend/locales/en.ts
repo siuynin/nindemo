@@ -294,6 +294,37 @@ export const en = {
     unknownError: 'Unknown error'
   },
 
+  // Bug Report
+  bugReport: {
+    reportBug: 'Report Bug',
+    title: 'Title',
+    description: 'Description',
+    stepsToReproduce: 'Steps to Reproduce',
+    expectedBehavior: 'Expected Behavior',
+    actualBehavior: 'Actual Behavior',
+    priority: 'Priority',
+    currentUrl: 'Current URL',
+    browserInfo: 'Browser Info',
+    low: 'Low',
+    medium: 'Medium',
+    high: 'High',
+    critical: 'Critical',
+    cancel: 'Cancel',
+    submitBugReport: 'Submit Bug Report',
+    submitting: 'Submitting...',
+    pleaseLoginFirst: 'Please login first to report bugs',
+    titleAndDescriptionRequired: 'Title and description are required',
+    bugReportSubmitted: 'Bug report submitted successfully!',
+    errorSubmittingBugReport: 'Error submitting bug report',
+    networkError: 'Network error. Please try again.',
+    loginRequiredForBugReport: 'Please login to report bugs. This helps us track and respond to your reports.',
+    enterBugTitle: 'Enter a brief title for the bug',
+    describeBugDetail: 'Describe the bug in detail',
+    stepsToReproducePlaceholder: '1. Go to...\n2. Click on...\n3. See error',
+    whatShouldHappen: 'What should happen?',
+    whatActuallyHappens: 'What actually happens?'
+  },
+
   // Install Prompt
   installApp: 'Install App',
   installAppDescription: 'Faster access, works offline',

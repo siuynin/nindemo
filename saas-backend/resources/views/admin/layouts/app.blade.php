@@ -140,6 +140,13 @@
                         </li>
                         
                         <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('admin.bug-reports.*') ? 'active' : '' }}" href="{{ route('admin.bug-reports.index') }}">
+                                <i class="fas fa-bug me-2"></i>
+                                Báo cáo lỗi
+                            </a>
+                        </li>
+                        
+                        <li class="nav-item">
                             <a class="nav-link {{ request()->routeIs('admin.statistics') ? 'active' : '' }}" href="{{ route('admin.statistics') }}">
                                 <i class="fas fa-chart-bar me-2"></i>
                                 Thống kê
