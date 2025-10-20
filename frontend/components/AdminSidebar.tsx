@@ -338,14 +338,14 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <Link to="/" className="flex items-center">
           {isExpanded || isHovered || isMobileOpen ? (
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">ND</span>
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+                <img src="/logo.png" alt="NDhubs Logo" className="w-8 h-8 object-contain" />
               </div>
               <span className="text-xl font-bold">NDhubs</span>
             </div>
           ) : (
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">N</span>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center">
+              <img src="/logo.png" alt="NDhubs Logo" className="w-8 h-8 object-contain" />
             </div>
           )}
         </Link>
