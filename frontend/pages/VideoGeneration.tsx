@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -39,6 +39,7 @@ const VideoGeneration: React.FC = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [generations, setGenerations] = useState<VideoGeneration[]>([]);
+  const [pollingIntervals, setPollingIntervals] = useState<Map<string, NodeJS.Timeout>>(new Map());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -92,6 +93,147 @@ const VideoGeneration: React.FC = () => {
       fileInputRef.current.value = '';
     }
   };
+
+  // Polling function to check video generation status
+  const pollVideoStatus = async (generationId: string, taskId: string) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generation/${generationId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Update generation status
+      setGenerations(prev => prev.map(gen => {
+        if (gen.id === generationId) {
+          return {
+            ...gen,
+            status: data.status,
+            videoUrl: data.videoUrl || gen.videoUrl,
+          };
+        }
+        return gen;
+      }));
+
+      // Stop polling if completed or failed
+      if (data.status === 'completed' || data.status === 'failed') {
+        const interval = pollingIntervals.get(generationId);
+        if (interval) {
+          clearInterval(interval);
+          setPollingIntervals(prev => {
+            const newMap = new Map(prev);
+            newMap.delete(generationId);
+            return newMap;
+          });
+        }
+
+        // Show success/error message
+        if (data.status === 'completed') {
+          setAlert({ type: 'success', message: 'Video đã được tạo thành công!' });
+        } else if (data.status === 'failed') {
+          setAlert({ type: 'error', message: data.error_message || 'Tạo video thất bại' });
+        }
+      }
+    } catch (error) {
+      console.error('Error polling video status:', error);
+    }
+  };
+
+  // Start polling for a generation
+  const startPolling = (generationId: string, taskId: string) => {
+    // Don't start if already polling
+    if (pollingIntervals.has(generationId)) return;
+
+    const interval = setInterval(() => {
+      pollVideoStatus(generationId, taskId);
+    }, 5000); // Poll every 5 seconds
+
+    setPollingIntervals(prev => new Map(prev.set(generationId, interval)));
+  };
+
+  // Cleanup polling intervals on unmount
+  useEffect(() => {
+    return () => {
+      pollingIntervals.forEach(interval => clearInterval(interval));
+    };
+  }, []);
+
+  // Load existing generations when component mounts or user logs in
+  const loadExistingGenerations = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generations`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      
+      // Transform backend data to match frontend interface
+      const transformedGenerations: VideoGeneration[] = data.data.map((gen: any) => ({
+        id: gen.id.toString(),
+        prompt: gen.prompt || '',
+        status: gen.status,
+        videoUrl: gen.result_url,
+        createdAt: gen.created_at,
+        aspectRatio: gen.settings?.model === 'landscape' ? '16:9' : gen.settings?.model === 'portrait' ? '9:16' : '1:1',
+        duration: gen.settings?.duration || 10,
+        type: gen.settings?.inputImage ? 'image-to-video' : 'text-to-video',
+        inputImageUrl: gen.settings?.inputImage,
+      }));
+
+      setGenerations(transformedGenerations);
+
+      // Start polling for any processing videos
+      transformedGenerations.forEach(gen => {
+        if (gen.status === 'processing' && gen.id) {
+          startPolling(gen.id, ''); // taskId not needed for existing generations
+        }
+      });
+
+    } catch (error) {
+      console.error('Error loading existing generations:', error);
+    }
+  };
+
+  // Load existing generations when component mounts or user authentication changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadExistingGenerations();
+    } else {
+      setGenerations([]); // Clear generations when user logs out
+    }
+  }, [isAuthenticated]);
 
   const handleGenerate = async () => {
     if (!isAuthenticated) {
@@ -166,7 +308,7 @@ const VideoGeneration: React.FC = () => {
       
       // Add to generations list
       const newGeneration: VideoGeneration = {
-        id: data.id,
+        id: data.data.id,
         prompt,
         status: 'processing',
         createdAt: new Date().toISOString(),
@@ -177,6 +319,11 @@ const VideoGeneration: React.FC = () => {
       };
       
       setGenerations(prev => [newGeneration, ...prev]);
+      
+      // Start polling for this generation
+      if (data.data.taskId) {
+        startPolling(data.data.id, data.data.taskId);
+      }
       
       // Reset form
       setPrompt('');

@@ -99,7 +99,7 @@ class VideoGenerationController extends Controller
                 // Set longer execution time for video generation
                 set_time_limit(300); // 5 minutes
                 
-                $response = $this->runningHubService->generateVideo($runningHubData);
+                $response = $this->runningHubService->generateVideo($runningHubData, $generate->id);
                 
                 // Store task_id for webhook tracking
                 $generate->update([

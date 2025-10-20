@@ -336,7 +336,7 @@ class RunningHubService
      * Generate video using RunningHub API with webhook support
      * Supports both text-to-video and image-to-video
      */
-    public function generateVideo(array $data): array
+    public function generateVideo(array $data, ?string $generateId = null): array
     {
         try {
             if (!$this->apiKey) {
@@ -407,14 +407,17 @@ class RunningHubService
                 ];
             }
 
-            // Build request payload with webhook URL
+            // Build webhook URL with generateId as identifier (we'll map this to taskId later)
             $webhookUrl = config('app.url') . '/api/runninghub/video-webhook';
+            if ($generateId) {
+                $webhookUrl .= '?generateId=' . $generateId;
+            }
             
             $requestData = [
                 'webappId' => $webappId,
                 'apiKey' => $this->apiKey,
                 'nodeInfoList' => $nodeInfoList,
-                'webhookUrl' => $webhookUrl  // Add webhook URL
+                'webhookUrl' => $webhookUrl
             ];
 
             Log::info('RunningHub Video API Request with Webhook', [

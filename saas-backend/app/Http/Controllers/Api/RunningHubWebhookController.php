@@ -16,96 +16,114 @@ class RunningHubWebhookController extends Controller
     public function handleVideoWebhook(Request $request)
     {
         try {
-            Log::info('RunningHub Video Webhook received', [
+            Log::info('RunningHub Video Webhook Received', [
                 'headers' => $request->headers->all(),
-                'body' => $request->all()
+                'body' => $request->all(),
+                'query' => $request->query->all(),
+                'url' => $request->fullUrl()
             ]);
 
-            // Validate webhook data
+            // Get generateId from query parameter
+            $generateId = $request->query('generateId');
+            if (!$generateId) {
+                Log::error('RunningHub Webhook Error: Missing generateId in query parameter');
+                return response()->json(['error' => 'Missing generateId parameter'], 400);
+            }
+
+            // Validate webhook payload
             $validator = Validator::make($request->all(), [
-                'taskId' => 'required|string',
                 'code' => 'required|integer',
                 'msg' => 'nullable|string',
                 'data' => 'nullable|array'
             ]);
 
             if ($validator->fails()) {
-                Log::error('RunningHub Video Webhook validation failed', [
-                    'errors' => $validator->errors()->all(),
-                    'request_data' => $request->all()
+                Log::error('RunningHub Webhook Validation Failed', [
+                    'errors' => $validator->errors(),
+                    'payload' => $request->all()
                 ]);
-                return response()->json(['error' => 'Invalid webhook data'], 400);
+                return response()->json(['error' => 'Invalid webhook payload'], 400);
             }
 
-            $taskId = $request->input('taskId');
             $code = $request->input('code');
-            $message = $request->input('msg', '');
+            $msg = $request->input('msg', '');
             $data = $request->input('data', []);
 
-            // Find the generation record by task_id
-            $generate = Generate::where('task_id', $taskId)->first();
-
+            // Find the Generate record by generateId
+            $generate = Generate::where('id', $generateId)->first();
             if (!$generate) {
-                Log::warning('RunningHub Video Webhook: Generation not found', [
-                    'taskId' => $taskId
+                Log::error('RunningHub Webhook Error: Generate record not found', [
+                    'generateId' => $generateId
                 ]);
-                return response()->json(['error' => 'Generation not found'], 404);
+                return response()->json(['error' => 'Generate record not found'], 404);
             }
 
-            // Process webhook based on code
+            // Update the taskId if we have it in the data
+            if (isset($data[0]['taskId'])) {
+                $generate->task_id = $data[0]['taskId'];
+            }
+
             if ($code === 0) {
-                // Success - extract video URLs
-                $videoUrls = $this->extractVideoUrls($data);
-                
-                if (!empty($videoUrls)) {
+                // Success - video generation completed
+                Log::info('RunningHub Video Generation Completed', [
+                    'generateId' => $generateId,
+                    'data' => $data
+                ]);
+
+                // Extract video URL from data array
+                $videoUrl = null;
+                if (isset($data[0]['fileUrl'])) {
+                    $videoUrl = $data[0]['fileUrl'];
+                }
+
+                if ($videoUrl) {
+                    // Update Generate record with success status and video URL
                     $generate->update([
                         'status' => 'completed',
-                        'result_url' => $videoUrls[0],
-                        'result_data' => json_encode([
-                            'videoUrls' => $videoUrls,
-                            'taskId' => $taskId,
-                            'webhook_data' => $data
-                        ])
+                        'result_url' => $videoUrl,
+                        'completed_at' => now(),
+                        'task_id' => $generate->task_id ?? (isset($data[0]['taskId']) ? $data[0]['taskId'] : null)
                     ]);
 
-                    Log::info('RunningHub Video Webhook: Generation completed', [
-                        'taskId' => $taskId,
-                        'generation_id' => $generate->id,
-                        'video_urls' => $videoUrls
+                    Log::info('Generate record updated successfully', [
+                        'generateId' => $generateId,
+                        'videoUrl' => $videoUrl
                     ]);
                 } else {
-                    Log::warning('RunningHub Video Webhook: No video URLs found in success response', [
-                        'taskId' => $taskId,
+                    Log::warning('RunningHub webhook success but no video URL found', [
+                        'generateId' => $generateId,
                         'data' => $data
                     ]);
                     
                     $generate->update([
                         'status' => 'failed',
-                        'error_message' => 'No video URLs found in response'
+                        'error_message' => 'No video URL in webhook response',
+                        'completed_at' => now()
                     ]);
                 }
             } else {
-                // Error
-                $generate->update([
-                    'status' => 'failed',
-                    'error_message' => $message ?: 'RunningHub task failed with code: ' . $code
+                // Error - video generation failed
+                Log::error('RunningHub Video Generation Failed', [
+                    'generateId' => $generateId,
+                    'code' => $code,
+                    'msg' => $msg,
+                    'data' => $data
                 ]);
 
-                Log::error('RunningHub Video Webhook: Generation failed', [
-                    'taskId' => $taskId,
-                    'generation_id' => $generate->id,
-                    'code' => $code,
-                    'message' => $message
+                $generate->update([
+                    'status' => 'failed',
+                    'error_message' => $msg ?: 'Unknown error from RunningHub',
+                    'completed_at' => now()
                 ]);
             }
 
-            return response()->json(['status' => 'success'], 200);
+            return response()->json(['success' => true]);
 
         } catch (\Exception $e) {
-            Log::error('RunningHub Video Webhook Error', [
+            Log::error('RunningHub Webhook Processing Error', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all()
+                'request' => $request->all()
             ]);
 
             return response()->json(['error' => 'Internal server error'], 500);
