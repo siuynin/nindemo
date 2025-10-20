@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
+import BugReportModal from './BugReportModal';
 import { 
   PenIcon, 
   ImageIcon, 
@@ -43,6 +44,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   const { user, isAuthenticated, totalCredits } = useAuth();
   const location = useLocation();
   const [isMobile, setIsMobile] = useState(false);
+  const [isBugReportModalOpen, setIsBugReportModalOpen] = useState(false);
 
   const [openSubmenu, setOpenSubmenu] = useState<{
     type: "main" | "marketing" | "others";
@@ -128,6 +130,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       icon: <div className="w-5 h-5 flex items-center justify-center text-lg">💰</div>,
       name: t.sidebar?.pricing?.title || 'Pricing',
       path: '/price',
+    },
+    {
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+        </svg>
+      ),
+      name: t.bugReport?.title || 'Bug Report',
+      path: '#bug-report',
     },
   ];
 
@@ -232,6 +243,29 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                 </svg>
               )}
             </button>
+          ) : nav.path === '#bug-report' ? (
+            <button
+              onClick={() => {
+                setIsBugReportModalOpen(true);
+                handleMobileLinkClick();
+              }}
+              className={`w-full flex items-center gap-3 px-3 py-3 text-left rounded-lg transition-all duration-200 group ${
+                theme === 'dark'
+                  ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+              } ${
+                !isExpanded && !isHovered
+                  ? "lg:justify-center"
+                  : "lg:justify-start"
+              }`}
+            >
+              <span className="flex-shrink-0">
+                {nav.icon}
+              </span>
+              {(isExpanded || isHovered || isMobileOpen) && (
+                <span className="font-medium text-sm">{nav.name}</span>
+              )}
+            </button>
           ) : (
             nav.path && (
               <Link
@@ -316,8 +350,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   );
 
   return (
+    <>
     <aside
-      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-10 border-r lg:pt-0 ${
+      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r lg:pt-0 ${
         theme === 'dark'
           ? 'bg-gray-900 border-gray-800 text-gray-100'
           : 'bg-white border-gray-200 text-gray-900'
@@ -327,9 +362,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           : isHovered
           ? "w-[290px]"
           : "w-[90px]"
-      } ${isMobileOpen ? "translate-x-0" : isMobile ? "-translate-x-full" : "translate-x-0"}`}
-      onMouseEnter={() => !isExpanded && onSetIsHovered(true)}
-      onMouseLeave={() => onSetIsHovered(false)}
+      } ${
+        isMobile 
+          ? isMobileOpen 
+            ? "translate-x-0" 
+            : "-translate-x-full"
+          : "translate-x-0"
+      }`}
+      onMouseEnter={() => !isMobile && !isExpanded && onSetIsHovered(true)}
+      onMouseLeave={() => !isMobile && onSetIsHovered(false)}
     >
       {/* Logo Section */}
       <div className={`py-8 px-5 flex ${
@@ -383,7 +424,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                   : "justify-start"
               }`}>
                 {isExpanded || isHovered || isMobileOpen ? (
-                  t.sidebar?.marketing || "MARKETING"
+                  t.sidebar?.marketing || "AUTOMATION"
                 ) : (
                   <div className="w-6 h-1 bg-current rounded-full" />
                 )}
@@ -439,6 +480,13 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
         )}
       </div>
     </aside>
+    
+    {/* Bug Report Modal */}
+    <BugReportModal
+      isOpen={isBugReportModalOpen}
+      onClose={() => setIsBugReportModalOpen(false)}
+    />
+  </>
   );
 };
 

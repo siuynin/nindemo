@@ -132,7 +132,7 @@ const VideoGeneration: React.FC = () => {
         formData.append('inputImage', inputImage);
       }
 
-      const response = await fetch('/api/video/generate', {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generate`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,

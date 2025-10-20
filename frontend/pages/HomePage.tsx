@@ -60,23 +60,34 @@ const HomePage: React.FC = () => {
     {
       title: t.sidebar.imageCanvas.title,
       description: t.sidebar.imageCanvas.description,
-      icon: <PencilIcon className="w-12 h-12" />,
+      icon: <PencilIcon className="w-10 h-10" />,
       link: '/image-canvas',
       gradient: 'from-blue-500 to-purple-600'
     },
     {
       title: t.sidebar.textToSpeech.title,
       description: t.sidebar.textToSpeech.description,
-      icon: <PenIcon className="w-12 h-12" />,
+      icon: <PenIcon className="w-10 h-10" />,
       link: '/text-to-speech',
       gradient: 'from-green-500 to-teal-600'
     },
     {
       title: t.sidebar.imageCreator.title,
       description: t.sidebar.imageCreator.description,
-      icon: <ImageIcon className="w-12 h-12" />,
+      icon: <ImageIcon className="w-10 h-10" />,
       link: '/image-creator',
       gradient: 'from-pink-500 to-rose-600'
+    },
+    {
+      title: t.sidebar.videoGeneration?.title || 'Video Generation',
+      description: t.sidebar.videoGeneration?.description || 'Create amazing videos with AI',
+      icon: (
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+      ),
+      link: '/app/video-generation',
+      gradient: 'from-purple-500 to-indigo-600'
     }
   ];
 
@@ -149,33 +160,33 @@ const HomePage: React.FC = () => {
       <div className="container mx-auto px-4 py-16"> 
 
         {/* Services Grid */}
-        <div className="grid md:grid-cols-3 gap-8 mb-16">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {services.map((service, index) => (
             <Link
               key={index}
               to={service.link}
-              className={`group p-8 rounded-2xl transition-all duration-300 hover:shadow-2xl transform hover:-translate-y-2 ${
+              className={`group p-6 rounded-xl transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 ${
                 theme === 'dark'
                   ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-800'
                   : 'bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-white'
               }`}
             >
-              <div className={`w-16 h-16 bg-gradient-to-br ${service.gradient} rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
+              <div className={`w-12 h-12 bg-gradient-to-br ${service.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 <div className="text-white">
                   {service.icon}
                 </div>
               </div>
-              <h3 className={`text-2xl font-bold mb-4 ${
+              <h3 className={`text-lg font-bold mb-3 ${
                 theme === 'dark' ? 'text-white' : 'text-gray-900'
               }`}>
                 {service.title}
               </h3>
-              <p className={`text-lg leading-relaxed ${
+              <p className={`text-sm leading-relaxed ${
                 theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
               }`}>
                 {service.description}
               </p>
-              <div className={`mt-6 flex items-center text-sm font-medium ${
+              <div className={`mt-4 flex items-center text-xs font-medium ${
                 theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
               }`}>
                 {t.homepage?.explore || 'Khám phá'} →
