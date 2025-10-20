@@ -34,7 +34,7 @@ const VideoGeneration: React.FC = () => {
   const [inputImage, setInputImage] = useState<File | null>(null);
   const [inputImagePreview, setInputImagePreview] = useState<string>('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
-  const [duration, setDuration] = useState(5);
+  const [duration, setDuration] = useState(10);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
@@ -50,9 +50,8 @@ const VideoGeneration: React.FC = () => {
   ];
 
   const durationOptions = [
-    { value: '3', label: '3 giây' },
-    { value: '5', label: '5 giây' },
-    { value: '10', label: '10 giây' }
+    { value: '10', label: '10 giây' }, 
+    { value: '15', label: '15 giây' }
   ];
 
   // Get resolution based on aspect ratio
@@ -114,19 +113,30 @@ const VideoGeneration: React.FC = () => {
     setAlert(null);
 
     try {
+      // Check authentication
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setShowAuthModal(true);
+        return;
+      }
+
       const resolution = getResolution(aspectRatio);
       const formData = new FormData();
       
-      formData.append('taskType', 'videoInference');
       formData.append('positivePrompt', prompt);
       formData.append('duration', duration.toString());
-      formData.append('width', resolution.width.toString());
-      formData.append('height', resolution.height.toString());
-      formData.append('model', 'klingai:5@1');
-      formData.append('outputFormat', 'mp4');
-      formData.append('numberResults', '1');
-      formData.append('includeCost', 'true');
-      formData.append('deliveryMethod', 'async');
+      
+      // Map aspect ratio to model
+      let model = 'portrait';
+      if (aspectRatio === '16:9') {
+        model = 'landscape';
+      } else if (aspectRatio === '9:16') {
+        model = 'portrait';
+      } else if (aspectRatio === '1:1') {
+        model = 'portrait'; // Use portrait for square videos
+      }
+      
+      formData.append('model', model);
       
       if (activeTab === 'image-to-video' && inputImage) {
         formData.append('inputImage', inputImage);
@@ -135,7 +145,8 @@ const VideoGeneration: React.FC = () => {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generate`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
         },
         body: formData,
       });
@@ -143,6 +154,11 @@ const VideoGeneration: React.FC = () => {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
         throw new Error(data.message || 'Không thể tạo video');
       }
 
