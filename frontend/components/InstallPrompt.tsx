@@ -104,10 +104,10 @@ const InstallPrompt: React.FC = () => {
             </div>
             <div>
               <h3 className="font-semibold text-sm">
-                {t('installApp', 'Cài đặt ứng dụng')}
+                {t.installApp || 'Cài đặt ứng dụng'}
               </h3>
               <p className="text-xs text-white/80">
-                {t('installAppDescription', 'Truy cập nhanh hơn, hoạt động offline')}
+                {t.installAppDescription || 'Truy cập nhanh hơn, hoạt động offline'}
               </p>
             </div>
           </div>
@@ -126,13 +126,13 @@ const InstallPrompt: React.FC = () => {
             onClick={handleInstallClick}
             className="flex-1 bg-white text-blue-600 font-medium py-2 px-4 rounded-md hover:bg-blue-50 transition-colors text-sm"
           >
-            {t('install', 'Cài đặt')}
+            {t.install || 'Cài đặt'}
           </button>
           <button
             onClick={handleDismiss}
             className="px-4 py-2 text-white/80 hover:text-white transition-colors text-sm"
           >
-            {t('later', 'Để sau')}
+            {t.later || 'Để sau'}
           </button>
         </div>
       </div>
