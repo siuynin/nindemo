@@ -19,15 +19,16 @@ export default defineConfig(({ mode }) => {
           },
           includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
           manifest: {
-            name: 'AI App - Creative Assistant',
-            short_name: 'AI App',
-            description: 'AI-powered creative assistant for text, audio, and image generation',
+            name: 'NDhubs AI - Creative Assistant',
+            short_name: 'NDhubs AI',
+            description: 'AI-powered creative assistant for text generation, audio synthesis, image creation, and video production',
             theme_color: '#3b82f6',
             background_color: '#ffffff',
             display: 'standalone',
             orientation: 'portrait',
             scope: '/',
             start_url: '/',
+            categories: ['productivity', 'utilities', 'business'],
             icons: [
               {
                 src: 'pwa-192x192.png',

@@ -1,6 +1,8 @@
-{
-  "short_name": "NDhubs",
-  "name": "NDhubs AI",
+{ 
+  "id": "/",
+  "short_name": "NDhubs AI",
+  "name": "NDhubs AI - Creative Assistant",
+  "description": "AI-powered creative assistant for text generation, audio synthesis, image creation, and video production",
   "icons": [
     {
       "src": "favicon.ico",
@@ -11,10 +13,29 @@
       "src": "logo.png",
       "type": "image/png",
       "sizes": "128x128"
+    },
+    {
+      "src": "pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "theme_color": "#001984",
-  "background_color": "#ffffff"
+  "background_color": "#ffffff",
+  "categories": ["productivity", "utilities", "business"]
 }
