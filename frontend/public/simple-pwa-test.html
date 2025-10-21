@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test - Simple</title>
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .container { max-width: 600px; margin: 0 auto; }
+        .test-result { 
+            margin: 10px 0; 
+            padding: 15px; 
+            border-radius: 10px; 
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        .success { background: rgba(34, 197, 94, 0.3); }
+        .error { background: rgba(239, 68, 68, 0.3); }
+        .warning { background: rgba(251, 191, 36, 0.3); }
+        .info { background: rgba(59, 130, 246, 0.3); }
+        button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 PWA Feature Test</h1>
+        <p>Testing Progressive Web App functionality</p>
+        
+        <div id="results"></div>
+        
+        <div id="test-buttons" class="hidden">
+            <button onclick="testInstallPrompt()">Test Install Prompt</button>
+            <button onclick="testServiceWorker()">Test Service Worker</button>
+            <button onclick="testCache()">Test Cache</button>
+        </div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+        const testButtons = document.getElementById('test-buttons');
+        let deferredPrompt = null;
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+
+        // Initial tests
+        function runTests() {
+            // Test Service Worker
+            if ('serviceWorker' in navigator) {
+                addResult('✅ Service Worker supported', 'success');
+                
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration) {
+                        addResult('✅ Service Worker registered', 'success');
+                        addResult(`Scope: ${registration.scope}`, 'info');
+                        
+                        if (registration.active) {
+                            addResult('✅ Service Worker active', 'success');
+                        } else {
+                            addResult('⚠️ Service Worker not active', 'warning');
+                        }
+                    } else {
+                        addResult('❌ Service Worker not registered', 'error');
+                    }
+                    testButtons.classList.remove('hidden');
+                }).catch(error => {
+                    addResult(`❌ Service Worker error: ${error.message}`, 'error');
+                    testButtons.classList.remove('hidden');
+                });
+            } else {
+                addResult('❌ Service Worker not supported', 'error');
+                testButtons.classList.remove('hidden');
+            }
+
+            // Test HTTPS/Localhost
+            const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+            const isHttps = location.protocol === 'https:';
+            
+            if (isLocalhost) {
+                addResult('✅ Running on localhost (PWA allowed)', 'success');
+            } else if (isHttps) {
+                addResult('✅ Running on HTTPS (PWA allowed)', 'success');
+            } else {
+                addResult('❌ Not on localhost or HTTPS (PWA may not work)', 'error');
+            }
+
+            // Test Manifest
+            fetch('/manifest.json')
+                .then(response => response.json())
+                .then(manifest => {
+                    addResult('✅ Manifest loaded', 'success');
+                    addResult(`Name: ${manifest.name || 'N/A'}`, 'info');
+                    addResult(`Display: ${manifest.display || 'N/A'}`, 'info');
+                    
+                    if (manifest.icons && manifest.icons.length > 0) {
+                        addResult('✅ Icons configured', 'success');
+                    } else {
+                        addResult('⚠️ No icons configured', 'warning');
+                    }
+                })
+                .catch(error => {
+                    addResult(`❌ Manifest error: ${error.message}`, 'error');
+                });
+
+            // Test standalone mode
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                addResult('✅ App running in standalone mode', 'success');
+            } else {
+                addResult('ℹ️ App not in standalone mode', 'info');
+            }
+
+            // Test mobile device
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                addResult('📱 Mobile device detected', 'info');
+            } else {
+                addResult('💻 Desktop device detected', 'info');
+            }
+        }
+
+        // Handle beforeinstallprompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            addResult('✅ BeforeInstallPrompt event captured!', 'success');
+            addResult('📲 Install prompt is ready', 'info');
+        });
+
+        // Handle appinstalled
+        window.addEventListener('appinstalled', () => {
+            addResult('🎉 App installed successfully!', 'success');
+            deferredPrompt = null;
+        });
+
+        // Test functions
+        function testInstallPrompt() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(result => {
+                    if (result.outcome === 'accepted') {
+                        addResult('✅ User accepted installation', 'success');
+                    } else {
+                        addResult('❌ User dismissed installation', 'error');
+                    }
+                    deferredPrompt = null;
+                });
+            } else {
+                addResult('❌ No install prompt available', 'error');
+                
+                // Fallback instructions
+                if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                    addResult('📱 iOS: Use "Add to Home Screen" from Safari menu', 'warning');
+                } else if (/Android/.test(navigator.userAgent)) {
+                    addResult('📱 Android: Use "Add to Home Screen" from browser menu', 'warning');
+                } else {
+                    addResult('💻 Desktop: Use browser menu to install', 'warning');
+                }
+            }
+        }
+
+        function testServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistration().then(registration => {
+                    if (registration && registration.active) {
+                        registration.active.postMessage({type: 'TEST'});
+                        addResult('✅ Message sent to Service Worker', 'success');
+                    } else {
+                        addResult('❌ No active Service Worker', 'error');
+                    }
+                });
+            }
+        }
+
+        function testCache() {
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    addResult(`📦 Found ${names.length} cache(s):`, 'info');
+                    names.forEach(name => {
+                        addResult(`  - ${name}`, 'info');
+                    });
+                });
+            } else {
+                addResult('❌ Cache API not supported', 'error');
+            }
+        }
+
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+    </style>
+</head>
+<body>
+    <h1>PWA Feature Test</h1>
+    <div id="results"></div>
+
+    <script>
+        const results = document.getElementById('results');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+        }
+
+        // Test Service Worker
+        if ('serviceWorker' in navigator) {
+            addResult('✅ Service Worker supported', 'success');
+            
+            navigator.serviceWorker.getRegistration().then(registration => {
+                if (registration) {
+                    addResult('✅ Service Worker registered', 'success');
+                    addResult(`Scope: ${registration.scope}`, 'info');
+                    
+                    registration.active ? addResult('✅ Service Worker active', 'success') : 
+                    registration.waiting ? addResult('⚠️ Service Worker waiting', 'warning') : 
+                    registration.installing ? addResult('🔄 Service Worker installing', 'warning') : 
+                    addResult('❌ No active Service Worker', 'error');
+                } else {
+                    addResult('❌ Service Worker not registered', 'error');
+                }
+            }).catch(error => {
+                addResult(`❌ Service Worker error: ${error.message}`, 'error');
+            });
+        } else {
+            addResult('❌ Service Worker not supported', 'error');
+        }
+
+        // Test HTTPS/Localhost
+        const isLocalhost = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+        const isHttps = location.protocol === 'https:';
+        
+        if (isLocalhost) {
+            addResult('✅ Running on localhost (PWA allowed)', 'success');
+        } else if (isHttps) {
+            addResult('✅ Running on HTTPS (PWA allowed)', 'success');
+        } else {
+            addResult('❌ Not on localhost or HTTPS (PWA may not work)', 'error');
+        }
+
+        // Test Manifest
+        if ('relList' in document.createElement('link') && document.createElement('link').relList.supports('manifest')) {
+            addResult('✅ Web App Manifest supported', 'success');
+            
+            fetch('/manifest.json')
+                .then(response => response.json())
+                .then(manifest => {
+                    addResult('✅ Manifest loaded', 'success');
+                    addResult(`Name: ${manifest.name || 'N/A'}`, 'info');
+                    addResult(`Short name: ${manifest.short_name || 'N/A'}`, 'info');
+                    addResult(`Display: ${manifest.display || 'N/A'}`, 'info');
+                    
+                    if (manifest.icons && manifest.icons.length > 0) {
+                        addResult('✅ Icons configured', 'success');
+                    } else {
+                        addResult('⚠️ No icons configured', 'warning');
+                    }
+                })
+                .catch(error => {
+                    addResult(`❌ Manifest error: ${error.message}`, 'error');
+                });
+        } else {
+            addResult('❌ Web App Manifest not supported', 'error');
+        }
+
+        // Test BeforeInstallPrompt
+        let deferredPrompt = null;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            addResult('✅ BeforeInstallPrompt event fired', 'success');
+        });
+
+        // Test App Installed
+        window.addEventListener('appinstalled', () => {
+            addResult('✅ App installed successfully', 'success');
+        });
+
+        // Check if app is already installed
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            addResult('✅ App running in standalone mode', 'success');
+        } else {
+            addResult('ℹ️ App not in standalone mode', 'info');
+        }
+
+        // Test mobile device
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        if (isMobile) {
+            addResult('📱 Mobile device detected', 'info');
+        } else {
+            addResult('💻 Desktop device detected', 'info');
+        }
+
+        // Add install button test
+        setTimeout(() => {
+            const button = document.createElement('button');
+            button.textContent = 'Test Install Prompt';
+            button.style = 'padding: 10px 20px; margin: 20px 0; font-size: 16px;';
+            button.onclick = () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then(choiceResult => {
+                        if (choiceResult.outcome === 'accepted') {
+                            addResult('✅ User accepted install prompt', 'success');
+                        } else {
+                            addResult('❌ User dismissed install prompt', 'error');
+                        }
+                        deferredPrompt = null;
+                    });
+                } else {
+                    addResult('❌ No install prompt available', 'error');
+                    if (isMobile) {
+                        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                            addResult('📱 iOS detected - Use "Add to Home Screen" from Safari menu', 'warning');
+                        } else if (/Android/.test(navigator.userAgent)) {
+                            addResult('📱 Android detected - Use "Add to Home Screen" from browser menu', 'warning');
+                        }
+                    }
+                }
+            };
+            document.body.appendChild(button);
+        }, 1000);
+    </script>
+</body>
+</html>

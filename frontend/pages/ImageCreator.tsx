@@ -58,18 +58,111 @@ const ImageCreator: React.FC = () => {
     imageStyle: '' as string // Thêm field cho thể loại hình ảnh
   });
 
-  const aspectRatios = [
-    { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
-    { label: '3:4 (Portrait)', width: 864, height: 1152, ratio: '3:4' },
-    { label: '4:3 (Standard)', width: 1152, height: 864, ratio: '4:3' },
-    { label: '16:9 (Landscape)', width: 1280, height: 720, ratio: '16:9' },
-    { label: '9:16 (Portrait)', width: 720, height: 1280, ratio: '9:16' },
-    { label: '2:3 (Portrait)', width: 832, height: 1248, ratio: '2:3' },
-    { label: '3:2 (Landscape)', width: 1248, height: 832, ratio: '3:2' },
-    { label: '21:9 (Ultrawide)', width: 1512, height: 648, ratio: '21:9' }
-  ];
+  // Hàm lấy aspect ratios phù hợp với model đã chọn
+  const getAspectRatios = useCallback(() => {
+    const isBytedanceModel = formData.model === 'bytedance:3@1';
+    const isRunwareModel = formData.model === 'runware:106@1';
+    const isGoogleModel = formData.model === 'google:2@1';
+    const isBananaModel = formData.model === 'google:4@1';
+    if (isBytedanceModel) {
+      // Match đúng kích thước cho bytedance:3@1
+      return [
+        { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
+        { label: '3:4 (Portrait)', width: 864, height: 1152, ratio: '3:4' },
+        { label: '4:3 (Standard)', width: 1152, height: 864, ratio: '4:3' },
+        { label: '16:9 (Landscape)', width: 1280, height: 720, ratio: '16:9' },
+        { label: '9:16 (Portrait)', width: 720, height: 1280, ratio: '9:16' },
+        { label: '2:3 (Portrait)', width: 832, height: 1248, ratio: '2:3' },
+        { label: '3:2 (Landscape)', width: 1248, height: 832, ratio: '3:2' },
+        { label: '21:9 (Ultrawide)', width: 1512, height: 648, ratio: '21:9' }
+      ];
+    }
+    if (isBananaModel) {
+      // Match đúng kích thước cho bytedance:3@1
+      return [
+        { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
+        { label: '3:4 (Portrait)', width: 864, height: 1184, ratio: '3:4' },
+        { label: '4:3 (Standard)', width: 1184, height: 864, ratio: '4:3' },
+        { label: '16:9 (Landscape)', width: 1344, height: 768, ratio: '16:9' },
+        { label: '9:16 (Portrait)', width: 768, height: 1344, ratio: '9:16' },
+        { label: '2:3 (Portrait)', width: 832, height: 1248, ratio: '2:3' },
+        { label: '3:2 (Landscape)', width: 1248, height: 832, ratio: '3:2' },
+        { label: '21:9 (Ultrawide)', width: 1536, height: 674, ratio: '21:9' }
+      ];
+    }
+    if (isRunwareModel) {
+      // Match đúng kích thước cho runware:106@1
+      return [
+        { label: '21:9 Ultrawide (1568×672)', width: 1568, height: 672, ratio: '21:9' },
+        { label: '19:9 Widescreen (1504×688)', width: 1504, height: 688, ratio: '19:9' },
+        { label: '18:9 Standard (1456×720)', width: 1456, height: 720, ratio: '18:9' },
+        { label: '17:9 Cinema (1392×752)', width: 1392, height: 752, ratio: '17:9' },
+        { label: '4:3 HD (1328×800)', width: 1328, height: 800, ratio: '4:3' },
+        { label: '15:9 Modern (1248×832)', width: 1248, height: 832, ratio: '15:9' },
+        { label: '14:9 Traditional (1184×880)', width: 1184, height: 880, ratio: '14:9' },
+        { label: '13:9 Classic (1104×944)', width: 1104, height: 944, ratio: '13:9' },
+        { label: '1:1 Square (1024×1024)', width: 1024, height: 1024, ratio: '1:1' },
+        { label: '9:13 Portrait (944×1104)', width: 944, height: 1104, ratio: '9:13' },
+        { label: '9:14 Portrait (880×1184)', width: 880, height: 1184, ratio: '9:14' },
+        { label: '9:15 Portrait (832×1248)', width: 832, height: 1248, ratio: '9:15' },
+        { label: '9:16 Full Portrait (800×1328)', width: 800, height: 1328, ratio: '9:16' }
+      ];
+    }
+    
+    if (isGoogleModel) {
+      // Match đúng kích thước cho google:2@1
+      return [
+        { label: '1:1 (Square)', width: 2048, height: 2048, ratio: '1:1' },
+        { label: '9:16 (Portrait)', width: 1536, height: 2816, ratio: '9:16' },
+        { label: '16:9 (Landscape)', width: 2816, height: 1536, ratio: '16:9' },
+        { label: '3:4 (Portrait)', width: 1792, height: 2560, ratio: '3:4' },
+        { label: '4:3 (Landscape)', width: 2560, height: 1792, ratio: '4:3' }
+      ];
+    }
+    
+    // Các model khác dùng kích thước mặc định - tất cả đều là bội số của 64
+    return [
+      { label: '1:1 (Square)', width: 1024, height: 1024, ratio: '1:1' },
+      { label: '3:4 (Portrait)', width: 896, height: 1152, ratio: '3:4' },
+      { label: '4:3 (Standard)', width: 1152, height: 896, ratio: '4:3' },
+      { label: '16:9 (Landscape)', width: 1216, height: 704, ratio: '16:9' },
+      { label: '9:16 (Portrait)', width: 704, height: 1216, ratio: '9:16' },
+      { label: '2:3 (Portrait)', width: 832, height: 1248, ratio: '2:3' },
+      { label: '3:2 (Landscape)', width: 1248, height: 832, ratio: '3:2' },
+      { label: '21:9 (Ultrawide)', width: 1344, height: 576, ratio: '21:9' }
+    ];
+  }, [formData.model]);
+
+  const aspectRatios = getAspectRatios();
 
   const [selectedAspectRatio, setSelectedAspectRatio] = useState(aspectRatios[0]);
+
+  // Cập nhật aspect ratio khi model thay đổi
+  useEffect(() => {
+    const currentRatios = getAspectRatios();
+    const currentRatio = selectedAspectRatio.ratio;
+    
+    // Tìm ratio tương ứng trong danh sách mới
+    const newRatio = currentRatios.find(ratio => ratio.ratio === currentRatio);
+    
+    if (newRatio) {
+      // Nếu tìm thấy ratio tương ứng, giữ nguyên ratio nhưng cập nhật kích thước
+      setSelectedAspectRatio(newRatio);
+      setFormData(prev => ({
+        ...prev,
+        width: newRatio.width,
+        height: newRatio.height
+      }));
+    } else {
+      // Nếu không tìm thấy, chọn ratio đầu tiên trong danh sách mới
+      setSelectedAspectRatio(currentRatios[0]);
+      setFormData(prev => ({
+        ...prev,
+        width: currentRatios[0].width,
+        height: currentRatios[0].height
+      }));
+    }
+  }, [formData.model, getAspectRatios]);
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -616,51 +709,7 @@ const ImageCreator: React.FC = () => {
                     {getSelectedModel()?.name || t.imageCreator?.selectModel || 'Select Model'}
                   </Button>
                 </div>
-                 
-                {/* Image Style Selection */}
-                <div className="space-y-2">
-                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Thể loại hình ảnh
-                  </label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {[
-                      { id: 'realistic', label: 'Thực tế' },
-                      { id: 'anime', label: 'Anime' },
-                      { id: 'cinematic', label: 'Điện ảnh' },
-                      { id: 'abstract', label: 'Trừu tượng' },
-                      { id: 'pixel', label: 'Pixel Art' },
-                      { id: 'minimal', label: 'Tối giản' }
-                    ].map((style) => (
-                      <label
-                        key={style.id}
-                        className={`flex items-center justify-center p-1.5 rounded border cursor-pointer transition-colors text-xs ${
-                          formData.imageStyle === style.id
-                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
-                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="imageStyle"
-                          value={style.id}
-                          checked={formData.imageStyle === style.id}
-                          onChange={(e) => {
-                            setFormData(prev => ({
-                              ...prev,
-                              imageStyle: e.target.value
-                            }));
-                          }}
-                          className="sr-only style-checkbox"
-                        />
-                        <span className="font-medium">
-                          {style.label}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Size Selection */}
+                 {/* Size Selection */}
                 <div className="space-y-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
                     Image Size
@@ -720,6 +769,51 @@ const ImageCreator: React.FC = () => {
                     )}
                   </div>
                 </div>
+
+                {/* Image Style Selection */}
+                <div className="space-y-2">
+                  <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                    Thể loại hình ảnh
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { id: 'realistic', label: 'Thực tế' },
+                      { id: 'anime', label: 'Anime' },
+                      { id: 'cinematic', label: 'Điện ảnh' },
+                      { id: 'abstract', label: 'Trừu tượng' },
+                      { id: 'pixel', label: 'Pixel Art' },
+                      { id: 'minimal', label: 'Tối giản' }
+                    ].map((style) => (
+                      <label
+                        key={style.id}
+                        className={`flex items-center justify-center p-1.5 rounded border cursor-pointer transition-colors text-xs ${
+                          formData.imageStyle === style.id
+                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400'
+                            : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="imageStyle"
+                          value={style.id}
+                          checked={formData.imageStyle === style.id}
+                          onChange={(e) => {
+                            setFormData(prev => ({
+                              ...prev,
+                              imageStyle: e.target.value
+                            }));
+                          }}
+                          className="sr-only style-checkbox"
+                        />
+                        <span className="font-medium">
+                          {style.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                
 
                 {/* Number of Results Section */}
                 <div className="space-y-2">

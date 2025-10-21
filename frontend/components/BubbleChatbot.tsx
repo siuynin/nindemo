@@ -98,7 +98,7 @@ const BubbleChatbot: React.FC<BubbleChatbotProps> = ({ className = '' }) => {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-sm">{t.topbar?.user || 'Trợ lý AI'}</h3>
+                <h3 className="font-semibold text-sm">{t.topbar?.assistant || 'Trợ lý AI'}</h3>
                 <p className="text-xs opacity-90">Sẵn sàng hỗ trợ bạn</p>
               </div>
             </div>

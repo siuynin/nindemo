@@ -12,12 +12,12 @@ interface TimeSection {
 }
 
 const timeSections: TimeSection[] = [
-  { title: "Giới thiệu tổng quan", time: 0 },
-  { title: "Cách sử dụng công cụ vẽ", time: 30 },
-  { title: "Thêm văn bản và hình ảnh", time: 90 },
-  { title: "Sử dụng AI để tạo ảnh", time: 150 },
-  { title: "Xuất và lưu dự án", time: 210 },
-  { title: "Mẹo và thủ thuật", time: 270 }
+  { title: "Vẽ Flow Editor ", time: 0 },
+  { title: "Tạo ảnh mới", time: 49 },
+  { title: "Outpainting - Mở rộng ảnh", time: 65 },
+  { title: "Inpaiting - Sửa đối tượng ảnh", time: 84 },
+  { title: "Ghép các ảnh theo", time: 115 },
+  { title: "Thiết kế các banner poster", time: 157 }
 ];
 
 const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
@@ -25,7 +25,7 @@ const GuideModal: React.FC<GuideModalProps> = ({ isOpen, onClose }) => {
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // YouTube video ID từ URL
-  const videoId = "QqlPSQ9X4d8";
+  const videoId = "dtHHoq07fHg";
 
   const jumpToTime = (time: number) => {
     if (iframeRef.current) {

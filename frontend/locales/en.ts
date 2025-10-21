@@ -30,6 +30,7 @@ export const en = {
   // TopBar
   topbar: {
     user: 'User',
+    assistant: 'AI Assistant',
     profile: 'Profile',
     settings: 'Settings',
     logout: 'Logout',

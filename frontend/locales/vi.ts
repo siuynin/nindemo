@@ -30,6 +30,7 @@ export const vi = {
   // TopBar
   topbar: {
     user: 'Người dùng',
+    assistant: 'Trợ lý AI',
     profile: 'Thông tin cá nhân',
     settings: 'Cài đặt',
     logout: 'Đăng xuất',

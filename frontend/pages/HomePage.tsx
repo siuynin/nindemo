@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PenIcon, ImageIcon, PencilIcon } from '../components/icons';
-import InstallPrompt from '../components/InstallPrompt';
+import SimpleInstallPrompt from '../components/SimpleInstallPrompt';
+import PWATestWidget from '../components/PWATestWidget';
 
 interface PublicGenerate {
   id: number;
@@ -361,7 +362,8 @@ const HomePage: React.FC = () => {
       </div>
       
       {/* Install Prompt */}
-      <InstallPrompt />
+      <SimpleInstallPrompt />
+      <PWATestWidget />
 
       {/* Modal popup */}
       {showModal && selectedImage && (

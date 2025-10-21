@@ -11,6 +11,11 @@ use Exception;
 
 class AIProcessController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth:sanctum');
+    }
+
     /**
      * Process text using OpenAI API
      */
@@ -19,7 +24,7 @@ class AIProcessController extends Controller
         try {
             $validated = $request->validate([
                 'prompt' => 'required|string',
-                'model' => 'string|in:gpt-3.5-turbo,gpt-4,gpt-4-turbo',
+                'model' => 'string|in:gpt-4.1-mini',
                 'max_tokens' => 'integer|min:1|max:4000',
                 'temperature' => 'numeric|min:0|max:2'
             ]);
@@ -35,7 +40,7 @@ class AIProcessController extends Controller
 
             // Prepare request data for OpenAI
             $requestData = [
-                'model' => $validated['model'] ?? 'gpt-3.5-turbo',
+                'model' => $validated['model'] ?? 'gpt-4.1-mini',
                 'messages' => [
                     [
                         'role' => 'user',
@@ -96,7 +101,7 @@ class AIProcessController extends Controller
         try {
             $validated = $request->validate([
                 'prompt' => 'required|string',
-                'model' => 'string|in:gemini-pro,gemini-1.5-pro',
+                'model' => 'string|in:gemini-2.5-flash',
                 'max_tokens' => 'integer|min:1|max:4000',
                 'temperature' => 'numeric|min:0|max:2'
             ]);
@@ -106,7 +111,7 @@ class AIProcessController extends Controller
             // Try Gemini first if API key is available
             if ($geminiApiKey) {
                 try {
-                    $model = $validated['model'] ?? 'gemini-pro';
+                    $model = $validated['model'] ?? 'gemini-2.5-flash';
                     
                     // Prepare request data for Gemini
                     $requestData = [
@@ -172,7 +177,7 @@ class AIProcessController extends Controller
 
             // Prepare request data for OpenAI
             $requestData = [
-                'model' => 'gpt-3.5-turbo',
+                'model' => 'gpt-4.1-mini',
                 'messages' => [
                     [
                         'role' => 'user',

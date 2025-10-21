@@ -21,12 +21,23 @@ const InstallPrompt: React.FC = () => {
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
     const isInWebAppiOS = (window.navigator as any).standalone === true;
     
-    console.log('PWA Install Check:', {
+    // Enhanced debug information
+    const debugInfo = {
       isStandalone,
       isInWebAppiOS,
       userAgent: navigator.userAgent,
-      displayMode: window.matchMedia('(display-mode: standalone)').matches
-    });
+      displayMode: window.matchMedia('(display-mode: standalone)').matches,
+      location: window.location.href,
+      protocol: window.location.protocol,
+      hostname: window.location.hostname,
+      isLocalhost: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1',
+      isHttps: window.location.protocol === 'https:',
+      serviceWorkerSupport: 'serviceWorker' in navigator,
+      standaloneSupport: 'standalone' in window.navigator,
+      beforeInstallPromptSupport: 'BeforeInstallPromptEvent' in window
+    };
+    
+    console.log('PWA Install Check:', debugInfo);
     
     if (isStandalone || isInWebAppiOS) {
       setIsInstalled(true);
@@ -65,6 +76,56 @@ const InstallPrompt: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    // Check manifest and service worker status
+    const checkPWARequirements = async () => {
+      try {
+        // Check manifest
+        const manifestLink = document.querySelector('link[rel="manifest"]');
+        if (manifestLink) {
+          const manifestHref = manifestLink.getAttribute('href');
+          console.log('Manifest found:', manifestHref);
+          
+          try {
+            const manifestResponse = await fetch(manifestHref);
+            const manifestData = await manifestResponse.json();
+            console.log('Manifest data:', manifestData);
+          } catch (error) {
+            console.error('Error loading manifest:', error);
+          }
+        } else {
+          console.warn('No manifest link found');
+        }
+        
+        // Check service worker
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            console.log('Service Worker registration:', registration ? 'Found' : 'Not found');
+            if (registration) {
+              console.log('Service Worker scope:', registration.scope);
+            }
+          } catch (error) {
+            console.error('Error checking service worker:', error);
+          }
+        }
+        
+        // Check if meet PWA criteria
+        const meetsCriteria = {
+          hasHTTPS: window.location.protocol === 'https:',
+          hasServiceWorker: 'serviceWorker' in navigator,
+          hasManifest: !!manifestLink,
+          isNotInstalled: !isStandalone && !isInWebAppiOS
+        };
+        
+        console.log('PWA Criteria Check:', meetsCriteria);
+        
+      } catch (error) {
+        console.error('Error checking PWA requirements:', error);
+      }
+    };
+    
+    checkPWARequirements();
+
     // For testing purposes, show install prompt after 3 seconds if no beforeinstallprompt event
     const testTimer = setTimeout(() => {
       if (!deferredPrompt && !isInstalled) {
@@ -73,6 +134,9 @@ const InstallPrompt: React.FC = () => {
         console.log('2. Browser does not support PWA installation');
         console.log('3. PWA criteria not met');
         console.log('4. User has dismissed the prompt too many times');
+        console.log('5. Not HTTPS (required for production)');
+        console.log('6. Service worker not registered');
+        console.log('7. Manifest not valid');
       }
     }, 3000);
 
@@ -84,7 +148,18 @@ const InstallPrompt: React.FC = () => {
   }, []);
 
   const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) {
+      // Manual install instructions for mobile
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        alert('Để cài đặt ứng dụng:\n1. Nhấn nút Chia sẻ (Share) dưới đây\n2. Chọn "Thêm vào Màn hình chính" (Add to Home Screen)\n3. Nhấn "Thêm" để xác nhận');
+      } else if (isAndroid) {
+        alert('Để cài đặt ứng dụng:\n1. Nhấn nút Menu (3 chấm) trên trình duyệt\n2. Chọn "Thêm vào Màn hình chính" (Add to Home Screen)\n3. Nhấn "Thêm" để xác nhận');
+      }
+      return;
+    }
 
     try {
       await deferredPrompt.prompt();
@@ -126,9 +201,36 @@ const InstallPrompt: React.FC = () => {
     }
   }, [deferredPrompt]); // Run when deferredPrompt changes
 
-  if (isInstalled || !showInstallPrompt || !deferredPrompt) {
+  // Fallback for mobile devices that don't support beforeinstallprompt
+  useEffect(() => {
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    
+    // Show manual install instructions for mobile on production
+    if (isMobile && !isLocalhost && !deferredPrompt && !isInstalled) {
+      const timer = setTimeout(() => {
+        console.log('Mobile device detected without beforeinstallprompt, showing manual install instructions');
+        setShowInstallPrompt(true);
+      }, 5000); // Show after 5 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [deferredPrompt, isInstalled]);
+
+  if (isInstalled || !showInstallPrompt) {
     return null;
   }
+
+  // Determine install button text based on platform and availability
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isAndroid = /Android/.test(navigator.userAgent);
+  const installButtonText = deferredPrompt 
+    ? (t.install || 'Cài đặt')
+    : isIOS 
+      ? 'Chia sẻ → Thêm vào Màn hình chính'
+      : isAndroid
+        ? 'Menu → Thêm vào Màn hình chính'
+        : (t.install || 'Cài đặt');
 
   return (
     <div className="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-50">
@@ -164,7 +266,7 @@ const InstallPrompt: React.FC = () => {
             onClick={handleInstallClick}
             className="flex-1 bg-white text-blue-600 font-medium py-2 px-4 rounded-md hover:bg-blue-50 transition-colors text-sm"
           >
-            {t.install || 'Cài đặt'}
+            {installButtonText}
           </button>
           <button
             onClick={handleDismiss}

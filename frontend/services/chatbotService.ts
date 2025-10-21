@@ -68,25 +68,44 @@ class ChatbotService {
   }
 
   private async callGemini(message: string): Promise<string> {
-    if (!this.geminiClient || !this.geminiApiKey) {
-      throw new Error('Gemini API key not configured');
-    }
-
     try {
-      const model = this.geminiClient.getGenerativeModel({ 
-        model: "gemini-2.0-flash-exp" // Using Gemini 2.0 Flash as it's the latest available
-      });
-
       const detectedLang = this.detectLanguage(message);
       const systemPrompt = this.getSystemPrompt(detectedLang);
+      const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
-      const result = await model.generateContent([
-        { text: systemPrompt },
-        { text: message }
-      ]);
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in.');
+      }
 
-      const response = await result.response;
-      return response.text();
+      // Use backend proxy instead of direct Gemini API call
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ai/process-text-gemini`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          prompt: fullPrompt,
+          model: 'gemini-2.5-flash',
+          max_tokens: 500,
+          temperature: 0.7
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process text');
+      }
+
+      return data.data.text || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
     } catch (error) {
       console.error('Gemini API error:', error);
       throw error;
@@ -94,50 +113,51 @@ class ChatbotService {
   }
 
   private async callOpenAI(message: string): Promise<string> {
-    if (!this.openaiApiKey) {
-      throw new Error('OpenAI API key not configured');
-    }
-
     try {
       const detectedLang = this.detectLanguage(message);
       const systemPrompt = this.getSystemPrompt(detectedLang);
+      const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      // Get auth token from localStorage
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        throw new Error('Authentication required. Please log in.');
+      }
+
+      // Use backend proxy instead of direct OpenAI API call
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ai/process-text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.openaiApiKey}`
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         },
         body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt
-            },
-            {
-              role: 'user',
-              content: message
-            }
-          ],
+          prompt: fullPrompt,
+          model: 'gpt-4.1-mini',
           max_tokens: 500,
           temperature: 0.7
         })
       });
 
       if (!response.ok) {
-        throw new Error(`OpenAI API error: ${response.status}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`Backend API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
       const data = await response.json();
-      return data.choices[0]?.message?.content || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to process text');
+      }
+
+      return data.data.text || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
     } catch (error) {
       console.error('OpenAI API error:', error);
       throw error;
     }
   }
 
-  async sendMessage(message: string): Promise<ChatbotResponse> {
+  async sendMessage(message: string, provider?: 'gemini' | 'openai'): Promise<ChatbotResponse> {
     if (!message.trim()) {
       return {
         success: false,
@@ -147,26 +167,92 @@ class ChatbotService {
     }
 
     try {
-      // Try Gemini first
-      let responseText: string;
+      // If provider is explicitly selected, use it
+      if (provider === 'gemini') {
+        try {
+          const responseText = await this.callGemini(message);
+          return { success: true, message: responseText };
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('Authentication required')) {
+            return {
+              success: false,
+              message: '',
+              error: 'Vui lòng đăng nhập để sử dụng tính năng AI chatbot.'
+            };
+          }
+          throw error;
+        }
+      }
+
+      if (provider === 'openai') {
+        try {
+          const responseText = await this.callOpenAI(message);
+          return { success: true, message: responseText };
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('Authentication required')) {
+            return {
+              success: false,
+              message: '',
+              error: 'Vui lòng đăng nhập để sử dụng tính năng AI chatbot.'
+            };
+          }
+          throw error;
+        }
+      }
+
+      // Default: try Gemini first, then fallback to OpenAI
       try {
-        responseText = await this.callGemini(message);
+        const responseText = await this.callGemini(message);
+        return { success: true, message: responseText };
       } catch (geminiError) {
+        // Check if it's an authentication error
+        if (geminiError instanceof Error && geminiError.message.includes('Authentication required')) {
+          return {
+            success: false,
+            message: '',
+            error: 'Vui lòng đăng nhập để sử dụng tính năng AI chatbot.'
+          };
+        }
+
         console.warn('Gemini failed, falling back to OpenAI:', geminiError);
-        // Fallback to OpenAI
-        responseText = await this.callOpenAI(message);
+        
+        try {
+          const responseText = await this.callOpenAI(message);
+          return { success: true, message: responseText };
+        } catch (openaiError) {
+          // Check if it's an authentication error
+          if (openaiError instanceof Error && openaiError.message.includes('Authentication required')) {
+            return {
+              success: false,
+              message: '',
+              error: 'Vui lòng đăng nhập để sử dụng tính năng AI chatbot.'
+            };
+          }
+
+          console.error('Both Gemini and OpenAI failed:', { geminiError, openaiError });
+          return {
+            success: false,
+            message: '',
+            error: 'Cả Gemini và OpenAI đều gặp lỗi. Vui lòng thử lại sau hoặc kiểm tra kết nối mạng.'
+          };
+        }
+      }
+    } catch (error) {
+      console.error('Chatbot service error:', error);
+      
+      // Check if it's an authentication error
+      if (error instanceof Error && error.message.includes('Authentication required')) {
+        return {
+          success: false,
+          message: '',
+          error: 'Vui lòng đăng nhập để sử dụng tính năng AI chatbot.'
+        };
       }
 
       return {
-        success: true,
-        message: responseText
-      };
-    } catch (error) {
-      console.error('Both AI services failed:', error);
-      return {
         success: false,
         message: '',
-        error: 'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.'
+        error: error instanceof Error ? error.message : 'Đã xảy ra lỗi không xác định'
       };
     }
   }

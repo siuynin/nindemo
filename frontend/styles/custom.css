@@ -467,3 +467,74 @@ body {
 .sidebar-scrollbar::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* ===== CUSTOM SLIDER THUMB STYLES ===== */
+/* Custom slider thumb for range inputs */
+.slider-thumb-light::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(70, 95, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb-light::-webkit-slider-thumb:hover {
+  background: linear-gradient(135deg, var(--color-brand-600), var(--color-brand-700));
+  box-shadow: 0 4px 8px rgba(70, 95, 255, 0.4);
+  transform: scale(1.1);
+}
+
+.slider-thumb-light::-webkit-slider-thumb:active {
+  background: linear-gradient(135deg, var(--color-brand-700), var(--color-brand-800));
+  transform: scale(0.95);
+}
+
+.slider-thumb-dark::-webkit-slider-thumb {
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
+  cursor: pointer;
+  border: 2px solid var(--color-gray-700);
+  box-shadow: 0 2px 6px rgba(70, 95, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb-dark::-webkit-slider-thumb:hover {
+  background: linear-gradient(135deg, var(--color-brand-300), var(--color-brand-400));
+  box-shadow: 0 4px 8px rgba(70, 95, 255, 0.5);
+  transform: scale(1.1);
+}
+
+.slider-thumb-dark::-webkit-slider-thumb:active {
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+  transform: scale(0.95);
+}
+
+/* Firefox support */
+.slider-thumb-light::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand-500), var(--color-brand-600));
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 6px rgba(70, 95, 255, 0.3);
+  transition: all 0.2s ease;
+}
+
+.slider-thumb-dark::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand-400), var(--color-brand-500));
+  cursor: pointer;
+  border: 2px solid var(--color-gray-700);
+  box-shadow: 0 2px 6px rgba(70, 95, 255, 0.4);
+  transition: all 0.2s ease;
+}
