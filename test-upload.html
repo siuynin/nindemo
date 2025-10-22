@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Image Upload</title>
+</head>
+<body>
+    <h1>Test Image Upload</h1>
+    <form id="uploadForm" enctype="multipart/form-data">
+        <input type="file" name="inputImage" id="inputImage" accept="image/*" required>
+        <button type="submit">Upload Test</button>
+    </form>
+    
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const fileInput = document.getElementById('inputImage');
+            
+            if (!fileInput.files[0]) {
+                alert('Please select a file');
+                return;
+            }
+            
+            formData.append('inputImage', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/api/video/test-upload', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'Accept': 'application/json',
+                        // Add your auth token if needed
+                        // 'Authorization': 'Bearer YOUR_TOKEN'
+                    }
+                });
+                
+                const result = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h3>Result:</h3>
+                    <pre>${JSON.stringify(result, null, 2)}</pre>
+                `;
+                
+                if (result.success) {
+                    console.log('Upload successful:', result.url);
+                } else {
+                    console.error('Upload failed:', result.error);
+                }
+                
+            } catch (error) {
+                document.getElementById('result').innerHTML = `
+                    <h3>Error:</h3>
+                    <pre>${error.message}</pre>
+                `;
+                console.error('Error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -32,9 +32,14 @@ class VideoGenerationController extends Controller
             // Validate request
             $validatedData = $request->validate([
                 'positivePrompt' => 'required|string|max:4000',
-                'duration' => 'nullable|integer|min:10|max:15',
-                'model' => 'nullable|string|in:portrait,landscape,portrait-hd,landscape-hd',
+                'duration' => 'nullable|integer|min:1|max:30',
+                'videoModel' => 'required|string|in:sora-2,kling_25,nanobanana-video,pixverse,seedance,wan-25',
+                'aspect_ratio' => 'nullable|string|in:16:9,9:16,1:1',
+                'resolution' => 'nullable|string|in:720p,1080p',
+                'seed' => 'nullable|integer|min:0|max:4294967295',
                 'inputImage' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:10240', // 10MB max
+                'add_audio' => 'nullable|string|in:true,false',
+                'audio_prompt' => 'nullable|string|max:1000',
             ]);
 
             $user = Auth::user();
@@ -56,14 +61,83 @@ class VideoGenerationController extends Controller
             // Handle image upload if provided (for image-to-video)
             $inputImageUrl = null;
             if ($request->hasFile('inputImage')) {
-                $inputImageUrl = $this->uploadInputImage($request->file('inputImage'));
+                $uploadedFile = $request->file('inputImage');
+                
+                Log::info('Processing input image upload', [
+                    'has_file' => $request->hasFile('inputImage'),
+                    'file_valid' => $uploadedFile->isValid(),
+                    'file_size' => $uploadedFile->getSize(),
+                    'file_mime' => $uploadedFile->getMimeType(),
+                    'original_name' => $uploadedFile->getClientOriginalName(),
+                    'extension' => $uploadedFile->getClientOriginalExtension()
+                ]);
+                
+                // Validate file before upload
+                if (!$uploadedFile->isValid()) {
+                    throw new \Exception('Invalid file upload');
+                }
+                
+                if ($uploadedFile->getSize() > 10240 * 1024) { // 10MB limit
+                    throw new \Exception('File size exceeds 10MB limit');
+                }
+                
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+                if (!in_array(strtolower($uploadedFile->getClientOriginalExtension()), $allowedExtensions)) {
+                    throw new \Exception('Invalid file format. Allowed: jpg, jpeg, png, gif, webp');
+                }
+                
+                try {
+                    $inputImageUrl = $this->uploadInputImage($uploadedFile);
+                    Log::info('Input image uploaded successfully', ['url' => $inputImageUrl]);
+                } catch (\Exception $uploadError) {
+                    Log::error('Input image upload failed', [
+                        'error' => $uploadError->getMessage(),
+                        'file_info' => [
+                            'size' => $uploadedFile->getSize(),
+                            'mime' => $uploadedFile->getMimeType(),
+                            'name' => $uploadedFile->getClientOriginalName(),
+                            'extension' => $uploadedFile->getClientOriginalExtension()
+                        ]
+                    ]);
+                    throw $uploadError;
+                }
+            }
+
+            // Get video model and validate duration
+            $videoModel = $validatedData['videoModel'];
+            $duration = $validatedData['duration'] ?? 10;
+            
+            // Set duration limits based on video model
+            $modelDurationLimits = [
+                'sora-2' => ['min' => 10, 'max' => 10],
+                'kling_25' => ['min' => 5, 'max' => 10],
+                'nanobanana-video' => ['min' => 5, 'max' => 10],
+                'pixverse' => ['min' => 5, 'max' => 8],
+                'seedance' => ['min' => 5, 'max' => 10],
+                'wan-25' => ['min' => 1, 'max' => 30],
+            ];
+            
+            if (isset($modelDurationLimits[$videoModel])) {
+                $limits = $modelDurationLimits[$videoModel];
+                if ($duration < $limits['min'] || $duration > $limits['max']) {
+                    return response()->json([
+                        'error' => 'Invalid duration for selected model',
+                        'details' => [
+                            'videoModel' => $videoModel,
+                            'duration' => $duration,
+                            'allowed_range' => $limits['min'] . '-' . $limits['max'] . 's',
+                        ]
+                    ], 422);
+                }
             }
 
             // Prepare VideoGenAPI request
             $videoGenData = [
                 'prompt' => $validatedData['positivePrompt'],
-                'duration' => $validatedData['duration'] ?? 10,
-                'model' => $validatedData['model'] ?? ($inputImageUrl ? 'landscape' : 'portrait'),
+                'duration' => $duration,
+                'model' => $videoModel,
+                'aspect_ratio' => $validatedData['aspect_ratio'] ?? ($inputImageUrl ? 'landscape' : 'portrait'),
+                'resolution' => $validatedData['resolution'] ?? '720p',
             ];
 
             // Add image_url for image-to-video
@@ -72,20 +146,37 @@ class VideoGenerationController extends Controller
             }
 
             // Create generate record
+            // Debug log to check data being saved
+            $contentData = [
+                'prompt' => $validatedData['positivePrompt'],
+                'model' => $videoModel,
+                'settings' => [
+                    'duration' => $duration,
+                    'video_model' => $videoModel,
+                    'aspect_ratio' => $validatedData['aspect_ratio'] ?? ($inputImageUrl ? 'landscape' : 'portrait'),
+                    'resolution' => $validatedData['resolution'] ?? '720p',
+                    'seed' => $validatedData['seed'] ?? null,
+                    'add_audio' => $validatedData['add_audio'] ?? false,
+                    'audio_prompt' => $validatedData['audio_prompt'] ?? null,
+                ]
+            ];
+            
+            \Log::info('Creating video generation with content:', [
+                'user_id' => $user->id,
+                'prompt' => $validatedData['positivePrompt'],
+                'content_data' => $contentData,
+                'content_json' => json_encode($contentData)
+            ]);
+
             $generate = Generate::create([
                 'user_id' => $user->id,
                 'name' => 'Video Generation - ' . substr($validatedData['positivePrompt'], 0, 50),
                 'type' => 'video',
                 'status' => 'pending',
-                'prompt' => $validatedData['positivePrompt'],
-                'model' => $videoGenData['model'],
-                'settings' => json_encode([
-                    'duration' => $videoGenData['duration'],
-                    'model' => $videoGenData['model'],
-                    'image_url' => $inputImageUrl,
-                ]),
+                'content' => json_encode($contentData),
+                'file_patch' => $inputImageUrl ? json_encode(['input_image_url' => $inputImageUrl]) : null,
                 'credit_cost' => $creditCost,
-                'share' => false
+                'share' => 'private',
             ]);
 
             // Deduct credits using UserCreditController
@@ -284,13 +375,17 @@ class VideoGenerationController extends Controller
             }
 
             // Prepare response data
+            $contentData = json_decode($generate->content, true) ?? [];
+            $filePatchData = json_decode($generate->file_patch, true) ?? [];
+            
             $responseData = [
                 'id' => $generate->id,
                 'status' => $generate->status,
                 'videoUrl' => $generate->result_url,
-                'prompt' => $generate->prompt,
-                'model' => $generate->model,
-                'settings' => json_decode($generate->settings, true),
+                'prompt' => $contentData['prompt'] ?? '',
+                'model' => $contentData['model'] ?? '',
+                'settings' => $contentData['settings'] ?? [],
+                'inputImageUrl' => $filePatchData['input_image_url'] ?? null,
                 'creditCost' => $generate->credit_cost,
                 'createdAt' => $generate->created_at,
                 'completedAt' => $generate->completed_at,
@@ -325,6 +420,130 @@ class VideoGenerationController extends Controller
     }
 
     /**
+     * Check video processing status for auto-refresh
+     */
+    public function checkVideoProcessingStatus(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Get all processing videos for the user
+            $processingVideos = Generate::where('user_id', $user->id)
+                ->whereIn('type', ['video'])
+                ->whereIn('status', ['pending', 'processing'])
+                ->get();
+
+            $updatedVideos = [];
+
+            foreach ($processingVideos as $generate) {
+                try {
+                    // Check if generation has exceeded 30 minutes timeout
+                    $createdAt = $generate->created_at;
+                    $thirtyMinutesAgo = now()->subMinutes(30);
+                    
+                    if ($createdAt->lt($thirtyMinutesAgo)) {
+                        // Set status to failed if over 30 minutes
+                        $updateData = [
+                            'status' => 'failed',
+                            'error_message' => 'Video generation timeout after 30 minutes',
+                            'completed_at' => now()
+                        ];
+                        
+                        // Update content with timeout error info
+                        $existingContent = json_decode($generate->content, true) ?? [];
+                        $content = array_merge($existingContent, [
+                            'error' => 'Video generation timeout after 30 minutes',
+                            'timeout_at' => now()->toISOString()
+                        ]);
+                        $updateData['content'] = json_encode($content);
+                        
+                        $generate->update($updateData);
+                        $generate->refresh();
+                        
+                        $updatedVideos[] = [
+                            'id' => $generate->id,
+                            'status' => $generate->status,
+                            'result_url' => $generate->result_url,
+                            'error_message' => $generate->error_message,
+                            'task_id' => $generate->task_id
+                        ];
+                        
+                        Log::info('Video generation ' . $generate->id . ' marked as failed due to 30-minute timeout');
+                        continue;
+                    }
+
+                    if ($generate->task_id) {
+                        // Check status from VideoGenAPI
+                        $apiStatus = $this->videoGenApiService->getGenerationStatus($generate->task_id);
+                        
+                        $newStatus = $this->mapApiStatusToLocal($apiStatus['status'] ?? 'unknown');
+                        
+                        if ($newStatus !== $generate->status) {
+                            $updateData = ['status' => $newStatus];
+                            
+                            if ($newStatus === 'completed' && isset($apiStatus['result_url'])) {
+                                $updateData['result_url'] = $apiStatus['result_url'];
+                                $updateData['completed_at'] = isset($apiStatus['completed_at']) 
+                                    ? $apiStatus['completed_at'] 
+                                    : now();
+                                
+                                // Update content with existing data plus API response
+                                $existingContent = json_decode($generate->content, true) ?? [];
+                                $content = array_merge($existingContent, [
+                                    'api_response' => $apiStatus
+                                ]);
+                                $updateData['content'] = json_encode($content);
+                                
+                            } elseif (in_array($newStatus, ['failed', 'error'])) {
+                                $updateData['error_message'] = $apiStatus['message'] ?? $apiStatus['error'] ?? 'Generation failed';
+                                $updateData['completed_at'] = now();
+                                
+                                // Update content with existing data plus error info
+                                $existingContent = json_decode($generate->content, true) ?? [];
+                                $content = array_merge($existingContent, [
+                                    'error' => $updateData['error_message']
+                                ]);
+                                $updateData['content'] = json_encode($content);
+                            }
+                            
+                            $generate->update($updateData);
+                            $generate->refresh();
+                            
+                            // Get updated content data for response
+                            $contentData = json_decode($generate->content, true) ?? [];
+                            
+                            $updatedVideos[] = [
+                                'id' => $generate->id,
+                                'status' => $generate->status,
+                                'result_url' => $generate->result_url,
+                                'error_message' => $generate->error_message,
+                                'task_id' => $generate->task_id
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to check VideoGenAPI status for generation ' . $generate->id . ': ' . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'updated_videos' => $updatedVideos,
+                'total_processing' => $processingVideos->count()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Check Video Processing Status Error: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'An unexpected error occurred'
+            ], 500);
+        }
+    }
+
+    /**
      * Get user's video generations
      */
     public function getUserGenerations(Request $request)
@@ -338,8 +557,45 @@ class VideoGenerationController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
+            // Transform data to include parsed content and proper prompt
+            $transformedGenerations = [];
+            foreach ($generations->items() as $generation) {
+                // Parse content JSON to get prompt and settings
+                $contentData = json_decode($generation->content, true) ?? [];
+                
+                // Get prompt from content data
+                $prompt = $contentData['prompt'] ?? $contentData['positivePrompt'] ?? '';
+                
+                $transformedGenerations[] = [
+                    'id' => $generation->id,
+                    'prompt' => $prompt,
+                    'status' => $generation->status,
+                    'result_url' => $generation->result_url,
+                    'created_at' => $generation->created_at,
+                    'completed_at' => $generation->completed_at,
+                    'error_message' => $generation->error_message,
+                    'credit_cost' => $generation->credit_cost,
+                    'task_id' => $generation->task_id,
+                    'generation_id' => $generation->task_id,
+                    'content' => $generation->content,
+                    'input_image_url' => $generation->file_patch ? json_decode($generation->file_patch, true)['input_image_url'] ?? null : null,
+                    'settings' => $contentData['settings'] ?? []
+                ];
+            }
+
+            // Debug log to check data being returned
+            \Log::info('Video generations being returned:', [
+                'user_id' => $user->id,
+                'total_generations' => $generations->total(),
+                'first_generation_sample' => $transformedGenerations ? [
+                    'id' => $transformedGenerations[0]['id'] ?? null,
+                    'prompt' => $transformedGenerations[0]['prompt'] ?? null,
+                    'content' => $transformedGenerations[0]['content'] ?? null
+                ] : 'no_items'
+            ]);
+
             return response()->json([
-                'data' => $generations->items(),
+                'data' => $transformedGenerations,
                 'pagination' => [
                     'current_page' => $generations->currentPage(),
                     'last_page' => $generations->lastPage(),
@@ -387,18 +643,206 @@ class VideoGenerationController extends Controller
     private function uploadInputImage($file)
     {
         try {
-            // Generate unique filename
-            $filename = 'video-input-' . time() . '-' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $s3Config = config('filesystems.disks.s3');
             
-            // Store file in public disk
-            $path = $file->storeAs('video-inputs', $filename, 'public');
+            Log::info('Starting S3 upload', [
+                's3_configured' => !empty($s3Config['key']) && !empty($s3Config['secret']),
+                'file_info' => [
+                    'name' => $file->getClientOriginalName(),
+                    'size' => $file->getSize(),
+                    'extension' => $file->getClientOriginalExtension(),
+                    'mime' => $file->getMimeType()
+                ]
+            ]);
             
-            // Return full URL
-            return Storage::disk('public')->url($path);
+            // Check if S3 is properly configured
+            if (empty($s3Config['key']) || empty($s3Config['secret'])) {
+                Log::warning('AWS S3 credentials not configured, falling back to local storage');
+                return $this->uploadInputImageLocal($file);
+            }
+            
+            // Generate unique filename with timestamp and random string
+            $filename = 'video-inputs/' . date('Y/m/d') . '/video-input-' . time() . '-' . uniqid() . '.' . $file->getClientOriginalExtension();
+            
+            Log::info('Generated S3 filename', ['directory' => dirname($filename), 'filename' => basename($filename)]);
+            
+            try {
+                // Try to store file in S3 with directory structure
+                $path = Storage::disk('s3')->putFileAs(
+                    dirname($filename), // directory
+                    $file, // file
+                    basename($filename), // filename
+                    'public' // visibility
+                );
+                
+                if (!$path) {
+                    throw new \Exception('Failed to store file in S3');
+                }
+                
+                $s3Url = Storage::disk('s3')->url($filename);
+                
+            } catch (\Exception $dirException) {
+                // If directory upload fails, try uploading to root directory
+                Log::warning('Failed to upload to directory, trying root: ' . $dirException->getMessage(), [
+                    'error_class' => get_class($dirException)
+                ]);
+                
+                $fallbackFilename = 'video-input-' . time() . '-' . uniqid() . '.' . $file->getClientOriginalExtension();
+                
+                $path = Storage::disk('s3')->putFileAs(
+                    '', // root directory
+                    $file, // file
+                    $fallbackFilename, // filename
+                    'public' // visibility
+                );
+                
+                if (!$path) {
+                    // If root upload also fails, fall back to local storage
+                    Log::warning('Failed to upload to S3 root, falling back to local storage');
+                    return $this->uploadInputImageLocal($file);
+                }
+                
+                $s3Url = Storage::disk('s3')->url($fallbackFilename);
+                $filename = $fallbackFilename;
+            }
+            
+            Log::info('Image uploaded to S3 successfully', [
+                'path' => $filename,
+                'url' => $s3Url,
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType()
+            ]);
+            
+            return $s3Url;
             
         } catch (\Exception $e) {
-            Log::error('Image Upload Error: ' . $e->getMessage());
-            throw new \Exception('Failed to upload input image');
+            Log::error('Image Upload Error: ' . $e->getMessage(), [
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'error' => $e->getMessage(),
+                'error_class' => get_class($e)
+            ]);
+            
+            // Fall back to local storage
+            return $this->uploadInputImageLocal($file);
+        }
+    }
+
+    /**
+     * Upload input image to local storage as fallback
+     */
+    private function uploadInputImageLocal($file)
+    {
+        try {
+            // Create directory structure for local storage
+            $datePath = date('Y/m/d');
+            $directory = 'video-inputs/' . $datePath;
+            
+            Log::info('Starting local upload', [
+                'directory' => $directory,
+                'date_path' => $datePath,
+                'original_name' => $file->getClientOriginalName(),
+                'extension' => $file->getClientOriginalExtension(),
+                'size' => $file->getSize()
+            ]);
+            
+            // Ensure directory exists
+            $fullDirectory = storage_path('app/public/' . $directory);
+            Log::info('Checking directory', ['full_path' => $fullDirectory, 'exists' => file_exists($fullDirectory)]);
+            
+            if (!file_exists($fullDirectory)) {
+                $created = mkdir($fullDirectory, 0755, true);
+                Log::info('Creating directory', ['path' => $fullDirectory, 'created' => $created]);
+            }
+            
+            // Generate unique filename
+            $filename = 'video-input-' . time() . '-' . uniqid() . '.' . $file->getClientOriginalExtension();
+            Log::info('Generated filename', ['filename' => $filename]);
+            
+            // Store in public disk for web access
+            $path = $file->storeAs($directory, $filename, [
+                'disk' => 'public',
+                'visibility' => 'public'
+            ]);
+            
+            Log::info('File stored successfully', ['path' => $path]);
+            
+            if (!$path) {
+                throw new \Exception('Failed to store file locally');
+            }
+            
+            // Return public URL
+            $publicUrl = Storage::disk('public')->url($path);
+            
+            Log::info('Image uploaded to local storage successfully', [
+                'path' => $path,
+                'url' => $publicUrl,
+                'size' => $file->getSize(),
+                'mime_type' => $file->getMimeType()
+            ]);
+            
+            return $publicUrl;
+            
+        } catch (\Exception $e) {
+            Log::error('Local Image Upload Error: ' . $e->getMessage(), [
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'error' => $e->getMessage()
+            ]);
+            throw new \Exception('Failed to upload input image: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Test endpoint for image upload
+     */
+    public function testUpload(Request $request)
+    {
+        try {
+            Log::info('Test upload endpoint called', [
+                'has_file' => $request->hasFile('inputImage'),
+                'all_files' => $request->allFiles()
+            ]);
+            
+            if (!$request->hasFile('inputImage')) {
+                return response()->json([
+                    'error' => 'No inputImage file provided',
+                    'files_available' => array_keys($request->allFiles())
+                ], 400);
+            }
+            
+            $uploadedFile = $request->file('inputImage');
+            Log::info('Processing test upload', [
+                'file_info' => [
+                    'name' => $uploadedFile->getClientOriginalName(),
+                    'size' => $uploadedFile->getSize(),
+                    'extension' => $uploadedFile->getClientOriginalExtension(),
+                    'mime' => $uploadedFile->getMimeType(),
+                    'is_valid' => $uploadedFile->isValid()
+                ]
+            ]);
+            
+            $imageUrl = $this->uploadInputImage($uploadedFile);
+            
+            return response()->json([
+                'success' => true,
+                'url' => $imageUrl,
+                'file_info' => [
+                    'name' => $uploadedFile->getClientOriginalName(),
+                    'size' => $uploadedFile->getSize(),
+                    'extension' => $uploadedFile->getClientOriginalExtension()
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            Log::error('Test upload failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Upload failed: ' . $e->getMessage()
+            ], 500);
         }
     }
 }

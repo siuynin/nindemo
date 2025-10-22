@@ -9,7 +9,7 @@ import Select from '../components/ui/Select';
 import Alert from '../components/ui/Alert';
 import Modal from '../components/ui/Modal';
 import Card from '../components/ui/Card';
-import AuthModal from '../components/AuthModal';
+import AuthModal from '../components/AuthModal'; 
 
 interface VideoGeneration {
   id: string;
@@ -22,6 +22,7 @@ interface VideoGeneration {
   duration: number;
   type: 'text-to-video' | 'image-to-video';
   inputImageUrl?: string;
+  seed?: number | null;
 }
 
 const VideoGeneration: React.FC = () => {
@@ -35,6 +36,10 @@ const VideoGeneration: React.FC = () => {
   const [inputImagePreview, setInputImagePreview] = useState<string>('');
   const [aspectRatio, setAspectRatio] = useState('16:9');
   const [duration, setDuration] = useState(10);
+  const [selectedModel, setSelectedModel] = useState('sora-2');
+  const [addAudio, setAddAudio] = useState(false);
+  const [audioPrompt, setAudioPrompt] = useState('');
+  const [seed, setSeed] = useState<number | ''>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [alert, setAlert] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
@@ -43,6 +48,65 @@ const VideoGeneration: React.FC = () => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Video models with their specifications
+  const videoModels = [
+    { 
+      value: 'sora-2', 
+      label: 'Sora 2 (1080p, 10-10s)', 
+      minDuration: 10,
+      audio: true,
+      maxDuration: 10, 
+      resolution: '1080p',
+      description: 'High quality video generation'
+    },
+    { 
+      value: 'kling_25', 
+      label: 'Kling 2.5 (1080p, 5-10s)', 
+      minDuration: 5, 
+      maxDuration: 10, 
+      audio: false,
+      resolution: '1080p',
+      description: 'Advanced motion understanding'
+    },
+    { 
+      value: 'wan-25', 
+      label: 'Wan 2.5 (1080p, 1-30s)', 
+      minDuration: 1, 
+      maxDuration: 30, 
+      resolution: '1080p',
+      audio: true,  
+      description: 'Flexible duration, up to 30 seconds'
+    },
+    { 
+      value: 'nanobanana-video', 
+      label: 'Nano Banana (720p, 5-10s)', 
+      minDuration: 5, 
+      maxDuration: 10, 
+      audio: false,
+      resolution: '720p',
+      description: 'Fast processing, lower resolution'
+    },
+    { 
+      value: 'pixverse', 
+      label: 'Pixverse V5 (1080p, 5-8s)', 
+      minDuration: 5, 
+      maxDuration: 8, 
+      audio: false,
+      resolution: '1080p',
+      description: 'Creative video generation'
+    },
+    { 
+      value: 'seedance', 
+      label: 'Seedance (1080p, 5-10s)', 
+      minDuration: 5, 
+      maxDuration: 10, 
+      audio: false,
+      resolution: '1080p',
+      description: 'Dance and motion focused'
+    },
+    
+  ];
+
   // Aspect ratio options with 720p max resolution
   const aspectRatioOptions = [
     { value: '16:9', label: '16:9 (1280x720)' },
@@ -50,24 +114,39 @@ const VideoGeneration: React.FC = () => {
     { value: '1:1', label: '1:1 (720x720)' }
   ];
 
-  const durationOptions = [
-    { value: '10', label: '10 giây' }, 
-    { value: '15', label: '15 giây' }
-  ];
+  // Get duration options based on selected model
+  const getDurationOptions = () => {
+    const selectedModelData = videoModels.find(model => model.value === selectedModel);
+    if (!selectedModelData) return [];
 
-  // Get resolution based on aspect ratio
-  const getResolution = (ratio: string) => {
-    switch (ratio) {
-      case '16:9':
-        return { width: 1280, height: 720 };
-      case '9:16':
-        return { width: 720, height: 1280 };
-      case '1:1':
-        return { width: 720, height: 720 };
-      default:
-        return { width: 1280, height: 720 };
+    const options = [];
+    const { minDuration, maxDuration } = selectedModelData;
+    
+    // Generate duration options in 1-second increments
+    for (let i = minDuration; i <= maxDuration; i++) {
+      options.push({
+        value: i.toString(),
+        label: `${i} giây`
+      });
+    }
+    
+    return options;
+  };
+
+  // Handle model selection change
+  const handleModelChange = (modelValue: string) => {
+    setSelectedModel(modelValue);
+    const selectedModelData = videoModels.find(model => model.value === modelValue);
+    if (selectedModelData) {
+      // Reset duration to model's minimum if current duration is out of range
+      if (duration < selectedModelData.minDuration || duration > selectedModelData.maxDuration) {
+        setDuration(selectedModelData.minDuration);
+      }
     }
   };
+
+  // Get resolution based on aspect ratio
+
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -100,7 +179,7 @@ const VideoGeneration: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generation/${generationId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generation/${generationId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -124,7 +203,7 @@ const VideoGeneration: React.FC = () => {
           return {
             ...gen,
             status: data.status,
-            videoUrl: data.videoUrl || gen.videoUrl,
+            videoUrl: data.result_url || data.videoUrl || gen.videoUrl,
           };
         }
         return gen;
@@ -145,12 +224,17 @@ const VideoGeneration: React.FC = () => {
         // Show success/error message
         if (data.status === 'completed') {
           setAlert({ type: 'success', message: 'Video đã được tạo thành công!' });
+          // Auto refresh the generations list to get the latest data
+          setTimeout(() => {
+            loadExistingGenerations();
+          }, 1000);
         } else if (data.status === 'failed') {
           setAlert({ type: 'error', message: data.error_message || 'Tạo video thất bại' });
         }
       }
     } catch (error) {
       console.error('Error polling video status:', error);
+      // Continue polling even on error, but log it
     }
   };
 
@@ -161,9 +245,12 @@ const VideoGeneration: React.FC = () => {
 
     const interval = setInterval(() => {
       pollVideoStatus(generationId, taskId);
-    }, 5000); // Poll every 5 seconds
+    }, 3000); // Poll every 3 seconds for faster updates
 
     setPollingIntervals(prev => new Map(prev.set(generationId, interval)));
+
+    // Also poll immediately to get initial status
+    pollVideoStatus(generationId, taskId);
   };
 
   // Cleanup polling intervals on unmount
@@ -199,18 +286,26 @@ const VideoGeneration: React.FC = () => {
 
       const data = await response.json();
       
+      // Debug log to check raw data from backend
+      console.log('Raw data from backend:', data);
+      
       // Transform backend data to match frontend interface
-      const transformedGenerations: VideoGeneration[] = data.data.map((gen: any) => ({
-        id: gen.id.toString(),
-        prompt: gen.prompt || '',
-        status: gen.status,
-        videoUrl: gen.result_url,
-        createdAt: gen.created_at,
-        aspectRatio: gen.settings?.model === 'landscape' ? '16:9' : gen.settings?.model === 'portrait' ? '9:16' : '1:1',
-        duration: gen.settings?.duration || 10,
-        type: gen.settings?.inputImage ? 'image-to-video' : 'text-to-video',
-        inputImageUrl: gen.settings?.inputImage,
-      }));
+      const transformedGenerations: VideoGeneration[] = data.data.map((gen: any) => {
+        // Backend now returns transformed data with prompt already parsed
+ 
+        return {
+          id: gen.id.toString(),
+          prompt: gen.prompt || '',
+          status: gen.status,
+          videoUrl: gen.result_url,
+          createdAt: gen.created_at,
+          aspectRatio: gen.settings?.model === 'landscape' ? '16:9' : gen.settings?.model === 'portrait' ? '9:16' : '1:1',
+          duration: gen.settings?.duration || 10,
+          type: gen.input_image_url ? 'image-to-video' : 'text-to-video',
+          inputImageUrl: gen.input_image_url,
+          seed: gen.settings?.seed || null,
+        };
+      });
 
       setGenerations(transformedGenerations);
 
@@ -226,6 +321,61 @@ const VideoGeneration: React.FC = () => {
     }
   };
 
+  // Auto-refresh function to check video processing status every 5 seconds
+  const checkVideoProcessingStatus = async () => {
+    if (!isAuthenticated) return;
+
+    try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) return;
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/check-processing-status`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.updated_videos.length > 0) {
+        // Update generations with new status
+        setGenerations(prev => prev.map(gen => {
+          const updatedVideo = data.updated_videos.find((video: any) => video.id.toString() === gen.id);
+          if (updatedVideo) {
+            return {
+              ...gen,
+              status: updatedVideo.status,
+              videoUrl: updatedVideo.result_url || gen.videoUrl,
+            };
+          }
+          return gen;
+        }));
+
+        // Show notifications for completed videos
+        data.updated_videos.forEach((video: any) => {
+          if (video.status === 'completed') {
+            setAlert({ type: 'success', message: `Video "${video.prompt.substring(0, 30)}..." đã được tạo thành công!` });
+          } else if (video.status === 'failed') {
+            setAlert({ type: 'error', message: `Video "${video.prompt.substring(0, 30)}..." tạo thất bại: ${video.error_message || 'Lỗi không xác định'}` });
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error checking video processing status:', error);
+    }
+  };
+
   // Load existing generations when component mounts or user authentication changes
   useEffect(() => {
     if (isAuthenticated) {
@@ -233,6 +383,24 @@ const VideoGeneration: React.FC = () => {
     } else {
       setGenerations([]); // Clear generations when user logs out
     }
+  }, [isAuthenticated]);
+
+  // Auto-refresh effect to check video processing status every 5 seconds when user is on screen
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Check immediately when component mounts
+    checkVideoProcessingStatus();
+
+    // Set up interval to check every 5 seconds
+    const interval = setInterval(() => {
+      checkVideoProcessingStatus();
+    }, 5000);
+
+    // Cleanup interval on unmount or when user logs out
+    return () => {
+      clearInterval(interval);
+    };
   }, [isAuthenticated]);
 
   const handleGenerate = async () => {
@@ -262,23 +430,31 @@ const VideoGeneration: React.FC = () => {
         return;
       }
 
-      const resolution = getResolution(aspectRatio);
       const formData = new FormData();
       
       formData.append('positivePrompt', prompt);
       formData.append('duration', duration.toString());
+      formData.append('videoModel', selectedModel); // Add selected video model
       
-      // Map aspect ratio to model
-      let model = 'portrait';
-      if (aspectRatio === '16:9') {
-        model = 'landscape';
-      } else if (aspectRatio === '9:16') {
-        model = 'portrait';
-      } else if (aspectRatio === '1:1') {
-        model = 'portrait'; // Use portrait for square videos
+      // Get resolution based on aspect ratio
+      const resolution = aspectRatio === '1:1' ? '720p' : '1080p';
+      formData.append('resolution', resolution);
+      
+      // Add audio fields if audio is enabled
+      if (addAudio) {
+        formData.append('add_audio', 'true');
+        formData.append('audio_prompt', audioPrompt);
+      } else {
+        formData.append('add_audio', 'false');
       }
       
-      formData.append('model', model);
+      // Send aspect ratio directly (16:9 or 9:16)
+      formData.append('aspect_ratio', aspectRatio);
+      
+      // Add seed if provided
+      if (seed !== '') {
+        formData.append('seed', seed.toString());
+      }
       
       if (activeTab === 'image-to-video' && inputImage) {
         formData.append('inputImage', inputImage);
@@ -443,6 +619,18 @@ const VideoGeneration: React.FC = () => {
               )}
 
               {/* Video Settings */}
+              <div className="mb-6">
+                <Select
+                  label="Model AI"
+                  options={videoModels}
+                  defaultValue={selectedModel}
+                  onChange={handleModelChange}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {videoModels.find(model => model.value === selectedModel)?.description}
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                 <div>
                   <Select
@@ -454,20 +642,78 @@ const VideoGeneration: React.FC = () => {
                 </div>
                 
                 <div>
-                  <Select
-                    label="Thời lượng"
-                    options={durationOptions}
-                    defaultValue={duration.toString()}
-                    onChange={(value) => setDuration(parseInt(value))}
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Thời lượng: {duration} giây
+                  </label>
+                  <input
+                    type="range"
+                    min={videoModels.find(model => model.value === selectedModel)?.minDuration || 1}
+                    max={videoModels.find(model => model.value === selectedModel)?.maxDuration || 30}
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 slider"
+                    style={{
+                      background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((duration - (videoModels.find(model => model.value === selectedModel)?.minDuration || 1)) / ((videoModels.find(model => model.value === selectedModel)?.maxDuration || 30) - (videoModels.find(model => model.value === selectedModel)?.minDuration || 1))) * 100}%, #d1d5db ${((duration - (videoModels.find(model => model.value === selectedModel)?.minDuration || 1)) / ((videoModels.find(model => model.value === selectedModel)?.maxDuration || 30) - (videoModels.find(model => model.value === selectedModel)?.minDuration || 1))) * 100}%, #d1d5db 100%)`
+                    }}
                   />
+                  <div className="flex justify-between text-xs text-gray-500 mt-1">
+                    <span>{videoModels.find(model => model.value === selectedModel)?.minDuration || 1}s</span>
+                    <span>{videoModels.find(model => model.value === selectedModel)?.maxDuration || 30}s</span>
+                  </div>
                 </div>
+              </div>
+
+              {/* Audio Settings - Only show if selected model has audio: false */}
+              {videoModels.find(model => model.value === selectedModel)?.audio === false && (
+                <div className="mb-6">
+                  <div className="flex items-center mb-4">
+                    <input
+                      type="checkbox"
+                      id="addAudio"
+                      checked={addAudio}
+                      onChange={(e) => setAddAudio(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="addAudio" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      Thêm âm thanh
+                    </label>
+                  </div>
+                  
+                  {addAudio && (
+                    <div>
+                      <TextArea
+                        label="Mô tả âm thanh"
+                        value={audioPrompt}
+                        onChange={setAudioPrompt}
+                        placeholder="Mô tả âm thanh bạn muốn thêm vào video (ví dụ: Âm thanh tự nhiên vui tươi với tiếng chim hót)"
+                        rows={3}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Seed Input */}
+              <div className="mb-4">
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
+                  Seed (Tùy chọn)
+                </label>
+                <input
+                  type="number"
+                  value={seed}
+                  onChange={(e) => setSeed(e.target.value === '' ? '' : parseInt(e.target.value))}
+                  placeholder="Seed (để trống = ngẫu nhiên)"
+                  className="w-full px-2 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                  min="0"
+                  max="4294967295"
+                />
               </div>
 
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="w-full"
+                className="w-full px-6 py-3"
                 size="lg"
               >
                 {isGenerating ? 'Đang tạo video...' : 'Tạo Video'}
@@ -520,22 +766,42 @@ const VideoGeneration: React.FC = () => {
                           className="w-full h-24 object-cover rounded mb-2"
                         />
                       )}
-                      
-                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 line-clamp-2">
+                       
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed line-clamp-2">
                         {generation.prompt}
                       </p>
                       
-                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+                      <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
                         <span>{generation.aspectRatio}</span>
                         <span>{generation.duration}s</span>
+                        {generation.seed && <span>Seed: {generation.seed}</span>}
                       </div>
                       
                       {generation.videoUrl && (
-                        <video
-                          src={generation.videoUrl}
-                          controls
-                          className="w-full mt-2 rounded"
-                        />
+                        <div>
+                          <video
+                            src={generation.videoUrl}
+                            controls
+                            className="w-full mt-2 rounded"
+                          />
+                          <div className="mt-2 flex justify-end">
+                             
+                            <button
+                              onClick={() => {
+                                // Force download video instead of opening in new tab
+                                const link = document.createElement('a');
+                                link.href = generation.videoUrl;
+                                link.download = `video-${generation.id}.mp4`;
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                              }}
+                              className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                            >
+                              Tải xuống
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   ))}

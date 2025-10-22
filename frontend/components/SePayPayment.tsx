@@ -46,10 +46,6 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
       const token = authService.getToken();
       console.log('=== SePay Debug Info ===');
       console.log('Token exists:', !!token);
-      console.log('Token value:', token ? `${token.substring(0, 20)}...` : 'null');
-      console.log('User object:', user);
-      console.log('User authenticated:', !!user);
-      console.log('AuthService authenticated:', authService.isAuthenticated());
 
       if (!token) {
         throw new Error('Bạn cần đăng nhập để thực hiện thanh toán');
@@ -206,7 +202,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
 
   if (!bankInfo) {
     return (
-      <div className="min-w-[400px] max-w-[600px]">
+      <div className="mx-auto max-w-md z-[9999] max-h-[80vh] pb-8">
         <div className="text-center mb-6">
           <h3 className={`text-lg font-semibold mb-2 ${
             theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -235,7 +231,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
             theme === 'dark' ? 'text-blue-400' : 'text-blue-700'
           }`}>
             <div>Gói: {plan.name}</div>
-            <div>Số tiền: {plan.price.toLocaleString()} {plan.currency}</div>
+            <div>Số tiền: {Math.floor(plan.price).toLocaleString('vi-VN')} {plan.currency}</div>
           </div>
         </div>
 
@@ -254,7 +250,7 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
   }
 
   return (
-    <div className="p-4 sm:p-6 w-full">
+    <div className="p-4 sm:p-6 w-full z-[9999] max-h-[80vh] overflow-y-auto pb-8">
       <div className="text-center mb-4 sm:mb-6">
         <h3 className={`text-lg sm:text-xl font-semibold mb-2 ${
           theme === 'dark' ? 'text-white' : 'text-gray-900'
@@ -336,10 +332,10 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
                 <span className={`font-mono font-bold text-base sm:text-lg ${
                   theme === 'dark' ? 'text-red-400' : 'text-red-600'
                 }`}>
-                  {bankInfo.amount.toLocaleString()} VND
+                  {Math.floor(bankInfo.amount).toLocaleString('vi-VN')} VND
                 </span>
                 <button
-                  onClick={() => copyToClipboard(bankInfo.amount.toString())}
+                  onClick={() => copyToClipboard(bankInfo.amount.toLocaleString('vi-VN'))}
                   className={`ml-2 p-1 rounded transition-colors ${
                     theme === 'dark'
                       ? 'text-blue-400 hover:bg-gray-700'
@@ -432,11 +428,12 @@ const SePayPayment: React.FC<SePayPaymentProps> = ({ plan, onSuccess, onError })
             <ul className="list-disc list-inside space-y-1">
               <li>Chuyển khoản đúng số tiền: <strong className={`${
                 theme === 'dark' ? 'text-yellow-200' : 'text-yellow-900'
-              }`}>{bankInfo.amount.toLocaleString()} VND</strong></li>
+              }`}>{Math.floor(bankInfo.amount).toLocaleString('vi-VN')} VND</strong></li>
               <li>Nhập đúng nội dung: <strong className={`${
                 theme === 'dark' ? 'text-yellow-200' : 'text-yellow-900'
               }`}>{bankInfo.transfer_content}</strong></li>
               <li>Hệ thống sẽ tự động xác nhận thanh toán trong vòng 1-2 phút</li>
+              <li>Nếu kích hoạt thất bại, vui lòng liên hệ với chúng tôi</li>
               <li>Đơn hàng sẽ hết hạn sau 10 phút nếu chưa thanh toán</li>
             </ul>
           </div>

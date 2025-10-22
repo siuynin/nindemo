@@ -11,6 +11,7 @@ class VideoGenApiService
     protected $baseUrl;
 
     public function __construct()
+
     {
         $this->apiKey = config('services.videogenapi.api_key');
         $this->baseUrl = 'https://videogenapi.com/api/v1/generate';
@@ -34,8 +35,22 @@ class VideoGenApiService
             $requestData = [
                 'model' => $data['model'] ?? 'portrait',
                 'prompt' => $data['prompt'] ?? $data['positivePrompt'],
-                'duration' => $data['duration'] ?? 10
+                'duration' => isset($data['duration']) ? (int)$data['duration'] : 10,
+                'resolution' => $data['resolution'] ?? '1080p'
             ];
+
+            // Add seed if provided
+            if (!empty($data['seed'])) {
+                $requestData['seed'] = (int) $data['seed'] ?? -1;
+            }
+
+            // Add audio fields if provided
+            if (isset($data['add_audio']) && $data['add_audio'] === true) {
+                $requestData['add_audio'] = true;
+                if (!empty($data['audio_prompt'])) {
+                    $requestData['audio_prompt'] = $data['audio_prompt'];
+                }
+            }
 
             // Add image_url for image-to-video generation
             if (!empty($data['image_url'])) {
@@ -93,22 +108,22 @@ class VideoGenApiService
     /**
      * Get video generation status by generation_id
      * 
-     * @param string $generationId
+     * @param string $taskId
      * @return array
      * @throws \Exception
      */
-    public function getGenerationStatus(string $generationId): array
+    public function getGenerationStatus(string $taskId): array
     {
         try {
             if (!$this->apiKey) {
                 throw new \Exception('VideoGenAPI key is not configured');
             }
 
-            $statusUrl = 'https://videogenapi.com/api/v1/status/' . $generationId;
+            $statusUrl = 'https://videogenapi.com/api/v1/status/' . $taskId;
 
             Log::info('VideoGenAPI Status Check', [
                 'url' => $statusUrl,
-                'generation_id' => $generationId
+                'task_id' => $taskId
             ]);
 
             $response = Http::withHeaders([
@@ -138,31 +153,31 @@ class VideoGenApiService
     /**
      * Poll video generation status with timeout
      * 
-     * @param string $generationId
+     * @param string $taskId
      * @param int $timeoutSeconds Default 60 seconds (1 minute)
      * @param int $intervalSeconds Default 5 seconds between polls
      * @return array
      * @throws \Exception
      */
-    public function pollGenerationStatus(string $generationId, int $timeoutSeconds = 60, int $intervalSeconds = 5): array
+    public function pollGenerationStatus(string $taskId, int $timeoutSeconds = 60, int $intervalSeconds = 5): array
     {
         $startTime = time();
         $endTime = $startTime + $timeoutSeconds;
 
         Log::info('VideoGenAPI Polling Started', [
-            'generation_id' => $generationId,
+            'task_id' => $taskId,
             'timeout_seconds' => $timeoutSeconds,
             'interval_seconds' => $intervalSeconds
         ]);
 
         while (time() < $endTime) {
             try {
-                $statusResponse = $this->getGenerationStatus($generationId);
+                $statusResponse = $this->getGenerationStatus($taskId);
 
                 // Check if generation is completed
                 if (isset($statusResponse['status']) && $statusResponse['status'] === 'completed') {
                     Log::info('VideoGenAPI Polling Completed', [
-                        'generation_id' => $generationId,
+                        'task_id' => $taskId,
                         'elapsed_time' => time() - $startTime
                     ]);
                     return $statusResponse;
@@ -171,7 +186,7 @@ class VideoGenApiService
                 // Check if generation failed
                 if (isset($statusResponse['status']) && in_array($statusResponse['status'], ['failed', 'error'])) {
                     Log::error('VideoGenAPI Generation Failed', [
-                        'generation_id' => $generationId,
+                        'task_id' => $taskId,
                         'status' => $statusResponse['status'],
                         'response' => $statusResponse
                     ]);
@@ -182,8 +197,8 @@ class VideoGenApiService
                 sleep($intervalSeconds);
 
             } catch (\Exception $e) {
-                Log::warning('VideoGenAPI Polling Error', [
-                    'generation_id' => $generationId,
+                Log::warning('VideoGen Polling Error', [
+                    'task_id' => $taskId,
                     'error' => $e->getMessage(),
                     'elapsed_time' => time() - $startTime
                 ]);
@@ -199,14 +214,14 @@ class VideoGenApiService
 
         // Timeout reached
         Log::info('VideoGenAPI Polling Timeout', [
-            'generation_id' => $generationId,
+            'task_id' => $taskId,
             'timeout_seconds' => $timeoutSeconds
         ]);
 
         return [
             'success' => false,
-            'status' => 'timeout',
-            'generation_id' => $generationId,
+            'status' => 'processing',
+            'task_id' => $taskId,
             'message' => 'Video generation is still processing. Please check back later.',
             'timeout' => true
         ];
