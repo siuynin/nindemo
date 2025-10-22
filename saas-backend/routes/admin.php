@@ -77,4 +77,5 @@ Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function ()
     
     // Statistics
     Route::get('statistics', [AdminController::class, 'statistics'])->name('statistics');
+    
 });

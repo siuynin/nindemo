@@ -17,18 +17,14 @@
     {
       "src": "pwa-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "pwa-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "pwa-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
   "start_url": "/",
@@ -37,5 +33,23 @@
   "orientation": "portrait",
   "theme_color": "#001984",
   "background_color": "#ffffff",
-  "categories": ["productivity", "utilities", "business"]
+  "categories": ["productivity", "utilities", "business"],
+  "display_override": ["window-controls-overlay", "standalone"],
+  "form_factor": "wide",
+  "screenshots": [
+    {
+      "src": "pwa-screenshot-desktop.png",
+      "sizes": "1280x800",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "AI App Desktop View"
+    },
+    {
+      "src": "pwa-screenshot-mobile.png", 
+      "sizes": "390x844",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "AI App Mobile View"
+    }
+  ]
 }

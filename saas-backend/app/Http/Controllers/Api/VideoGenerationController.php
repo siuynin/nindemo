@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
 use App\Models\User;
-use App\Services\RunningHubService;
+use App\Models\UserCredit;
+use App\Services\VideoGenApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -15,15 +16,15 @@ use Illuminate\Validation\ValidationException;
 
 class VideoGenerationController extends Controller
 {
-    protected $runningHubService;
+    protected $videoGenApiService;
 
-    public function __construct(RunningHubService $runningHubService)
+    public function __construct(VideoGenApiService $videoGenApiService)
     {
-        $this->runningHubService = $runningHubService;
+        $this->videoGenApiService = $videoGenApiService;
     }
 
     /**
-     * Generate video using RunningHub API
+     * Generate video using VideoGenAPI
      */
     public function generateVideo(Request $request)
     {
@@ -58,19 +59,16 @@ class VideoGenerationController extends Controller
                 $inputImageUrl = $this->uploadInputImage($request->file('inputImage'));
             }
 
-            // Prepare RunningHub API request
-            $runningHubData = [
+            // Prepare VideoGenAPI request
+            $videoGenData = [
                 'prompt' => $validatedData['positivePrompt'],
-                'positivePrompt' => $validatedData['positivePrompt'],
                 'duration' => $validatedData['duration'] ?? 10,
                 'model' => $validatedData['model'] ?? ($inputImageUrl ? 'landscape' : 'portrait'),
             ];
 
-            // Add input image for image-to-video
+            // Add image_url for image-to-video
             if ($inputImageUrl) {
-                // Extract filename from URL for RunningHub
-                $filename = basename(parse_url($inputImageUrl, PHP_URL_PATH));
-                $runningHubData['inputImage'] = $filename;
+                $videoGenData['image_url'] = $inputImageUrl;
             }
 
             // Create generate record
@@ -78,13 +76,13 @@ class VideoGenerationController extends Controller
                 'user_id' => $user->id,
                 'name' => 'Video Generation - ' . substr($validatedData['positivePrompt'], 0, 50),
                 'type' => 'video',
-                'status' => 'processing',
+                'status' => 'pending',
                 'prompt' => $validatedData['positivePrompt'],
-                'model' => $runningHubData['model'],
+                'model' => $videoGenData['model'],
                 'settings' => json_encode([
-                    'duration' => $runningHubData['duration'],
-                    'model' => $runningHubData['model'],
-                    'inputImage' => $inputImageUrl,
+                    'duration' => $videoGenData['duration'],
+                    'model' => $videoGenData['model'],
+                    'image_url' => $inputImageUrl,
                 ]),
                 'credit_cost' => $creditCost,
                 'share' => false
@@ -94,34 +92,108 @@ class VideoGenerationController extends Controller
             $userCreditController = app(\App\Http\Controllers\Api\UserCreditController::class);
             $creditResult = $userCreditController->useCredits($user, $creditCost);
 
-            // Call RunningHub API
+            // Call VideoGenAPI
             try {
                 // Set longer execution time for video generation
                 set_time_limit(300); // 5 minutes
                 
-                $response = $this->runningHubService->generateVideo($runningHubData, $generate->id);
+                $response = $this->videoGenApiService->generateVideo($videoGenData);
                 
-                // Store task_id for webhook tracking
+                // Store generation_id for tracking
                 $generate->update([
-                    'status' => 'processing',
-                    'task_id' => $response['taskId'],
+                    'status' => $response['status'] ?? 'pending',
+                    'task_id' => $response['generation_id'],
                     'api_response' => json_encode($response)
                 ]);
+
+                // Try to poll for completion with 1-minute timeout
+                try {
+                    $pollResponse = $this->videoGenApiService->pollGenerationStatus($response['generation_id'], 60, 5);
+                    
+                    if (isset($pollResponse['timeout']) && $pollResponse['timeout']) {
+                        // Timeout reached - return with task_id for later checking
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Video generation is processing. Please check back later.',
+                            'data' => [
+                                'id' => $generate->id,
+                                'generation_id' => $response['generation_id'],
+                                'task_id' => $response['generation_id'],
+                                'status' => 'processing',
+                                'remainingCredits' => $user->fresh()->total_remaining_credits,
+                                'message' => 'Video generation is still processing. Use the task_id to check status later.'
+                            ]
+                        ]);
+                    }
+                    
+                    // Generation completed or failed within timeout
+                    if ($pollResponse['status'] === 'completed') {
+                        $generate->update([
+                            'status' => 'completed',
+                            'result_url' => $pollResponse['video_url'] ?? null,
+                            'completed_at' => now(),
+                            'api_response' => json_encode($pollResponse)
+                        ]);
+                        
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'Video generation completed successfully',
+                            'data' => [
+                                'id' => $generate->id,
+                                'generation_id' => $response['generation_id'],
+                                'status' => 'completed',
+                                'video_url' => $pollResponse['video_url'] ?? null,
+                                'remainingCredits' => $user->fresh()->total_remaining_credits,
+                                'processing_time' => $pollResponse['processing_time'] ?? null,
+                                'completed_at' => $pollResponse['completed_at'] ?? null
+                            ]
+                        ]);
+                    } else if (in_array($pollResponse['status'], ['failed', 'error'])) {
+                        $generate->update([
+                            'status' => 'failed',
+                            'error_message' => $pollResponse['message'] ?? 'Generation failed',
+                            'api_response' => json_encode($pollResponse)
+                        ]);
+                        
+                        // Refund credits on failure
+                        UserCredit::create([
+                            'user_id' => $user->id,
+                            'pricing_plan_id' => null,
+                            'total_credits' => $creditCost,
+                            'used_credits' => 0,
+                            'remaining_credits' => $creditCost,
+                            'expires_at' => now()->addDays(31),
+                            'credit_type' => 'refund',
+                            'notes' => 'Refund for failed video generation'
+                        ]);
+                        
+                        return response()->json([
+                            'error' => 'Video generation failed: ' . ($pollResponse['message'] ?? 'Unknown error'),
+                            'generate_id' => $generate->id
+                        ], 500);
+                    }
+                    
+                } catch (\Exception $pollError) {
+                    Log::warning('Video polling error: ' . $pollError->getMessage());
+                    // Continue with original response if polling fails
+                }
 
                 return response()->json([
                     'success' => true,
                     'message' => 'Video generation started successfully',
                     'data' => [
                         'id' => $generate->id,
-                        'taskId' => $response['taskId'],
-                        'status' => 'processing',
+                        'generation_id' => $response['generation_id'],
+                        'task_id' => $response['generation_id'],
+                        'request_id' => $response['request_id'] ?? null,
+                        'status' => $response['status'] ?? 'pending',
                         'remainingCredits' => $user->fresh()->total_remaining_credits,
-                        'webhook_info' => 'Results will be delivered automatically when ready'
+                        'message' => 'Video generation is processing'
                     ]
                 ]);
 
             } catch (\Exception $e) {
-                Log::error('RunningHub API Error: ' . $e->getMessage());
+                Log::error('Video Gen  Error: ' . $e->getMessage());
                 
                 // Refund credits on error
                 UserCredit::create([
@@ -154,18 +226,6 @@ class VideoGenerationController extends Controller
         } catch (\Exception $e) {
             Log::error('Video Generation Error: ' . $e->getMessage());
             
-            // Refund credits on error
-            UserCredit::create([
-                'user_id' => $user->id,
-                'pricing_plan_id' => null,
-                'total_credits' => $creditCost,
-                'used_credits' => 0,
-                'remaining_credits' => $creditCost,
-                'expires_at' => now()->addDays(31),
-                'credit_type' => 'refund',
-                'notes' => 'Refund for failed video generation'
-            ]);
-            
             return response()->json([
                 'error' => 'An unexpected error occurred'
             ], 500);
@@ -187,7 +247,44 @@ class VideoGenerationController extends Controller
                 return response()->json(['error' => 'Generation not found'], 404);
             }
 
-            return response()->json([
+            // If status is still pending or processing, check with VideoGenAPI
+            if (in_array($generate->status, ['pending', 'processing']) && $generate->task_id) {
+                try {
+                    $apiStatus = $this->videoGenApiService->getGenerationStatus($generate->task_id);
+                    
+                    // Update local status based on API response
+                    if (isset($apiStatus['status'])) {
+                        $newStatus = $apiStatus['status'];
+                        $updateData = ['status' => $newStatus];
+                        
+                        // If completed, save the video URL and additional data
+                        if ($newStatus === 'completed') {
+                            if (isset($apiStatus['video_url'])) {
+                                $updateData['result_url'] = $apiStatus['video_url'];
+                            }
+                            $updateData['completed_at'] = isset($apiStatus['completed_at']) 
+                                ? $apiStatus['completed_at'] 
+                                : now();
+                            
+                            // Store additional response data
+                            $updateData['api_response'] = json_encode($apiStatus);
+                            
+                        } elseif (in_array($newStatus, ['failed', 'error'])) {
+                            $updateData['error_message'] = $apiStatus['message'] ?? $apiStatus['error'] ?? 'Generation failed';
+                            $updateData['completed_at'] = now();
+                            $updateData['api_response'] = json_encode($apiStatus);
+                        }
+                        
+                        $generate->update($updateData);
+                        $generate->refresh();
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('Failed to check VideoGenAPI status: ' . $e->getMessage());
+                }
+            }
+
+            // Prepare response data
+            $responseData = [
                 'id' => $generate->id,
                 'status' => $generate->status,
                 'videoUrl' => $generate->result_url,
@@ -196,8 +293,28 @@ class VideoGenerationController extends Controller
                 'settings' => json_decode($generate->settings, true),
                 'creditCost' => $generate->credit_cost,
                 'createdAt' => $generate->created_at,
-                'errorMessage' => $generate->error_message
-            ]);
+                'completedAt' => $generate->completed_at,
+                'errorMessage' => $generate->error_message,
+                'generation_id' => $generate->task_id,
+                'task_id' => $generate->task_id
+            ];
+
+            // Add additional data from API response if available
+            if ($generate->api_response) {
+                $apiData = json_decode($generate->api_response, true);
+                if ($apiData) {
+                    $responseData['processing_time'] = $apiData['processing_time'] ?? null;
+                    $responseData['resolution'] = $apiData['resolution'] ?? null;
+                    $responseData['fps'] = $apiData['fps'] ?? null;
+                    $responseData['aspect_ratio'] = $apiData['aspect_ratio'] ?? null;
+                    $responseData['style'] = $apiData['style'] ?? null;
+                    $responseData['seed'] = $apiData['seed'] ?? null;
+                    $responseData['type'] = $apiData['type'] ?? null;
+                    $responseData['model_info'] = $apiData['model'] ?? null;
+                }
+            }
+
+            return response()->json($responseData);
 
         } catch (\Exception $e) {
             Log::error('Get Generation Status Error: ' . $e->getMessage());

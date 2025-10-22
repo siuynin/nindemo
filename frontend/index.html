@@ -99,35 +99,5 @@
   <body class="bg-gray-900">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <script>
-      // Register Service Worker for PWA
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then((registration) => {
-              console.log('ServiceWorker registration successful:', registration);
-              console.log('ServiceWorker scope:', registration.scope);
-              
-              // Check for updates
-              registration.addEventListener('updatefound', () => {
-                const newWorker = registration.installing;
-                console.log('New ServiceWorker found:', newWorker);
-                
-                newWorker.addEventListener('statechange', () => {
-                  console.log('ServiceWorker state changed:', newWorker.state);
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    console.log('New ServiceWorker installed and controlling');
-                  }
-                });
-              });
-            })
-            .catch((error) => {
-              console.error('ServiceWorker registration failed:', error);
-            });
-        });
-      } else {
-        console.warn('ServiceWorker not supported in this browser');
-      }
-    </script>
   </body>
 </html>

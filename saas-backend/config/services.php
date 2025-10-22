@@ -40,4 +40,8 @@ return [
         'client_secret' => env('PAYPAL_CLIENT_SECRET'),
     ],
 
+    'videogenapi' => [
+        'api_key' => env('VIDEOGENAPI_KEY'),
+    ],
+
 ];
