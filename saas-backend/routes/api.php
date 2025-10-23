@@ -179,8 +179,10 @@ Route::middleware('auth:sanctum')->group(function () {
     // Image Generation Routes
     Route::prefix('images')->group(function () {
         Route::post('/create-image', [App\Http\Controllers\Api\ImageGenerationController::class, 'createImage']);
+        Route::post('/image-to-image', [App\Http\Controllers\Api\ImageGenerationController::class, 'imageToImage']);
         Route::get('/generation/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getGenerationStatus']);
         Route::post('/upscale', [App\Http\Controllers\Api\ImageGenerationController::class, 'upscaleImage']);
+        Route::post('/check-task-status', [App\Http\Controllers\Api\ImageGenerationController::class, 'checkTaskStatus']);
     });
 
     // NDHub TTS Routes

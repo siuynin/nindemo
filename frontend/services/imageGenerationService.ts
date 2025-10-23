@@ -134,10 +134,6 @@ class ImageGenerationService {
       throw new Error('Prompt is required');
     }
 
-    if (request.prompt.length > 1000) {
-      throw new Error('Prompt must be less than 1000 characters');
-    }
-
     if (!request.model) {
       throw new Error('Model is required');
     }

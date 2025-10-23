@@ -10,11 +10,81 @@ use Illuminate\Support\Str;
 class ImageStorageService
 {
     /**
+     * Upload image from base64 data URL to S3
+     */
+    public function uploadImageFromBase64(string $base64Data, string $folder = 'generated-images'): string
+    {
+        try {
+            Log::info('Uploading image from base64 data');
+
+            // Check if it's a data URL
+            if (strpos($base64Data, 'data:image/') === 0) {
+                // Extract the base64 content and mime type
+                $parts = explode(',', $base64Data, 2);
+                if (count($parts) !== 2) {
+                    throw new \Exception('Invalid base64 data URL format');
+                }
+
+                $header = $parts[0];
+                $data = $parts[1];
+
+                // Extract mime type
+                preg_match('/data:image\/([a-zA-Z0-9]+)/', $header, $matches);
+                $extension = isset($matches[1]) ? $matches[1] : 'png';
+                
+                // Decode base64
+                $imageContent = base64_decode($data);
+                if ($imageContent === false) {
+                    throw new \Exception('Failed to decode base64 data');
+                }
+            } else {
+                // Assume it's already base64 encoded content
+                $imageContent = base64_decode($base64Data);
+                if ($imageContent === false) {
+                    throw new \Exception('Failed to decode base64 data');
+                }
+                $extension = 'png'; // Default extension
+            }
+
+            // Generate unique filename
+            $filename = $folder . '/' . Str::uuid() . '.' . $extension;
+            
+            // Upload to S3
+            $uploaded = Storage::disk('s3')->put($filename, $imageContent);
+            
+            if (!$uploaded) {
+                throw new \Exception('Failed to upload image to S3');
+            }
+
+            // Get the public URL
+            $s3Url = Storage::disk('s3')->url($filename);
+            
+            Log::info('Base64 image uploaded successfully', [
+                's3_url' => $s3Url,
+                'filename' => $filename,
+                'extension' => $extension
+            ]);
+
+            return $s3Url;
+        } catch (\Exception $e) {
+            Log::error('Base64 image upload failed', [
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
      * Download image from URL and upload to S3
      */
     public function uploadImageFromUrl(string $imageUrl, string $folder = 'generated-images'): string
     {
         try {
+            // Check if it's a base64 data URL
+            if (strpos($imageUrl, 'data:image/') === 0) {
+                return $this->uploadImageFromBase64($imageUrl, $folder);
+            }
+
             Log::info('Downloading image from URL', ['url' => $imageUrl]);
 
             // Download image from URL

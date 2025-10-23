@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image to Image Service</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 20px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        input[type="file"] { margin: 10px 0; }
+        img { max-width: 200px; max-height: 200px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Image to Image Service Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Image Upload and Base64 Conversion</h2>
+        <input type="file" id="imageInput" accept="image/*">
+        <div id="uploadResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test API Endpoint</h2>
+        <button onclick="testEndpoint()">Test Backend Endpoint</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Full Image-to-Image Test</h2>
+        <input type="file" id="fullTestImage" accept="image/*">
+        <input type="text" id="testPrompt" placeholder="Enter transformation prompt" style="width: 300px; margin: 10px 0;">
+        <button onclick="fullTest()">Run Full Test</button>
+        <div id="fullTestResult"></div>
+    </div>
+
+    <script>
+        // Test image upload and base64 conversion
+        document.getElementById('imageInput').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const base64 = await fileToBase64(file);
+                document.getElementById('uploadResult').innerHTML = `
+                    <p class="success">✓ File converted to base64 successfully</p>
+                    <p class="info">File size: ${file.size} bytes</p>
+                    <p class="info">Base64 length: ${base64.length} characters</p>
+                    <img src="${base64}" alt="Uploaded preview">
+                `;
+            } catch (error) {
+                document.getElementById('uploadResult').innerHTML = `
+                    <p class="error">✗ Error converting file: ${error.message}</p>
+                `;
+            }
+        });
+
+        // Utility function to convert file to base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Test backend endpoint
+        async function testEndpoint() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p class="info">Testing endpoint...</p>';
+
+            try {
+                const response = await fetch('http://localhost:8000/api/images/image-to-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        test: true,
+                        message: 'Endpoint test'
+                    })
+                });
+
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <p class="${response.ok ? 'success' : 'error'}">
+                        ${response.ok ? '✓' : '✗'} Endpoint test: ${response.status} ${response.statusText}
+                    </p>
+                    <p class="info">Response: ${JSON.stringify(data, null, 2)}</p>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">✗ Network error: ${error.message}</p>
+                    <p class="info">Make sure the backend server is running on port 8000</p>
+                `;
+            }
+        }
+
+        // Full image-to-image test
+        async function fullTest() {
+            const resultDiv = document.getElementById('fullTestResult');
+            const fileInput = document.getElementById('fullTestImage');
+            const promptInput = document.getElementById('testPrompt');
+            
+            if (!fileInput.files[0]) {
+                resultDiv.innerHTML = '<p class="error">✗ Please select an image file</p>';
+                return;
+            }
+
+            if (!promptInput.value.trim()) {
+                resultDiv.innerHTML = '<p class="error">✗ Please enter a transformation prompt</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p class="info">Processing...</p>';
+
+            try {
+                const file = fileInput.files[0];
+                const base64Image = await fileToBase64(file);
+                
+                // Validate file size (max 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    throw new Error('File size exceeds 10MB limit');
+                }
+
+                // Validate image type
+                const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!validTypes.includes(file.type)) {
+                    throw new Error('Invalid image format. Please use JPG, PNG, GIF, or WebP');
+                }
+
+                const requestData = {
+                    image: base64Image,
+                    prompt: promptInput.value.trim(),
+                    model: 'runware:106@1', // Default model for testing
+                    numberResults: 1,
+                    strength: 0.7,
+                    share: false
+                };
+
+                resultDiv.innerHTML += '<p class="info">Sending request to backend...</p>';
+
+                const response = await fetch('http://localhost:8000/api/images/image-to-image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer YOUR_TEST_TOKEN' // Add if auth is required
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok && responseData.success) {
+                    resultDiv.innerHTML = `
+                        <p class="success">✓ Image-to-image generation successful!</p>
+                        <p class="info">Generation ID: ${responseData.data?.generateId}</p>
+                        <p class="info">Credit cost: ${responseData.data?.credit_cost}</p>
+                        <p class="info">Remaining credits: ${responseData.data?.remaining_credits}</p>
+                        ${responseData.data?.images?.map(img => `
+                            <div>
+                                <img src="${img.url}" alt="Generated image">
+                                <p>Dimensions: ${img.width}×${img.height}</p>
+                            </div>
+                        `).join('') || ''}
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <p class="error">✗ Generation failed: ${responseData.message || 'Unknown error'}</p>
+                        <p class="info">Response: ${JSON.stringify(responseData, null, 2)}</p>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">✗ Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

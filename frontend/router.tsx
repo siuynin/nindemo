@@ -5,6 +5,7 @@ import HomeLayout from './components/HomeLayout';
 import HomePage from './pages/HomePage';
 import TextToSpeech from './pages/TextToSpeech';
 import Document from './pages/Document';
+import Creation from './pages/Creation';
 import PublicDocument from './pages/PublicDocument';
 import ElevenLabs from './pages/ElevenLabs';
 import Minimax from './pages/Minimax';
@@ -81,6 +82,10 @@ export const router = createBrowserRouter([
       {
         path: 'document',
         element: <Document />,
+      },
+      {
+        path: 'creation',
+        element: <Creation />,
       },
       {
         path: 'elevenlabs',
@@ -192,6 +197,16 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <Document />,
+      },
+    ],
+  },
+  {
+    path: '/creation',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Creation />,
       },
     ],
   },

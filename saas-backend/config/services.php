@@ -44,4 +44,10 @@ return [
         'api_key' => env('VIDEOGENAPI_KEY'),
     ],
 
+    'runninghub' => [
+        'api_key' => env('RUNNINGHUB_API_KEY'),
+        'webapp_id' => env('RUNNINGHUB_WEBAPP_ID'),
+        'base_url' => env('RUNNINGHUB_BASE_URL', 'https://www.runninghub.ai'),
+    ],
+
 ];

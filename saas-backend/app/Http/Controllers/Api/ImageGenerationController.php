@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Generate;
-use App\Models\User;
+use App\Models\AIModel;
 use App\Services\RunwareService;
 use App\Services\ImageStorageService;
 use App\Services\RunningHubService;
+use App\Services\RunningHubImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class ImageGenerationController extends Controller
@@ -19,12 +21,19 @@ class ImageGenerationController extends Controller
     protected $runwareService;
     protected $imageStorageService;
     protected $runningHubService;
+    protected $runningHubImageService;
 
-    public function __construct(RunwareService $runwareService, ImageStorageService $imageStorageService, RunningHubService $runningHubService)
+    public function __construct(
+        RunwareService $runwareService, 
+        ImageStorageService $imageStorageService, 
+        RunningHubService $runningHubService,
+        RunningHubImageService $runningHubImageService
+    )
     {
         $this->runwareService = $runwareService;
         $this->imageStorageService = $imageStorageService;
         $this->runningHubService = $runningHubService;
+        $this->runningHubImageService = $runningHubImageService;
     }
 
     /**
@@ -606,4 +615,366 @@ class ImageGenerationController extends Controller
             return response()->json(['error' => 'Internal server error'], 500);
         }
     }
+
+    /**
+     * Generate image-to-image using RunningHub API
+     */
+    public function imageToImage(Request $request)
+    {
+        try {
+            // Validate request
+            $validatedData = $request->validate([
+                'prompt' => 'required|string|max:4000',
+                'image' => 'required|string', // Base64 encoded image or image URL
+                'ratio' => 'required|string|in:auto,1:1,2:3,3:2,3:4,4:3,4:5,5:4,9:16,16:9,21:9',
+                'name' => 'nullable|string|max:255',
+                'share' => 'nullable|boolean',
+            ]);
+
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Set model for image-to-image
+            $modelSlug = 'image-to-image';
+            
+            // Get model pricing
+            $model = \App\Models\AIModel::where('slug', $modelSlug)->first();
+            if (!$model) {
+                // Create a default model if not exists
+                $model = \App\Models\AIModel::create([
+                    'name' => 'Image to Image',
+                    'slug' => $modelSlug,
+                    'type' => 'image',
+                    'platform' => 'runninghub',
+                    'credit_price' => 40,
+                    'is_active' => true,
+                    'description' => 'Transform images using AI'
+                ]);
+            }
+
+            $creditCost = $model->credit_price;
+
+            // Check if user has enough credits
+            if ($user->total_remaining_credits < $creditCost) {
+                return response()->json([
+                    'error' => 'Insufficient credits',
+                    'required' => $creditCost,
+                    'available' => $user->total_remaining_credits
+                ], 400);
+            }
+
+            // Start database transaction
+            DB::beginTransaction();
+
+            try {
+                // Create Generate record
+                $generate = Generate::create([
+                    'user_id' => $user->id,
+                    'name' => $validatedData['name'] ?? 'Image to Image Transformation',
+                    'content' => json_encode([
+                        'prompt' => $validatedData['prompt'],
+                        'image' => $validatedData['image'],
+                        'ratio' => $validatedData['ratio'],
+                        'model' => $modelSlug
+                    ]),
+                    'type' => 'image',
+                    'status' => 'processing',
+                    'share' => $validatedData['share'] ?? 'private',
+                    'credit_cost' => $creditCost,
+                    'result_url' => null
+                ]);
+
+                // Deduct credits
+                $userCreditController = new \App\Http\Controllers\Api\UserCreditController();
+                $creditResult = $userCreditController->useCredits($user, $creditCost);
+                
+                if (!$creditResult['success']) {
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => $creditResult['message'],
+                        'required' => $creditCost,
+                        'available' => $creditResult['available'] ?? 0
+                    ], 400);
+                }
+
+                // Commit transaction
+                DB::commit();
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Database transaction failed', ['error' => $e->getMessage()]);
+                return response()->json(['error' => 'Failed to create generation record'], 500);
+            }
+
+            // Process image-to-image generation
+            try {
+                // Use the new RunningHubImageService
+                $result = $this->runningHubImageService->generateImageToImage(
+                    $validatedData['prompt'],
+                    $validatedData['image'],
+                    $validatedData['ratio']
+                );
+
+                // Check if generation completed immediately
+                if ($result['status'] === 'completed' && isset($result['images']) && !empty($result['images'])) {
+                    // Update Generate record with success
+                    $generate->update([
+                        'status' => 'completed',
+                        'result_url' => json_encode($result['images']),
+                        'file_patch' => json_encode(['runninghub_response' => $result['task_data'] ?? []])
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'id' => $generate->id,
+                            'status' => 'completed',
+                            'images' => $result['images'],
+                            'credit_cost' => $creditCost
+                        ]
+                    ]);
+                    
+                } elseif ($result['status'] === 'processing') {
+                    // Generation is still processing (timeout occurred)
+                    // Keep the generate record as 'processing' and return task info
+                    $generate->update([
+                        'status' => 'processing',
+                        'file_patch' => json_encode([
+                            'task_id' => $result['task_id'],
+                            'started_at' => now()->toISOString(),
+                            'timeout_occurred' => true
+                        ])
+                    ]);
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => [
+                            'id' => $generate->id,
+                            'status' => 'processing',
+                            'task_id' => $result['task_id'],
+                            'message' => 'Ảnh đang được tạo trong nền. Vui lòng kiểm tra lại sau ít phút.',
+                            'credit_cost' => $creditCost
+                        ]
+                    ]);
+                    
+                } else {
+                    // Generation failed
+                    throw new \Exception($result['error'] ?? 'No images generated from RunningHub API');
+                }
+
+
+
+            } catch (\Exception $e) {
+                Log::error('Image-to-image generation failed', ['error' => $e->getMessage()]);
+                
+                // Update generate record with failure
+                $generate->update([
+                    'status' => 'failed',
+                    'file_patch' => json_encode(['error' => $e->getMessage()])
+                ]);
+
+                // Refund credits on failure
+                try {
+                    $userCreditController->refundCredits($user, $creditCost);
+                } catch (\Exception $refundError) {
+                    Log::error('Failed to refund credits for failed generation', [
+                        'user_id' => $user->id,
+                        'generate_id' => $generate->id,
+                        'credits' => $creditCost,
+                        'error' => $refundError->getMessage()
+                    ]);
+                }
+
+                return response()->json([
+                    'error' => 'Image-to-image generation failed: ' . $e->getMessage(),
+                    'generate_id' => $generate->id
+                ], 500);
+            }
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in image-to-image generation', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
+    }
+
+    /**
+     * Check task status and update result if completed
+     */
+    public function checkTaskStatus(Request $request)
+    {
+        try {
+            // Validate request
+            $validatedData = $request->validate([
+                'generate_id' => 'required|integer|exists:generates,id',
+                'task_id' => 'required|string'
+            ]);
+
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            // Get generation record
+            $generate = Generate::where('id', $validatedData['generate_id'])
+                              ->where('user_id', $user->id)
+                              ->first();
+
+            if (!$generate) {
+                return response()->json(['error' => 'Generation not found'], 404);
+            }
+
+            // Check if already completed
+            if ($generate->status === 'completed') {
+                return response()->json([
+                    'status' => 'completed',
+                    'result_url' => json_decode($generate->result_url, true),
+                    'generate_id' => $generate->id
+                ]);
+            }
+
+            // Check if still processing
+            if ($generate->status !== 'processing') {
+                return response()->json([
+                    'status' => $generate->status,
+                    'generate_id' => $generate->id
+                ]);
+            }
+
+            try {
+                // Use RunningHubImageService to check task status
+                $taskResult = $this->runningHubImageService->checkTaskStatus($validatedData['task_id']);
+
+                if ($taskResult['status'] === 'completed' && !empty($taskResult['images'])) {
+                    // Task completed, update database
+                    $imageResults = [];
+                    
+                    // Upload images to S3 if configured
+                    if ($this->imageStorageService->isS3Configured()) {
+                        try {
+                            Log::info('Starting S3 upload for completed task', [
+                                'task_id' => $validatedData['task_id'],
+                                'images_count' => count($taskResult['images'])
+                            ]);
+                            
+                            $uploadResult = $this->imageStorageService->uploadMultipleImagesFromUrls(
+                                $taskResult['images'], 
+                                'generated-images'
+                            );
+                            
+                            if (!empty($uploadResult['uploaded_urls'])) {
+                                foreach ($uploadResult['uploaded_urls'] as $s3Url) {
+                                    $imageResults[] = [
+                                        'seed' => null,
+                                        'url' => $s3Url
+                                    ];
+                                }
+                            } else {
+                                // Fallback to original URLs
+                                foreach ($taskResult['images'] as $url) {
+                                    $imageResults[] = [
+                                        'seed' => null,
+                                        'url' => $url
+                                    ];
+                                }
+                            }
+                        } catch (\Exception $s3Error) {
+                            Log::error('S3 upload error in checkTaskStatus', ['error' => $s3Error->getMessage()]);
+                            // Fallback to original URLs
+                            foreach ($taskResult['images'] as $url) {
+                                $imageResults[] = [
+                                    'seed' => null,
+                                    'url' => $url
+                                ];
+                            }
+                        }
+                    } else {
+                        // No S3, use original URLs
+                        foreach ($taskResult['images'] as $url) {
+                            $imageResults[] = [
+                                'seed' => null,
+                                'url' => $url
+                            ];
+                        }
+                    }
+
+                    // Update Generate record
+                    $generate->update([
+                        'status' => 'completed',
+                        'result_url' => json_encode($imageResults),
+                        'file_patch' => json_encode([
+                            'task_id' => $validatedData['task_id'],
+                            'completed_at' => now()->toISOString()
+                        ])
+                    ]);
+
+                    Log::info('Task status updated to completed', [
+                        'generate_id' => $generate->id,
+                        'task_id' => $validatedData['task_id'],
+                        'images_count' => count($imageResults)
+                    ]);
+
+                    return response()->json([
+                        'status' => 'completed',
+                        'result_url' => $imageResults,
+                        'generate_id' => $generate->id
+                    ]);
+
+                } elseif ($taskResult['status'] === 'failed') {
+                    // Task failed, update database
+                    $generate->update([
+                        'status' => 'failed',
+                        'file_patch' => json_encode([
+                            'task_id' => $validatedData['task_id'],
+                            'error' => $taskResult['error'] ?? 'Task failed',
+                            'failed_at' => now()->toISOString()
+                        ])
+                    ]);
+
+                    return response()->json([
+                        'status' => 'failed',
+                        'error' => $taskResult['error'] ?? 'Task failed',
+                        'generate_id' => $generate->id
+                    ]);
+
+                } else {
+                    // Still processing
+                    return response()->json([
+                        'status' => 'processing',
+                        'generate_id' => $generate->id
+                    ]);
+                }
+
+            } catch (\Exception $e) {
+                Log::error('Error checking task status', [
+                    'task_id' => $validatedData['task_id'],
+                    'generate_id' => $validatedData['generate_id'],
+                    'error' => $e->getMessage()
+                ]);
+
+                return response()->json([
+                    'status' => 'processing', // Keep as processing if check fails
+                    'generate_id' => $generate->id,
+                    'message' => 'Unable to check task status, please try again later'
+                ]);
+            }
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'error' => 'Validation failed',
+                'details' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in checkTaskStatus', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Internal server error'], 500);
+        }
+    }
+
+
 }

@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
-import { DownloadIcon, TrashIcon, PlusIcon } from '../components/icons';
+import { DownloadIcon, TrashIcon, PlusIcon, GridIcon } from '../components/icons';
 import AuthModal from '../components/AuthModal';
 import CreditModal from '../components/CreditModal';
 import ModernAudioPlayer from '../components/ModernAudioPlayer';
@@ -141,7 +141,7 @@ const Document: React.FC = () => {
     models: string[];
   }>({ filters: [], categories: [], models: [] });
 
-  // Fetch user's generates
+  // Fetch user's generates (only text and audio)
   const fetchGenerates = async () => {
     if (!isAuthenticated) return;
     
@@ -156,7 +156,11 @@ const Document: React.FC = () => {
       });
       
       if (response.success) {
-        setGenerates(response.data);
+        // Filter out video content, only keep text and audio
+        const filteredGenerates = response.data.filter(
+          (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
+        );
+        setGenerates(filteredGenerates);
       }
     } catch (error) {
       console.error('Error fetching generates:', error);
@@ -658,7 +662,7 @@ const Document: React.FC = () => {
                      }`
                  }`}
                >
-                 OpenAI Templates
+                Prompt Templates
                </button>
              </nav>
            </div>
@@ -689,15 +693,28 @@ const Document: React.FC = () => {
                     }
                   />
                 </div>
-                <Button 
-                  variant="primary" 
-                  size="md"
-                  onClick={handleCreateNew}
-                  disabled={isLoading}
-                >
-                   <PlusIcon className="w-4 h-4" />
-                  {isLoading ? 'Creating...' : 'Create New'}
-                </Button>
+                <div className="flex space-x-3">
+                  <Button 
+                    variant="primary" 
+                    size="md"
+                    onClick={handleCreateNew}
+                    disabled={isLoading}
+                    startIcon={<PlusIcon className="w-4 h-4" />}
+                    className="bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                  >
+                    {isLoading ? 'Creating...' : 'Create New'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="md"
+                    onClick={() => setActiveTab('templates')}
+                    startIcon={<GridIcon className="w-4 h-4" />}
+                    className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
+                  >
+                    Use template
+                  </Button>
+                </div>
+                
               </div>
               
               {/* Filters */}
@@ -719,9 +736,7 @@ const Document: React.FC = () => {
                   >
                     <option value="">Tất cả</option>
                     <option value="text">Text</option>
-                    <option value="image">Image</option>
                     <option value="audio">Audio</option>
-                    <option value="video">Video</option>
                   </select>
                 </div>
                 <div>

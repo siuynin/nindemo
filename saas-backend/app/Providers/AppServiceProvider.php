@@ -13,7 +13,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register RunningHubImageService as singleton with ImageStorageService dependency
+        $this->app->singleton(\App\Services\RunningHubImageService::class, function ($app) {
+            return new \App\Services\RunningHubImageService($app->make(\App\Services\ImageStorageService::class));
+        });
     }
 
     /**

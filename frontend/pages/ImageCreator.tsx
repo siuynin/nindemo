@@ -3,6 +3,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { imageGenerationService, ImageGenerationRequest } from '../services/imageGenerationService';
+import { imageToImageService, ImageToImageRequest } from '../services/imageToImageService';
 import AIService from '../services/AIService';
 import { generateService } from '../services/generateService'; 
 import Button from '../components/ui/Button'; 
@@ -49,6 +50,9 @@ const ImageCreator: React.FC = () => {
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [showImagePopup, setShowImagePopup] = useState(false);
+  const [activeTab, setActiveTab] = useState<'text-to-image' | 'image-to-image'>('text-to-image');
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     prompt: '',
     model: '',
@@ -198,6 +202,13 @@ const ImageCreator: React.FC = () => {
     });
   }, []);
 
+  // Set up auth required callback for imageToImageService
+  useEffect(() => {
+    imageToImageService.setAuthRequiredCallback(() => {
+      setShowAuthModal(true);
+    });
+  }, []);
+
   const fetchModels = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/models?type=image`);
@@ -289,6 +300,65 @@ const ImageCreator: React.FC = () => {
     }
   };
 
+  const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 5000);
+  };
+
+  // Polling mechanism để kiểm tra task status
+  const startTaskStatusPolling = useCallback(async (generateId: number, taskId: string) => {
+    const maxAttempts = 20; // Tối đa 20 lần kiểm tra (10 phút)
+    const pollInterval = 30000; // 30 giây mỗi lần
+    let attempts = 0;
+
+    const pollTaskStatus = async () => {
+      try {
+        attempts++;
+        console.log(`Polling task status (attempt ${attempts}/${maxAttempts}):`, { generateId, taskId });
+
+        const response = await imageToImageService.checkTaskStatus(generateId, taskId);
+        
+        if (response.success && response.data) {
+          const { status } = response.data;
+          
+          if (status === 'completed') {
+            // Task completed - refresh images and show success
+            await fetchGeneratedImages();
+            await refreshUser();
+            showToast('success', 'Ảnh đã được tạo thành công và đã được lưu vào thư viện!');
+            return; // Stop polling
+            
+          } else if (status === 'failed') {
+            // Task failed - show error and potentially refund credits
+            showToast('error', 'Tạo ảnh thất bại. Vui lòng thử lại.');
+            await refreshUser(); // Refresh to show refunded credits if any
+            return; // Stop polling
+            
+          } else if (status === 'processing' && attempts < maxAttempts) {
+            // Still processing - continue polling
+            setTimeout(pollTaskStatus, pollInterval);
+            return;
+          }
+        }
+        
+        // If we reach here, either max attempts reached or unknown status
+        if (attempts >= maxAttempts) {
+          showToast('warning', 'Việc tạo ảnh đang mất nhiều thời gian hơn dự kiến. Sẽ cập nhật kết qủa sau.');
+        }
+        
+      } catch (error) {
+        console.error('Error polling task status:', error);
+        if (attempts < maxAttempts) {
+          // Continue polling on error (network issues, etc.)
+          setTimeout(pollTaskStatus, pollInterval);
+        }
+      }
+    };
+
+    // Start polling after a short delay
+    setTimeout(pollTaskStatus, 5000); // Wait 5 seconds before first check
+  }, [fetchGeneratedImages, refreshUser, showToast]);
+
   // Tối ưu hóa handleInputChange với useCallback
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -332,6 +402,108 @@ const ImageCreator: React.FC = () => {
     }
   }, []); // Loại bỏ formData.prompt khỏi dependency để tránh re-render
 
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      // Validate image file
+      imageToImageService.validateImageFile(file);
+      
+      // Convert to base64
+      const base64Image = await imageToImageService.fileToBase64(file);
+      setUploadedImage(base64Image);
+      setUploadedImageFile(file);
+      showToast('success', 'Image uploaded successfully!');
+    } catch (error) {
+      showToast('error', error instanceof Error ? error.message : 'Failed to upload image');
+    }
+  };
+
+  const generateImageToImage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.prompt.trim()) {
+      showToast('error', 'Please enter a prompt');
+      return;
+    }
+
+    if (!uploadedImage) {
+      showToast('error', 'Please upload an image');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create request for image-to-image
+      const request: ImageToImageRequest = {
+        prompt: formData.prompt,
+        image: uploadedImage,
+        ratio: selectedAspectRatio.ratio,
+        name: `Image-to-Image: ${formData.prompt.substring(0, 30)}${formData.prompt.length > 30 ? '...' : ''}`,
+        share: false
+      };
+
+      // Validate request
+      imageToImageService.validateRequest(request);
+
+      console.log('Calling backend image-to-image endpoint with request:', request);
+      
+      // Call backend endpoint
+      const response = await imageToImageService.generateImageToImage(request);
+      
+      if (response.success && response.data) {
+        console.log('Image-to-image generation response:', response.data);
+        
+        if (response.data.status === 'completed' && response.data.images) {
+          // Generation completed immediately
+          await fetchGeneratedImages();
+          await refreshUser();
+          
+          showToast('success', `Generated ${response.data.images.length} image(s) successfully! Deducted ${response.data.credit_cost} credits. Remaining: ${response.data.remaining_credits} credits.`);
+          
+        } else if (response.data.status === 'processing') {
+          // Generation is processing in background (timeout occurred)
+          await refreshUser(); // Refresh to show deducted credits
+          
+          showToast('info', response.data.message || 'Ảnh đang được tạo trong nền. Vui lòng kiểm tra lại sau ít phút.');
+          
+          // Optional: Start polling for task status
+          if (response.data.task_id) {
+            startTaskStatusPolling(response.data.id, response.data.task_id);
+          }
+          
+        } else {
+          // Other status or error
+          showToast('error', response.data.error || 'Failed to generate image');
+        }
+      } else {
+        console.log('Image-to-image generation failed:', response.error);
+        showToast('error', response.error || 'Failed to generate image');
+      }
+    } catch (error) {
+      console.error('Error generating image-to-image:', error);
+      if (error instanceof Error) {
+        // Check if error is related to credit
+        if (error.message.toLowerCase().includes('credit') || 
+            error.message.toLowerCase().includes('insufficient') ||
+            error.message.toLowerCase().includes('không đủ')) {
+          // Show modal instead of toast for credit errors
+          setCreditModalData({
+            message: error.message
+          });
+          setShowCreditModal(true);
+        } else {
+          showToast('error', error.message);
+        }
+      } else {
+        showToast('error', 'Failed to generate image. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Memoize selected model để tránh tính toán lại không cần thiết
   const selectedModel = useMemo(() => {
     // Ensure models is an array before calling find
@@ -346,6 +518,13 @@ const ImageCreator: React.FC = () => {
   const generateImage = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Check which mode is active and delegate to appropriate function
+    if (activeTab === 'image-to-image') {
+      await generateImageToImage(e);
+      return;
+    }
+    
+    // Text-to-image mode (existing logic)
     if (!formData.prompt.trim()) {
       showToast('error', 'Please enter a prompt');
       return;
@@ -414,11 +593,6 @@ const ImageCreator: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const showToast = (type: 'success' | 'error' | 'warning' | 'info', message: string) => {
-    setToast({ type, message });
-    setTimeout(() => setToast(null), 5000);
   };
 
   const closeToast = () => {
@@ -663,17 +837,89 @@ const ImageCreator: React.FC = () => {
               </div>
 
               <form onSubmit={generateImage} className="space-y-6">
+                {/* Tabs */}
+                <div className="flex border-b border-gray-200 dark:border-gray-700 mb-4">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('text-to-image')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'text-to-image'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Text to Image
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('image-to-image')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'image-to-image'
+                        ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    Image to Image
+                  </button>
+                </div>
+
+                {/* Image Upload for Image-to-Image */}
+                {activeTab === 'image-to-image' && (
+                  <div className="space-y-2">
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                      Upload Image
+                    </label>
+                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="cursor-pointer flex flex-col items-center space-y-2"
+                      >
+                        {uploadedImage ? (
+                          <img
+                            src={uploadedImage}
+                            alt="Uploaded"
+                            className="w-32 h-32 object-cover rounded-lg"
+                          />
+                        ) : (
+                          <>
+                            <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span className="text-sm text-gray-600 dark:text-gray-400">
+                              Click to upload an image
+                            </span>
+                            <span className="text-xs text-gray-500 dark:text-gray-500">
+                              PNG, JPG, GIF up to 10MB
+                            </span>
+                          </>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                )}
+
                 {/* Prompt Section */}
                 <div className="space-y-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Prompt
+                    {activeTab === 'image-to-image' ? 'Transformation Prompt' : 'Prompt'}
                   </label>
                   <div className="relative">
                     <TextArea
                       name="prompt"
                       value={formData.prompt}
                       onChange={handleInputChange}
-                      placeholder={t.imageCreator?.promptPlaceholder || "Describe the image you want to create..."}
+                      placeholder={
+                        activeTab === 'image-to-image' 
+                          ? "Describe how you want to transform the image..."
+                          : "Describe the image you want to create..."
+                      }
                       rows={4}
                       className="w-full pr-12"
                     />
@@ -690,25 +936,27 @@ const ImageCreator: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Model Selection */}
-                <div className="space-y-2">
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    AI Model
-                  </label>
-                  <Button
-                    type="button"
-                    onClick={() => setShowModelPopup(true)}
-                    variant="outline"
-                    className="w-full justify-between"
-                    endIcon={
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    }
-                  >
-                    {getSelectedModel()?.name || t.imageCreator?.selectModel || 'Select Model'}
-                  </Button>
-                </div>
+                {/* Model Selection - Hidden in image-to-image mode */}
+                {activeTab !== 'image-to-image' && (
+                  <div className="space-y-2">
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                      AI Model
+                    </label>
+                    <Button
+                      type="button"
+                      onClick={() => setShowModelPopup(true)}
+                      variant="outline"
+                      className="w-full justify-between"
+                      endIcon={
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      }
+                    >
+                      {getSelectedModel()?.name || t.imageCreator?.selectModel || 'Select Model'}
+                    </Button>
+                  </div>
+                )}
                  {/* Size Selection */}
                 <div className="space-y-2">
                   <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
@@ -815,42 +1063,44 @@ const ImageCreator: React.FC = () => {
 
                 
 
-                {/* Number of Results Section */}
-                <div className="space-y-2">
-                  <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                    Number of Images
-                  </label>
+                {/* Number of Results Section - Hidden in image-to-image mode */}
+                {activeTab !== 'image-to-image' && (
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center"> 
-                      <span className="text-sm font-medium text-gray-800 dark:text-white">{formData.numberResults}</span>
-                    </div>
-                    <div className="px-3">
-                      <input
-                        type="range"
-                        id="numberResults"
-                        name="numberResults"
-                        min="1"
-                        max="4"
-                        step="1"
-                        value={formData.numberResults}
-                        onChange={handleInputChange}
-                        className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-                          actualTheme === 'dark' 
-                            ? 'bg-gray-700 slider-thumb-dark' 
-                            : 'bg-gray-200 slider-thumb-light'
-                        }`}
-                      />
+                    <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
+                      Number of Images
+                    </label>
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center"> 
+                        <span className="text-sm font-medium text-gray-800 dark:text-white">{formData.numberResults}</span>
+                      </div>
+                      <div className="px-3">
+                        <input
+                          type="range"
+                          id="numberResults"
+                          name="numberResults"
+                          min="1"
+                          max="4"
+                          step="1"
+                          value={formData.numberResults}
+                          onChange={handleInputChange}
+                          className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
+                            actualTheme === 'dark' 
+                              ? 'bg-gray-700 slider-thumb-dark' 
+                              : 'bg-gray-200 slider-thumb-light'
+                          }`}
+                        />
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {/* Generate Button */}
                 <div className="pt-2">
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={loading || !formData.prompt.trim() || !formData.model}
-                    className="w-full h-11 text-sm font-medium"
+                    disabled={loading || !formData.prompt.trim() || !formData.model || (activeTab === 'image-to-image' && !uploadedImageFile)}
+                    className="w-full h-11 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                     size="md"
                     startIcon={
                       loading ? (
@@ -864,7 +1114,9 @@ const ImageCreator: React.FC = () => {
                   >
                     {loading 
                       ? t.imageCreator?.generating || 'Generating...' 
-                      : t.imageCreator?.generateImage || 'Generate Image'
+                      : activeTab === 'image-to-image' 
+                        ? 'Transform Image' 
+                        : t.imageCreator?.generateImage || 'Generate Image'
                     }
                   </Button>
                 </div>
