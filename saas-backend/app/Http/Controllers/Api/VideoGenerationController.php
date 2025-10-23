@@ -140,6 +140,19 @@ class VideoGenerationController extends Controller
                 'resolution' => $validatedData['resolution'] ?? '720p',
             ];
 
+            // Add seed if provided
+            if (isset($validatedData['seed']) && $validatedData['seed'] !== null) {
+                $videoGenData['seed'] = $validatedData['seed'];
+            }
+
+            // Add audio fields if provided
+            if (isset($validatedData['add_audio']) && $validatedData['add_audio'] === 'true') {
+                $videoGenData['add_audio'] = true;
+                if (!empty($validatedData['audio_prompt'])) {
+                    $videoGenData['audio_prompt'] = $validatedData['audio_prompt'];
+                }
+            }
+
             // Add image_url for image-to-video
             if ($inputImageUrl) {
                 $videoGenData['image_url'] = $inputImageUrl;
@@ -202,7 +215,12 @@ class VideoGenerationController extends Controller
                     $pollResponse = $this->videoGenApiService->pollGenerationStatus($response['generation_id'], 60, 5);
                     
                     if (isset($pollResponse['timeout']) && $pollResponse['timeout']) {
-                        // Timeout reached - return with task_id for later checking
+                        // Timeout reached - update status to processing and return with task_id for later checking
+                        $generate->update([
+                            'status' => 'processing',
+                            'api_response' => json_encode($pollResponse)
+                        ]);
+                        
                         return response()->json([
                             'success' => true,
                             'message' => 'Video generation is processing. Please check back later.',
@@ -484,8 +502,8 @@ class VideoGenerationController extends Controller
                         if ($newStatus !== $generate->status) {
                             $updateData = ['status' => $newStatus];
                             
-                            if ($newStatus === 'completed' && isset($apiStatus['result_url'])) {
-                                $updateData['result_url'] = $apiStatus['result_url'];
+                            if ($newStatus === 'completed' && isset($apiStatus['video_url'])) {
+                                $updateData['result_url'] = $apiStatus['video_url'];
                                 $updateData['completed_at'] = isset($apiStatus['completed_at']) 
                                     ? $apiStatus['completed_at'] 
                                     : now();
@@ -638,7 +656,7 @@ class VideoGenerationController extends Controller
     }
 
     /**
-     * Upload input image for image-to-video
+     * Upload input image to S3 (forced, no fallback to local storage)
      */
     private function uploadInputImage($file)
     {
@@ -657,8 +675,7 @@ class VideoGenerationController extends Controller
             
             // Check if S3 is properly configured
             if (empty($s3Config['key']) || empty($s3Config['secret'])) {
-                Log::warning('AWS S3 credentials not configured, falling back to local storage');
-                return $this->uploadInputImageLocal($file);
+                throw new \Exception('AWS S3 credentials not configured. S3 upload is required for video generation.');
             }
             
             // Generate unique filename with timestamp and random string
@@ -667,16 +684,16 @@ class VideoGenerationController extends Controller
             Log::info('Generated S3 filename', ['directory' => dirname($filename), 'filename' => basename($filename)]);
             
             try {
-                // Try to store file in S3 with directory structure
+                // Try to store file in S3 with directory structure (without ACL/visibility)
                 $path = Storage::disk('s3')->putFileAs(
                     dirname($filename), // directory
                     $file, // file
-                    basename($filename), // filename
-                    'public' // visibility
+                    basename($filename) // filename
+                    // Removed 'public' visibility parameter as bucket doesn't support ACLs
                 );
                 
                 if (!$path) {
-                    throw new \Exception('Failed to store file in S3');
+                    throw new \Exception('Failed to store file in S3 directory');
                 }
                 
                 $s3Url = Storage::disk('s3')->url($filename);
@@ -692,14 +709,12 @@ class VideoGenerationController extends Controller
                 $path = Storage::disk('s3')->putFileAs(
                     '', // root directory
                     $file, // file
-                    $fallbackFilename, // filename
-                    'public' // visibility
+                    $fallbackFilename // filename
+                    // Removed 'public' visibility parameter as bucket doesn't support ACLs
                 );
                 
                 if (!$path) {
-                    // If root upload also fails, fall back to local storage
-                    Log::warning('Failed to upload to S3 root, falling back to local storage');
-                    return $this->uploadInputImageLocal($file);
+                    throw new \Exception('Failed to upload to S3 root directory. S3 upload is required for video generation.');
                 }
                 
                 $s3Url = Storage::disk('s3')->url($fallbackFilename);
@@ -716,15 +731,15 @@ class VideoGenerationController extends Controller
             return $s3Url;
             
         } catch (\Exception $e) {
-            Log::error('Image Upload Error: ' . $e->getMessage(), [
+            Log::error('S3 Upload Error (FORCED): ' . $e->getMessage(), [
                 'file_name' => $file->getClientOriginalName(),
                 'file_size' => $file->getSize(),
                 'error' => $e->getMessage(),
                 'error_class' => get_class($e)
             ]);
             
-            // Fall back to local storage
-            return $this->uploadInputImageLocal($file);
+            // No fallback - throw error to force S3 usage
+            throw new \Exception('Failed to upload image to S3: ' . $e->getMessage() . '. S3 upload is required for video generation.');
         }
     }
 
@@ -843,6 +858,31 @@ class VideoGenerationController extends Controller
             return response()->json([
                 'error' => 'Upload failed: ' . $e->getMessage()
             ], 500);
+        }
+    }
+
+    /**
+     * Map API status to local status
+     * 
+     * @param string $apiStatus
+     * @return string
+     */
+    private function mapApiStatusToLocal(string $apiStatus): string
+    {
+        switch (strtolower($apiStatus)) {
+            case 'completed':
+                return 'completed';
+            case 'failed':
+            case 'error':
+                return 'failed';
+            case 'processing':
+            case 'pending':
+            case 'queued':
+            case 'in_progress':
+                return 'processing';
+            default:
+                Log::warning('Unknown API status received', ['status' => $apiStatus]);
+                return 'processing'; // Default to processing for unknown statuses
         }
     }
 }

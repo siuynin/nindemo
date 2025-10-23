@@ -329,6 +329,10 @@ const VideoGeneration: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
+      // Debug: Check if we have any processing videos
+      const processingVideos = generations.filter(gen => gen.status === 'processing' || gen.status === 'pending');
+      console.log('Processing videos found:', processingVideos.length, processingVideos.map(v => ({ id: v.id, status: v.status })));
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/check-processing-status`, {
         method: 'GET',
         headers: {
@@ -338,6 +342,7 @@ const VideoGeneration: React.FC = () => {
       });
 
       if (!response.ok) {
+        console.error('Check processing status failed:', response.status, response.statusText);
         if (response.status === 401) {
           localStorage.removeItem('auth_token');
           setShowAuthModal(true);
@@ -346,12 +351,16 @@ const VideoGeneration: React.FC = () => {
       }
 
       const data = await response.json();
+      console.log('Check processing status response:', data);
       
-      if (data.success && data.updated_videos.length > 0) {
+      if (data.success && data.updated_videos && data.updated_videos.length > 0) {
+        console.log('Updated videos received:', data.updated_videos);
+        
         // Update generations with new status
         setGenerations(prev => prev.map(gen => {
           const updatedVideo = data.updated_videos.find((video: any) => video.id.toString() === gen.id);
           if (updatedVideo) {
+            console.log(`Updating video ${gen.id} from ${gen.status} to ${updatedVideo.status}`);
             return {
               ...gen,
               status: updatedVideo.status,
@@ -369,6 +378,8 @@ const VideoGeneration: React.FC = () => {
             setAlert({ type: 'error', message: `Video "${video.prompt.substring(0, 30)}..." tạo thất bại: ${video.error_message || 'Lỗi không xác định'}` });
           }
         });
+      } else {
+        console.log('No updated videos or request failed');
       }
 
     } catch (error) {
@@ -389,19 +400,31 @@ const VideoGeneration: React.FC = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // Only start auto-refresh if we have processing videos
+    const hasProcessingVideos = generations.some(gen => gen.status === 'processing' || gen.status === 'pending');
+    console.log('Auto-refresh effect: hasProcessingVideos =', hasProcessingVideos, 'generations count =', generations.length);
+
+    if (!hasProcessingVideos) {
+      console.log('No processing videos, skipping auto-refresh setup');
+      return;
+    }
+
     // Check immediately when component mounts
+    console.log('Starting auto-refresh for processing videos');
     checkVideoProcessingStatus();
 
     // Set up interval to check every 5 seconds
     const interval = setInterval(() => {
+      console.log('Auto-refresh interval triggered');
       checkVideoProcessingStatus();
     }, 5000);
 
     // Cleanup interval on unmount or when user logs out
     return () => {
+      console.log('Cleaning up auto-refresh interval');
       clearInterval(interval);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, generations]); // Add generations as dependency
 
   const handleGenerate = async () => {
     if (!isAuthenticated) {
@@ -530,7 +553,7 @@ const VideoGeneration: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
           {/* Generation Form */}
           <div className="lg:col-span-2">
             <Card className="p-6">
@@ -577,6 +600,8 @@ const VideoGeneration: React.FC = () => {
                     Ảnh đầu vào
                   </label>
                   
+                  
+                  
                   {!inputImagePreview ? (
                     <div
                       onClick={() => fileInputRef.current?.click()}
@@ -607,7 +632,24 @@ const VideoGeneration: React.FC = () => {
                       </button>
                     </div>
                   )}
-                  
+                  {/* Warning note for Sora 2 model */}
+                  {selectedModel === 'sora-2' && (
+                    <div className="mb-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <div className="flex items-start">
+                        <svg className="w-5 h-5 text-amber-500 mt-0.5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <div>
+                          <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+                            Lưu ý về Sora 2
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                            Sora 2 hiện tại không hỗ trợ tạo video từ ảnh có hình người thật. Vui lòng sử dụng ảnh phong cảnh, vật thể hoặc chọn model khác.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -722,7 +764,7 @@ const VideoGeneration: React.FC = () => {
           </div>
 
           {/* Results Column */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-3">
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Video của bạn
@@ -740,7 +782,7 @@ const VideoGeneration: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {generations.map((generation) => (
                     <div key={generation.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
@@ -759,13 +801,17 @@ const VideoGeneration: React.FC = () => {
                         </span>
                       </div>
                       
-                      {generation.inputImageUrl && (
-                        <img
-                          src={generation.inputImageUrl}
-                          alt="Ảnh đầu vào"
-                          className="w-full h-24 object-cover rounded mb-2"
-                        />
-                      )}
+                      {/* Show video result if available, otherwise show input image */}
+                      {generation.videoUrl && (
+                        <div className="mb-3">
+                          <video
+                            src={generation.videoUrl}
+                            controls
+                            className="w-full h-32 object-cover rounded"
+                            poster={generation.inputImageUrl}
+                          />
+                        </div>
+                      ) }
                        
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed line-clamp-2">
                         {generation.prompt}
@@ -778,29 +824,21 @@ const VideoGeneration: React.FC = () => {
                       </div>
                       
                       {generation.videoUrl && (
-                        <div>
-                          <video
-                            src={generation.videoUrl}
-                            controls
-                            className="w-full mt-2 rounded"
-                          />
-                          <div className="mt-2 flex justify-end">
-                             
-                            <button
-                              onClick={() => {
-                                // Force download video instead of opening in new tab
-                                const link = document.createElement('a');
-                                link.href = generation.videoUrl;
-                                link.download = `video-${generation.id}.mp4`;
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                              }}
-                              className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
-                            >
-                              Tải xuống
-                            </button>
-                          </div>
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            onClick={() => {
+                              // Force download video instead of opening in new tab
+                              const link = document.createElement('a');
+                              link.href = generation.videoUrl;
+                              link.download = `video-${generation.id}.mp4`;
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="px-3 py-1 text-xs bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
+                          >
+                            Tải xuống
+                          </button>
                         </div>
                       )}
                     </div>
@@ -813,9 +851,10 @@ const VideoGeneration: React.FC = () => {
       </div>
 
       {/* Auth Modal */}
-      {showAuthModal && (
-        <AuthModal onClose={() => setShowAuthModal(false)} />
-      )}
+      <AuthModal 
+        isOpen={showAuthModal} 
+        onClose={() => setShowAuthModal(false)} 
+      />
     </div>
   );
 };
