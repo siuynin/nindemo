@@ -48,95 +48,167 @@ class RunningHubImageService
     /**
      * Generate image-to-image using ImageGen
      */
-    public function generateImageToImage(string $prompt, string $image, string $ratio): array
+    public function generateImageToImage(string $prompt, array $images, string $ratio): array
     {
         try {
-            // Handle different image input formats
-            $imageUrl = $image;
+            // Process all images and convert them to appropriate format
+            $processedImages = [];
             
-            // Check if image is base64 encoded
-            if (str_starts_with($image, 'data:image/')) {
-                // Base64 image - upload to S3 first, then convert back to base64 for RunningHub
-                Log::info('Converting base64 image to S3 URL for RunningHub', ['image_prefix' => substr($image, 0, 50)]);
-                $s3Url = $this->imageStorageService->uploadImageFromBase64($image, 'runninghub-images');
-                Log::info('Base64 image uploaded to S3 successfully', ['s3_url' => $s3Url]);
+            foreach ($images as $index => $image) {
+                $imageUrl = $image;
                 
-                // Convert S3 URL back to base64 for RunningHub to avoid SSL issues
-                try {
-                    $imageUrl = $this->convertS3UrlToBase64($s3Url);
-                    Log::info('S3 URL converted to base64 for RunningHub compatibility');
-                } catch (\Exception $e) {
-                    Log::warning('Failed to convert S3 URL to base64, using S3 URL directly', ['error' => $e->getMessage()]);
+                // Check if image is base64 encoded
+                if (str_starts_with($image, 'data:image/')) {
+                    // Base64 image - upload to S3 first
+                    Log::info('Converting base64 image to S3 URL for RunningHub', ['image_index' => $index, 'image_prefix' => substr($image, 0, 50)]);
+                    $s3Url = $this->imageStorageService->uploadImageFromBase64($image, 'runninghub-images');
+                    Log::info('Base64 image uploaded to S3 successfully', ['image_index' => $index, 's3_url' => $s3Url]);
+                    
+                    // Use S3 URL directly instead of converting to base64
                     $imageUrl = $s3Url;
-                }
-            } elseif (str_starts_with($image, 'http')) {
-                // HTTP URL - convert to base64 to avoid RunningHub SSL connection issues
-                if (str_contains($image, 's3.amazonaws.com') || str_contains($image, 'amazonaws.com')) {
-                    Log::info('Converting S3 URL to base64 for RunningHub compatibility', ['s3_url' => $image]);
-                    try {
-                        $imageUrl = $this->convertS3UrlToBase64($image);
-                        Log::info('S3 URL converted to base64 successfully');
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to convert S3 URL to base64, uploading to new S3 location', ['error' => $e->getMessage()]);
+                    Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index, 's3_url' => $s3Url]);
+                } elseif (str_starts_with($image, 'http')) {
+                    // HTTP URL - use S3 URLs directly
+                    if (str_contains($image, 's3.amazonaws.com') || str_contains($image, 'amazonaws.com')) {
+                        Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index, 's3_url' => $image]);
+                        $imageUrl = $image;
+                    } else {
+                        // Non-S3 HTTP URL - upload to S3 first
+                        Log::info('Uploading HTTP image to S3 before sending to RunningHub', ['image_index' => $index, 'original_image' => $image]);
                         try {
-                            $newS3Url = $this->imageStorageService->uploadImageFromUrl($image, 'runninghub-images');
-                            $imageUrl = $this->convertS3UrlToBase64($newS3Url);
-                            Log::info('Image re-uploaded to S3 and converted to base64', ['new_s3_url' => $newS3Url]);
-                        } catch (\Exception $e2) {
-                            Log::error('All fallback methods failed, using original URL', ['error' => $e2->getMessage()]);
-                            $imageUrl = $image;
+                            $s3Url = $this->imageStorageService->uploadImageFromUrl($image, 'runninghub-images');
+                            Log::info('HTTP image uploaded to S3 successfully', ['image_index' => $index, 's3_url' => $s3Url]);
+                            $imageUrl = $s3Url;
+                            Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index]);
+                        } catch (\Exception $e) {
+                            Log::warning('Failed to upload to S3, using original URL', ['image_index' => $index, 'error' => $e->getMessage(), 'original_url' => $image]);
+                            $imageUrl = $image; // Fallback to original URL
                         }
                     }
                 } else {
-                    // Non-S3 HTTP URL - upload to S3 first, then convert to base64
-                    Log::info('Uploading HTTP image to S3 before sending to RunningHub', ['original_image' => $image]);
-                    try {
-                        $s3Url = $this->imageStorageService->uploadImageFromUrl($image, 'runninghub-images');
-                        Log::info('HTTP image uploaded to S3 successfully', ['s3_url' => $s3Url]);
-                        $imageUrl = $this->convertS3UrlToBase64($s3Url);
-                        Log::info('S3 URL converted to base64 for RunningHub');
-                    } catch (\Exception $e) {
-                        Log::warning('Failed to upload to S3 or convert to base64, using original URL', ['error' => $e->getMessage(), 'original_url' => $image]);
-                        $imageUrl = $image; // Fallback to original URL
-                    }
+                    // Assume it's a direct URL or path
+                    Log::info('Using image URL directly', ['image_index' => $index, 'image_url' => $image]);
+                    $imageUrl = $image;
                 }
-            } else {
-                // Assume it's a direct URL or path
-                Log::info('Using image URL directly', ['image_url' => $image]);
-                $imageUrl = $image;
+                
+                $processedImages[] = $imageUrl;
             }
 
+            // Build nodeInfoList based on number of images
+            $nodeInfoList = [];
+            $imageCount = min(count($processedImages), 3);
+            
+            // Add image nodes with specific nodeIds based on image count
+            if ($imageCount == 1) {
+                // 1 image: keep original nodeId
+                $nodeInfoList[] = [
+                    'nodeId' => '2',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[0],
+                    'description' => 'Upload image 1'
+                ];
+                
+                // Add prompt node for 1 image
+                $nodeInfoList[] = [
+                    'nodeId' => '16',
+                    'fieldName' => 'prompt',
+                    'fieldValue' => $prompt,
+                    'description' => 'Input text'
+                ];
+                
+                // Add aspect ratio node for 1 image
+                $nodeInfoList[] = [
+                    'nodeId' => '1',
+                    'fieldName' => 'aspectRatio',
+                    'fieldData' => '[[\"auto\", \"1:1\", \"2:3\", \"3:2\", \"3:4\", \"4:3\", \"4:5\", \"5:4\", \"9:16\", \"16:9\", \"21:9\"], {\"default\": \"auto\"}]',
+                    'fieldValue' => $ratio,
+                    'description' => null
+                ];
+                
+            } elseif ($imageCount == 2) {
+                // 2 images: nodeId 22, 23 for images and 26 for text
+                $nodeInfoList[] = [
+                    'nodeId' => '22',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[0],
+                    'description' => 'image'
+                ];
+                
+                $nodeInfoList[] = [
+                    'nodeId' => '23',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[1],
+                    'description' => 'image'
+                ];
+                
+                // Add text node for 2 images (note: fieldName is 'text', not 'prompt')
+                $nodeInfoList[] = [
+                    'nodeId' => '26',
+                    'fieldName' => 'text',
+                    'fieldValue' => $prompt . 'Exactly ratio ' .$ratio,
+                    'description' => 'text'
+                ];
+                
+            } elseif ($imageCount == 3) {
+                // 3 images: nodeId 12, 31, 32 for images and 33 for prompt
+                $nodeInfoList[] = [
+                    'nodeId' => '12',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[0],
+                    'description' => 'image'
+                ];
+                
+                $nodeInfoList[] = [
+                    'nodeId' => '31',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[1],
+                    'description' => 'image'
+                ];
+                
+                $nodeInfoList[] = [
+                    'nodeId' => '32',
+                    'fieldName' => 'image',
+                    'fieldValue' => $processedImages[2],
+                    'description' => 'image'
+                ];
+                
+                // Add prompt node for 3 images
+                $nodeInfoList[] = [
+                    'nodeId' => '33',
+                    'fieldName' => 'prompt',
+                    'fieldValue' => $prompt  . 'Exactly ratio ' .$ratio,
+                    'description' => 'prompt'
+                ];
+            }
+
+            // Set webappId based on number of images
+            if ($imageCount == 1) {
+                $webappId = $this->webappId ?? '1960555138882691073'; // Default for 1 image
+            } elseif ($imageCount == 2) {
+                $webappId = '1960486665330618369'; // WebappId for 2 images
+            } elseif ($imageCount == 3) {
+                $webappId = '1979049722285559810'; // WebappId for 3 images
+            } else {
+                $webappId = $this->webappId ?? '1960555138882691073'; // Default fallback
+            }
+
+            Log::info('WebappId selected based on image count', [
+                'imageCount' => $imageCount,
+                'selectedWebappId' => $webappId
+            ]);
+
             $requestData = [
-                'webappId' => $this->webappId ?? '1960555138882691073',
+                'webappId' => $webappId,
                 'apiKey' => $this->apiKey,
-                'nodeInfoList' => [
-                    [
-                        'nodeId' => '2',
-                        'fieldName' => 'image',
-                        'fieldValue' => $imageUrl,
-                        'description' => 'Upload image 1'
-                    ],
-                    [
-                        'nodeId' => '16',
-                        'fieldName' => 'prompt',
-                        'fieldValue' => $prompt,
-                        'description' => 'Input text'
-                    ],
-                    [
-                        'nodeId' => '1',
-                        'fieldName' => 'aspectRatio',
-                        'fieldData' => '[[\"auto\", \"1:1\", \"2:3\", \"3:2\", \"3:4\", \"4:3\", \"4:5\", \"5:4\", \"9:16\", \"16:9\", \"21:9\"], {\"default\": \"auto\"}]',
-                        'fieldValue' => $ratio,
-                        'description' => null
-                    ]
-                ]
+                'nodeInfoList' => $nodeInfoList
             ];
 
             Log::info('Calling RunningHub image-to-image API', [
-                'webappId' => $this->webappId,
+                'webappId' => $webappId,
                 'ratio' => $ratio,
                 'prompt_length' => strlen($prompt),
-                'image_url' => $imageUrl
+                'images_count' => count($processedImages),
+                'processed_images' => array_map(function($img) { return substr($img, 0, 50) . '...'; }, $processedImages)
             ]);
 
             $response = Http::withHeaders([

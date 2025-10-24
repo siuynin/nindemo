@@ -43,7 +43,7 @@ interface GeneratedImage {
 const ImageCreator: React.FC = () => {
   const { actualTheme } = useTheme();
   const { t } = useLanguage();
-  const { refreshUser } = useAuth();
+  const { refreshUser, isAuthenticated, user } = useAuth();
   const [models, setModels] = useState<AIModel[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -52,8 +52,8 @@ const ImageCreator: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
   const [showImagePopup, setShowImagePopup] = useState(false);
   const [activeTab, setActiveTab] = useState<'text-to-image' | 'image-to-image'>('text-to-image');
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
-  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [uploadedImageFiles, setUploadedImageFiles] = useState<File[]>([]);
   const [formData, setFormData] = useState({
     prompt: '',
     model: '',
@@ -182,7 +182,6 @@ const ImageCreator: React.FC = () => {
 
   useEffect(() => {
     fetchModels();
-    fetchGeneratedImages(); // Tải ảnh từ database khi component mount
     
     // Xử lý URL parameters để lấy prompt từ Document page
     const urlParams = new URLSearchParams(window.location.search);
@@ -191,6 +190,11 @@ const ImageCreator: React.FC = () => {
       setFormData(prev => ({ ...prev, prompt: promptFromUrl }));
     }
   }, []);
+
+  // Separate useEffect for fetching images when authentication state changes
+  useEffect(() => {
+    fetchGeneratedImages(); // Tải ảnh từ database khi authentication state thay đổi
+  }, [isAuthenticated, user]);
 
   // Set up AIService toast callback
   useEffect(() => {
@@ -234,13 +238,27 @@ const ImageCreator: React.FC = () => {
   // Tải ảnh đã tạo từ database
   const fetchGeneratedImages = async () => {
     try {
+      console.log('🔍 Fetching generated images...');
+      console.log('🔐 Is authenticated:', isAuthenticated);
+      console.log('👤 Current user:', user);
+      
+      // Check if user is authenticated before making API call
+      if (!isAuthenticated || !user) {
+        console.log('❌ User not authenticated, skipping fetch');
+        setGeneratedImages([]);
+        return;
+      }
+      
       const response = await generateService.getGenerates({
         type: 'image',
         per_page: 24, // Giới hạn tối đa 24 ảnh
         page: 1
       });
       
+      console.log('📡 API Response:', response);
+      
       if (response.success && response.data) {
+        console.log('✅ Response successful, processing data...', response.data.length, 'items');
         const images: GeneratedImage[] = response.data.flatMap(generate => {
           let imageData: Array<{seed: number, url: string}> = [];
           let contentData = null;
@@ -318,23 +336,32 @@ const ImageCreator: React.FC = () => {
               }];
             }
             
-            // Nếu không có task_id và không có imageData, có thể là ảnh failed
-            return [{
-              id: `failed-${generate.id}`,
-              url: '',
-              prompt: contentData?.prompt || generate.name || '',
-              model: contentData?.model || 'Unknown',
-              width: contentData?.width || 1024,
-              height: contentData?.height || 1024,
-              createdAt: new Date(generate.created_at),
-              generateId: generate.id,
-              resultData: filePatchData,
-              status: 'failed' as const
-            }];
+            // Kiểm tra trạng thái từ database để xác định failed
+            if (generate.status === 'failed') {
+              return [{
+                id: `failed-${generate.id}`,
+                url: '',
+                prompt: contentData?.prompt || generate.name || '',
+                model: contentData?.model || 'Unknown',
+                width: contentData?.width || 1024,
+                height: contentData?.height || 1024,
+                createdAt: new Date(generate.created_at),
+                generateId: generate.id,
+                resultData: filePatchData,
+                status: 'failed' as const
+              }];
+            }
+            
+            // Nếu không có task_id, imageData và không phải failed, bỏ qua
+            return [];
           }
         }).filter(img => img !== null); // Lọc ra các item null
         
+        console.log('🖼️ Processed images:', images.length, 'images');
+        console.log('📋 Images data:', images);
         setGeneratedImages(images);
+      } else {
+        console.log('❌ API response failed or no data:', response);
       }
     } catch (error) {
       console.error('Error fetching generated images:', error);
@@ -500,18 +527,30 @@ const ImageCreator: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Kiểm tra số lượng ảnh tối đa
+    if (uploadedImages.length >= 3) {
+      showToast('error', 'Maximum 3 images allowed');
+      return;
+    }
+
     try {
       // Validate image file
       imageToImageService.validateImageFile(file);
       
       // Convert to base64
       const base64Image = await imageToImageService.fileToBase64(file);
-      setUploadedImage(base64Image);
-      setUploadedImageFile(file);
+      setUploadedImages(prev => [...prev, base64Image]);
+      setUploadedImageFiles(prev => [...prev, file]);
       showToast('success', 'Image uploaded successfully!');
     } catch (error) {
       showToast('error', error instanceof Error ? error.message : 'Failed to upload image');
     }
+  };
+
+  // Hàm xóa ảnh
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
+    setUploadedImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const generateImageToImage = async (e: React.FormEvent) => {
@@ -522,17 +561,18 @@ const ImageCreator: React.FC = () => {
       return;
     }
 
-    if (!uploadedImage) {
-      showToast('error', 'Please upload an image');
+    if (uploadedImages.length === 0) {
+      showToast('error', 'Please upload at least one image');
       return;
     }
 
     setLoading(true);
     try {
-      // Create request for image-to-image
+      // Create request for image-to-image with multiple images
       const request: ImageToImageRequest = {
         prompt: formData.prompt,
-        image: uploadedImage,
+        image: uploadedImages[0], // Sử dụng ảnh đầu tiên làm primary image
+        images: uploadedImages, // Gửi tất cả ảnh
         ratio: selectedAspectRatio.ratio,
         name: `Image-to-Image: ${formData.prompt.substring(0, 30)}${formData.prompt.length > 30 ? '...' : ''}`,
         share: false
@@ -843,77 +883,58 @@ const ImageCreator: React.FC = () => {
       // Show loading toast
       showToast('info', 'Loading image for editing...');
       
-      // For S3 URLs, use them directly without conversion to base64
-      // The backend will handle URL validation and processing
+      // Always convert S3 URLs to base64 for editing
       let imageData = image.url;
       
-      // Only convert to base64 if it's already a data URL or if URL loading fails
+      // Convert to base64 if it's not already a data URL
       if (!image.url.startsWith('data:image/')) {
-        // Check if it's an S3 URL - if so, use it directly
-        if (image.url.includes('amazonaws.com') || image.url.includes('s3.')) {
-          // Use S3 URL directly - backend will handle it
-          imageData = image.url;
-        } else {
-          // For non-S3 URLs, try to convert to base64 as fallback
-          try {
-            const response = await fetch(image.url, {
-              mode: 'cors',
-              credentials: 'omit'
+        try {
+          const response = await fetch(image.url, {
+            mode: 'cors',
+            credentials: 'omit'
+          });
+          
+          if (response.ok) {
+            const blob = await response.blob();
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
             });
-            
-            if (response.ok) {
-              const blob = await response.blob();
-              const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result as string);
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-              imageData = base64;
-            } else {
-              // If fetch fails, still try to use the URL directly
-              console.warn('Failed to fetch image, using URL directly:', response.status);
-              imageData = image.url;
-            }
-          } catch (fetchError) {
-            // If conversion fails, use URL directly and let backend handle it
-            console.warn('Failed to convert image to base64, using URL directly:', fetchError);
-            imageData = image.url;
+            imageData = base64;
+            console.log('✅ Successfully load image for editing');
+          } else {
+            throw new Error(`Failed to fetch image: ${response.status}`);
           }
+        } catch (fetchError) {
+          console.error('❌ Failed to convert image :', fetchError);
+          showToast('error', 'Failed to load image for editing. Please try again.');
+          return;
         }
       }
       
       // Set the uploaded image
-      setUploadedImage(imageData);
+      setUploadedImages([imageData]);
       
-      // Create a File object for uploadedImageFile to enable the button
-      // This is needed because the button disabled condition checks for uploadedImageFile
+      // Create a File object for uploadedImageFiles to enable the button
+      // This is needed because the button disabled condition checks for uploadedImageFiles
       try {
-        let fileBlob: Blob;
-        
-        if (imageData.startsWith('data:image/')) {
-          // Convert base64 to blob
-          const response = await fetch(imageData);
-          fileBlob = await response.blob();
-        } else {
-          // For URL, fetch the image
-          const response = await fetch(imageData, { mode: 'cors' });
-          fileBlob = await response.blob();
-        }
+        // Convert base64 to blob
+        const response = await fetch(imageData);
+        const fileBlob = await response.blob();
         
         // Create File object from blob
         const file = new File([fileBlob], `edited-image-${Date.now()}.jpg`, { 
           type: fileBlob.type || 'image/jpeg' 
         });
-        setUploadedImageFile(file);
+        setUploadedImageFiles([file]);
+        
+        showToast('success', 'Image loaded successfully for editing!');
       } catch (error) {
-        console.warn('Could not create File object, using placeholder:', error);
-        // Create a placeholder File object to enable the button
-        const placeholderBlob = new Blob([''], { type: 'image/jpeg' });
-        const placeholderFile = new File([placeholderBlob], `placeholder-${Date.now()}.jpg`, { 
-          type: 'image/jpeg' 
-        });
-        setUploadedImageFile(placeholderFile);
+        console.error('Could not create File object:', error);
+        showToast('error', 'Failed to prepare image for editing. Please try again.');
+        return;
       }
       
       // Set the prompt from the original image
@@ -948,14 +969,37 @@ const ImageCreator: React.FC = () => {
     }
   }, [aspectRatios, showToast]);
 
+  // Handle delete image
+  const handleDeleteImage = useCallback(async (image: GeneratedImage) => {
+    if (!image.generateId) {
+      showToast('error', 'Cannot delete image: Invalid image ID');
+      return;
+    }
+
+    const confirmDelete = window.confirm('Are you sure you want to delete this image? This action cannot be undone.');
+    if (!confirmDelete) return;
+
+    try {
+      await generateService.deleteGenerate(image.generateId);
+      showToast('success', 'Image deleted successfully!');
+      
+      // Refresh the images list
+      fetchGeneratedImages();
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      showToast('error', 'Failed to delete image. Please try again.');
+    }
+  }, [showToast, fetchGeneratedImages]);
+
   // Memoized ImageGallery component để tránh re-render khi form state thay đổi
   const ImageGallery: React.FC<{
     images: GeneratedImage[];
     isDark: boolean;
     onImageClick: (image: GeneratedImage) => void;
     onEditImage: (image: GeneratedImage) => void;
+    onDeleteImage: (image: GeneratedImage) => void;
     t: any;
-  }> = React.memo(({ images, isDark, onImageClick, onEditImage, t }) => {
+  }> = React.memo(({ images, isDark, onImageClick, onEditImage, onDeleteImage, t }) => {
     if (images.length === 0) {
       return (
         <div className="text-center py-16">
@@ -1054,6 +1098,19 @@ const ImageCreator: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
+                    {/* Delete button (trash icon) */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteImage(image);
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white p-2 rounded-full transition-colors shadow-lg"
+                      title="Delete Image"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
               )}
@@ -1147,43 +1204,62 @@ const ImageCreator: React.FC = () => {
 
                 {/* Image Upload for Image-to-Image */}
                 {activeTab === 'image-to-image' && (
-                  <div className="space-y-2">
+                  <div className="space-y-4">
                     <label className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-400">
-                      Upload Image
+                      Upload Images (Max 3)
                     </label>
-                    <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        id="image-upload"
-                      />
-                      <label
-                        htmlFor="image-upload"
-                        className="cursor-pointer flex flex-col items-center space-y-2"
-                      >
-                        {uploadedImage ? (
-                          <img
-                            src={uploadedImage}
-                            alt="Uploaded"
-                            className="w-32 h-32 object-cover rounded-lg"
-                          />
-                        ) : (
-                          <>
+                    
+                    {/* Display uploaded images */}
+                    {uploadedImages.length > 0 && (
+                      <div className="grid grid-cols-3 gap-4 mb-4">
+                        {uploadedImages.map((image, index) => (
+                          <div key={index} className="relative">
+                            <img
+                              src={image}
+                              alt={`Uploaded ${index + 1}`}
+                              className="w-full h-24 object-cover rounded-lg"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeImage(index)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Upload button */}
+                    {uploadedImages.length < 3 && (
+                      <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg px-6 py-3 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          id="image-upload"
+                        />
+                        <label
+                          htmlFor="image-upload"
+                          className="cursor-pointer flex items-center space-y-2"
+                        > <div className="flex flex-col items-center space-y-2">
                             <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <span className="text-sm text-gray-600 dark:text-gray-400">
-                              Click to upload an image
+                            <div>
+                            <span className="text-sm text-gray-600 dark:text-gray-400 block">
+                              {uploadedImages.length === 0 ? 'Click to upload images' : 'Add another image'}
                             </span>
                             <span className="text-xs text-gray-500 dark:text-gray-500">
-                              PNG, JPG, GIF up to 10MB
+                              PNG, JPG, GIF up to 10MB ({uploadedImages.length}/3)
                             </span>
-                          </>
-                        )}
-                      </label>
-                    </div>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1381,7 +1457,7 @@ const ImageCreator: React.FC = () => {
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={loading || !formData.prompt.trim() || !formData.model || (activeTab === 'image-to-image' && !uploadedImageFile)}
+                    disabled={loading || !formData.prompt.trim() || !formData.model || (activeTab === 'image-to-image' && uploadedImageFiles.length === 0)}
                     className="w-full h-11 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                     size="md"
                     startIcon={
@@ -1426,6 +1502,7 @@ const ImageCreator: React.FC = () => {
                 isDark={actualTheme === 'dark'}
                 onImageClick={openImagePopup}
                 onEditImage={handleEditImage}
+                onDeleteImage={handleDeleteImage}
                 t={t}
               />
             </Card>
@@ -1468,7 +1545,7 @@ const ImageCreator: React.FC = () => {
                     {model.name}
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    {model.platform} • {Math.floor(model.credit_price)} credits
+                     {Math.floor(model.credit_price)} credits
                   </p>
                   {model.short_description && (
                     <p className="text-xs text-gray-400 dark:text-gray-500 mt-2 line-clamp-3">

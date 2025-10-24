@@ -625,7 +625,9 @@ class ImageGenerationController extends Controller
             // Validate request
             $validatedData = $request->validate([
                 'prompt' => 'required|string|max:4000',
-                'image' => 'required|string', // Base64 encoded image or image URL
+                'image' => 'required|string', // Base64 encoded image or image URL (main image)
+                'images' => 'nullable|array|max:3', // Array of additional images
+                'images.*' => 'string', // Each image should be a string (base64 or URL)
                 'ratio' => 'required|string|in:auto,1:1,2:3,3:2,3:4,4:3,4:5,5:4,9:16,16:9,21:9',
                 'name' => 'nullable|string|max:255',
                 'share' => 'nullable|boolean',
@@ -669,6 +671,12 @@ class ImageGenerationController extends Controller
             DB::beginTransaction();
 
             try {
+                // Prepare images array for storage
+                $allImages = [$validatedData['image']]; // Main image first
+                if (isset($validatedData['images']) && is_array($validatedData['images'])) {
+                    $allImages = array_merge($allImages, $validatedData['images']);
+                }
+
                 // Create Generate record
                 $generate = Generate::create([
                     'user_id' => $user->id,
@@ -676,6 +684,7 @@ class ImageGenerationController extends Controller
                     'content' => json_encode([
                         'prompt' => $validatedData['prompt'],
                         'image' => $validatedData['image'],
+                        'images' => $validatedData['images'] ?? [],
                         'ratio' => $validatedData['ratio'],
                         'model' => $modelSlug
                     ]),
@@ -713,7 +722,7 @@ class ImageGenerationController extends Controller
                 // Use the new RunningHubImageService
                 $result = $this->runningHubImageService->generateImageToImage(
                     $validatedData['prompt'],
-                    $validatedData['image'],
+                    $allImages, // Pass all images array instead of single image
                     $validatedData['ratio']
                 );
 
@@ -723,7 +732,7 @@ class ImageGenerationController extends Controller
                     $generate->update([
                         'status' => 'completed',
                         'result_url' => json_encode($result['images']),
-                        'file_patch' => json_encode(['runninghub_response' => $result['task_data'] ?? []])
+                        'file_patch' => json_encode($allImages) // Store all uploaded images
                     ]);
 
                     return response()->json([
@@ -741,11 +750,8 @@ class ImageGenerationController extends Controller
                     // Keep the generate record as 'processing' and return task info
                     $generate->update([
                         'status' => 'processing',
-                        'file_patch' => json_encode([
-                            'task_id' => $result['task_id'],
-                            'started_at' => now()->toISOString(),
-                            'timeout_occurred' => true
-                        ])
+                        'task_id' => $result['task_id'],
+                        'file_patch' => json_encode($allImages) // Store all uploaded images
                     ]);
 
                     return response()->json([
@@ -772,7 +778,7 @@ class ImageGenerationController extends Controller
                 // Update generate record with failure
                 $generate->update([
                     'status' => 'failed',
-                    'file_patch' => json_encode(['error' => $e->getMessage()])
+                    'completed_at' => now()->toISOString(), 
                 ]);
 
                 // Refund credits on failure
