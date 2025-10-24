@@ -43,6 +43,11 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
+  // Skip chrome-extension requests to avoid cache errors
+  if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then((response) => {

@@ -240,7 +240,7 @@ class UserCreditController extends Controller
     }
 
     /**
-     * Refund credits to user account
+     * Refund credits to user account (API endpoint)
      */
     public function refundCredits(Request $request)
     {
@@ -259,33 +259,62 @@ class UserCreditController extends Controller
 
         $user = $request->user();
         $amount = $request->input('amount');
+        $description = $request->input('description', 'Credits refunded');
         
-        // Create credit record for refund
-        $credit = UserCredit::create([
-            'user_id' => $user->id,
-            'total_credits' => $amount,
-            'used_credits' => 0,
-            'remaining_credits' => $amount,
-            'credit_type' => 'refund',
-            'expires_at' => now()->addYear(), // Default 1 year expiry
-            'notes' => $request->input('description', 'Credits refunded'),
-        ]);
+        $result = $this->refundCreditsInternal($user, $amount, $description);
+        
+        if ($result['success']) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Credits refunded successfully',
+                'data' => [
+                    'refunded_amount' => $amount,
+                    'remaining_credits' => $user->total_remaining_credits,
+                    'transaction_id' => $result['transaction_id']
+                ]
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => $result['message']
+            ], 500);
+        }
+    }
 
-        // Create transaction record
-        $transaction = $user->creditTransactions()->create([
-            'amount' => $amount,
-            'type' => 'refund',
-            'description' => $request->input('description', 'Credits refunded'),
-        ]);
+    /**
+     * Internal method to refund credits (for use by other controllers)
+     */
+    public function refundCreditsInternal(User $user, float $amount, string $description = 'Credits refunded')
+    {
+        try {
+            // Create credit record for refund
+            $credit = UserCredit::create([
+                'user_id' => $user->id,
+                'total_credits' => $amount,
+                'used_credits' => 0,
+                'remaining_credits' => $amount,
+                'credit_type' => 'refund',
+                'expires_at' => now()->addYear(), // Default 1 year expiry
+                'notes' => $description,
+            ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Credits refunded successfully',
-            'data' => [
-                'refunded_amount' => $amount,
-                'remaining_credits' => $user->total_remaining_credits,
+            // Create transaction record
+            $transaction = $user->creditTransactions()->create([
+                'amount' => $amount,
+                'type' => 'refund',
+                'description' => $description,
+            ]);
+
+            return [
+                'success' => true,
+                'credit_id' => $credit->id,
                 'transaction_id' => $transaction->id
-            ]
-        ]);
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to refund credits: ' . $e->getMessage()
+            ];
+        }
     }
 }

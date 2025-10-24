@@ -180,9 +180,9 @@ class ImageToImageService {
       throw new Error('Aspect ratio is required');
     }
 
-    // Validate base64 format
-    if (!request.image.startsWith('data:image/')) {
-      throw new Error('Invalid image format. Please upload a valid image.');
+    // Validate image format - accept both base64 and URLs
+    if (!request.image.startsWith('data:image/') && !request.image.startsWith('http')) {
+      throw new Error('Invalid image format. Please provide a valid image URL or base64 data.');
     }
   }
 }

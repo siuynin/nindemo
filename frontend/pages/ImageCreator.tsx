@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -37,6 +37,7 @@ interface GeneratedImage {
   createdAt: Date;
   generateId?: number; // Thêm ID từ bảng generates
   resultData?: any; // Dữ liệu từ result_url
+  status?: 'processing' | 'completed' | 'failed'; // Thêm trạng thái
 }
 
 const ImageCreator: React.FC = () => {
@@ -61,6 +62,9 @@ const ImageCreator: React.FC = () => {
     numberResults: 1,
     imageStyle: '' as string // Thêm field cho thể loại hình ảnh
   });
+
+  // Ref to track active polling tasks to prevent duplicates
+  const activePollingTasks = useRef<Set<string>>(new Set());
 
   // Hàm lấy aspect ratios phù hợp với model đã chọn
   const getAspectRatios = useCallback(() => {
@@ -278,20 +282,57 @@ const ImageCreator: React.FC = () => {
             }
           }
           
-          // Tạo một GeneratedImage cho mỗi object ảnh
-          return imageData.map((imageItem, index) => ({
-            id: `${generate.id}-${index}`,
-            url: imageItem.url,
-            seed: imageItem.seed,
-            prompt: contentData?.prompt || generate.name || '',
-            model: contentData?.model || 'Unknown',
-            width: contentData?.width || 1024,
-            height: contentData?.height || 1024,
-            createdAt: new Date(generate.created_at),
-            generateId: generate.id,
-            resultData: filePatchData
-          }));
-        }).filter(img => img.url); // Chỉ hiển thị ảnh có URL hợp lệ
+          // Nếu có imageData (ảnh đã hoàn thành), tạo GeneratedImage cho mỗi ảnh
+          if (imageData.length > 0) {
+            return imageData.map((imageItem, index) => ({
+              id: `${generate.id}-${index}`,
+              url: imageItem.url,
+              seed: imageItem.seed,
+              prompt: contentData?.prompt || generate.name || '',
+              model: contentData?.model || 'Unknown',
+              width: contentData?.width || 1024,
+              height: contentData?.height || 1024,
+              createdAt: new Date(generate.created_at),
+              generateId: generate.id,
+              resultData: filePatchData,
+              status: 'completed' as const
+            }));
+          } else {
+            // Nếu không có imageData, có thể là ảnh đang processing
+            // Kiểm tra xem có task_id trong file_patch không
+            const hasTaskId = filePatchData && filePatchData.task_id;
+            
+            if (hasTaskId) {
+              // Ảnh đang processing
+              return [{
+                id: `processing-${generate.id}`,
+                url: '', // Không có URL cho ảnh đang processing
+                prompt: contentData?.prompt || generate.name || '',
+                model: contentData?.model || 'Unknown',
+                width: contentData?.width || 1024,
+                height: contentData?.height || 1024,
+                createdAt: new Date(generate.created_at),
+                generateId: generate.id,
+                resultData: filePatchData,
+                status: 'processing' as const
+              }];
+            }
+            
+            // Nếu không có task_id và không có imageData, có thể là ảnh failed
+            return [{
+              id: `failed-${generate.id}`,
+              url: '',
+              prompt: contentData?.prompt || generate.name || '',
+              model: contentData?.model || 'Unknown',
+              width: contentData?.width || 1024,
+              height: contentData?.height || 1024,
+              createdAt: new Date(generate.created_at),
+              generateId: generate.id,
+              resultData: filePatchData,
+              status: 'failed' as const
+            }];
+          }
+        }).filter(img => img !== null); // Lọc ra các item null
         
         setGeneratedImages(images);
       }
@@ -311,6 +352,15 @@ const ImageCreator: React.FC = () => {
     const pollInterval = 30000; // 30 giây mỗi lần
     let attempts = 0;
 
+    // Prevent duplicate polling for the same task
+    const pollingKey = `${generateId}-${taskId}`;
+    if (activePollingTasks.current.has(pollingKey)) {
+      console.log('Polling already active for task:', pollingKey);
+      return;
+    }
+    
+    activePollingTasks.current.add(pollingKey);
+
     const pollTaskStatus = async () => {
       try {
         attempts++;
@@ -322,16 +372,35 @@ const ImageCreator: React.FC = () => {
           const { status } = response.data;
           
           if (status === 'completed') {
-            // Task completed - refresh images and show success
+            // Task completed - update the processing image to completed
+            setGeneratedImages(prev => prev.map(img => 
+              img.generateId === generateId && img.status === 'processing'
+                ? { ...img, status: 'completed' as const }
+                : img
+            ));
+            
+            // Refresh images to get the actual image URLs
             await fetchGeneratedImages();
             await refreshUser();
             showToast('success', 'Ảnh đã được tạo thành công và đã được lưu vào thư viện!');
+            
+            // Remove from active polling tasks
+            activePollingTasks.current.delete(pollingKey);
             return; // Stop polling
             
           } else if (status === 'failed') {
-            // Task failed - show error and potentially refund credits
+            // Task failed - update the processing image to failed
+            setGeneratedImages(prev => prev.map(img => 
+              img.generateId === generateId && img.status === 'processing'
+                ? { ...img, status: 'failed' as const }
+                : img
+            ));
+            
             showToast('error', 'Tạo ảnh thất bại. Vui lòng thử lại.');
             await refreshUser(); // Refresh to show refunded credits if any
+            
+            // Remove from active polling tasks
+            activePollingTasks.current.delete(pollingKey);
             return; // Stop polling
             
           } else if (status === 'processing' && attempts < maxAttempts) {
@@ -343,7 +412,17 @@ const ImageCreator: React.FC = () => {
         
         // If we reach here, either max attempts reached or unknown status
         if (attempts >= maxAttempts) {
+          // Update processing image to failed after timeout
+          setGeneratedImages(prev => prev.map(img => 
+            img.generateId === generateId && img.status === 'processing'
+              ? { ...img, status: 'failed' as const }
+              : img
+          ));
+          
           showToast('warning', 'Việc tạo ảnh đang mất nhiều thời gian hơn dự kiến. Sẽ cập nhật kết qủa sau.');
+          
+          // Remove from active polling tasks
+          activePollingTasks.current.delete(pollingKey);
         }
         
       } catch (error) {
@@ -351,6 +430,9 @@ const ImageCreator: React.FC = () => {
         if (attempts < maxAttempts) {
           // Continue polling on error (network issues, etc.)
           setTimeout(pollTaskStatus, pollInterval);
+        } else {
+          // Remove from active polling tasks on final failure
+          activePollingTasks.current.delete(pollingKey);
         }
       }
     };
@@ -358,6 +440,18 @@ const ImageCreator: React.FC = () => {
     // Start polling after a short delay
     setTimeout(pollTaskStatus, 5000); // Wait 5 seconds before first check
   }, [fetchGeneratedImages, refreshUser, showToast]);
+
+  // Auto-start polling for processing images when component mounts or images change
+  useEffect(() => {
+    const processingImages = generatedImages.filter(img => img.status === 'processing');
+    
+    processingImages.forEach(img => {
+      if (img.generateId && img.resultData?.task_id) {
+        console.log('Auto-starting polling for processing image:', img.id, img.generateId, img.resultData.task_id);
+        startTaskStatusPolling(img.generateId, img.resultData.task_id);
+      }
+    });
+  }, [generatedImages, startTaskStatusPolling]);
 
   // Tối ưu hóa handleInputChange với useCallback
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -466,9 +560,24 @@ const ImageCreator: React.FC = () => {
           // Generation is processing in background (timeout occurred)
           await refreshUser(); // Refresh to show deducted credits
           
+          // Add processing image to the gallery immediately
+          const processingImage: GeneratedImage = {
+            id: `processing-${response.data.id}`,
+            url: '', // Empty URL for processing state
+            prompt: formData.prompt,
+            model: formData.model,
+            width: selectedAspectRatio.width,
+            height: selectedAspectRatio.height,
+            createdAt: new Date(),
+            generateId: response.data.id,
+            status: 'processing'
+          };
+          
+          setGeneratedImages(prev => [processingImage, ...prev]);
+          
           showToast('info', response.data.message || 'Ảnh đang được tạo trong nền. Vui lòng kiểm tra lại sau ít phút.');
           
-          // Optional: Start polling for task status
+          // Start polling for task status
           if (response.data.task_id) {
             startTaskStatusPolling(response.data.id, response.data.task_id);
           }
@@ -719,13 +828,134 @@ const ImageCreator: React.FC = () => {
            prevProps.isDark === nextProps.isDark;
   });
 
+  // Function to handle edit image
+  const handleEditImage = useCallback(async (image: GeneratedImage) => {
+    try {
+      // Check if image has valid URL and is not in failed state
+      if (!image.url || image.status === 'failed') {
+        showToast('error', 'Cannot edit this image - no valid URL available');
+        return;
+      }
+
+      // Switch to image-to-image tab
+      setActiveTab('image-to-image');
+      
+      // Show loading toast
+      showToast('info', 'Loading image for editing...');
+      
+      // For S3 URLs, use them directly without conversion to base64
+      // The backend will handle URL validation and processing
+      let imageData = image.url;
+      
+      // Only convert to base64 if it's already a data URL or if URL loading fails
+      if (!image.url.startsWith('data:image/')) {
+        // Check if it's an S3 URL - if so, use it directly
+        if (image.url.includes('amazonaws.com') || image.url.includes('s3.')) {
+          // Use S3 URL directly - backend will handle it
+          imageData = image.url;
+        } else {
+          // For non-S3 URLs, try to convert to base64 as fallback
+          try {
+            const response = await fetch(image.url, {
+              mode: 'cors',
+              credentials: 'omit'
+            });
+            
+            if (response.ok) {
+              const blob = await response.blob();
+              const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+              imageData = base64;
+            } else {
+              // If fetch fails, still try to use the URL directly
+              console.warn('Failed to fetch image, using URL directly:', response.status);
+              imageData = image.url;
+            }
+          } catch (fetchError) {
+            // If conversion fails, use URL directly and let backend handle it
+            console.warn('Failed to convert image to base64, using URL directly:', fetchError);
+            imageData = image.url;
+          }
+        }
+      }
+      
+      // Set the uploaded image
+      setUploadedImage(imageData);
+      
+      // Create a File object for uploadedImageFile to enable the button
+      // This is needed because the button disabled condition checks for uploadedImageFile
+      try {
+        let fileBlob: Blob;
+        
+        if (imageData.startsWith('data:image/')) {
+          // Convert base64 to blob
+          const response = await fetch(imageData);
+          fileBlob = await response.blob();
+        } else {
+          // For URL, fetch the image
+          const response = await fetch(imageData, { mode: 'cors' });
+          fileBlob = await response.blob();
+        }
+        
+        // Create File object from blob
+        const file = new File([fileBlob], `edited-image-${Date.now()}.jpg`, { 
+          type: fileBlob.type || 'image/jpeg' 
+        });
+        setUploadedImageFile(file);
+      } catch (error) {
+        console.warn('Could not create File object, using placeholder:', error);
+        // Create a placeholder File object to enable the button
+        const placeholderBlob = new Blob([''], { type: 'image/jpeg' });
+        const placeholderFile = new File([placeholderBlob], `placeholder-${Date.now()}.jpg`, { 
+          type: 'image/jpeg' 
+        });
+        setUploadedImageFile(placeholderFile);
+      }
+      
+      // Set the prompt from the original image
+      setFormData(prev => ({
+        ...prev,
+        prompt: image.prompt
+      }));
+      
+      // Set aspect ratio based on image dimensions
+      const imageRatio = image.width / image.height;
+      let matchingRatio = aspectRatios.find(ratio => {
+        const ratioValue = ratio.width / ratio.height;
+        return Math.abs(ratioValue - imageRatio) < 0.1; // Allow small tolerance
+      });
+      
+      if (matchingRatio) {
+        setSelectedAspectRatio(matchingRatio);
+        setFormData(prev => ({
+          ...prev,
+          width: matchingRatio.width,
+          height: matchingRatio.height
+        }));
+      }
+      
+      // Scroll to top to show the form
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      showToast('success', 'Image loaded for editing!');
+    } catch (error) {
+      console.error('Error loading image for editing:', error);
+      showToast('error', 'Failed to load image for editing. Please try again.');
+    }
+  }, [aspectRatios, showToast]);
+
   // Memoized ImageGallery component để tránh re-render khi form state thay đổi
   const ImageGallery: React.FC<{
     images: GeneratedImage[];
     isDark: boolean;
     onImageClick: (image: GeneratedImage) => void;
+    onEditImage: (image: GeneratedImage) => void;
     t: any;
-  }> = React.memo(({ images, isDark, onImageClick, t }) => {
+  }> = React.memo(({ images, isDark, onImageClick, onEditImage, t }) => {
     if (images.length === 0) {
       return (
         <div className="text-center py-16">
@@ -754,27 +984,79 @@ const ImageCreator: React.FC = () => {
           >
             {/* Image Container */}
             <div className="aspect-square relative">
-              <LazyImage
-                src={image.url}
-                alt={image.prompt}
-                className="w-full h-full"
-                isDark={isDark}
-              /> 
+              {image.status === 'processing' ? (
+                // Show processing state instead of image
+                <div className={`w-full h-full flex items-center justify-center ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-3"></div>
+                    <p className={`text-sm font-medium ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                      Processing...
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <LazyImage
+                  src={image.url}
+                  alt={image.prompt}
+                  className="w-full h-full"
+                  isDark={isDark}
+                />
+              )}
               {/* Overlay with image number */}
               <div className="absolute top-2 left-2">
                 <div className={`px-2 py-1 rounded-full text-xs font-medium ${isDark ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'} backdrop-blur-sm`}>
                   #{images.findIndex(img => img.id === image.id) + 1}
                 </div>
               </div>  
-              {/* Hover overlay */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
+              {/* Status badge */}
+              {image.status && image.status !== 'completed' && (
+                <div className="absolute top-2 right-2">
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    image.status === 'processing' 
+                      ? 'bg-blue-500 text-white' 
+                      : image.status === 'failed'
+                      ? 'bg-red-500 text-white'
+                      : 'bg-green-500 text-white'
+                  } backdrop-blur-sm`}>
+                    {image.status === 'processing' ? 'Processing' : 
+                     image.status === 'failed' ? 'Failed' : 'Completed'}
+                  </div>
                 </div>
-              </div>
+              )}
+              {/* Hover overlay with action buttons - only show for completed images */}
+              {image.status !== 'processing' && (
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-300 flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex space-x-3">
+                    {/* View button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onImageClick(image);
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-full transition-colors shadow-lg"
+                      title="View Image"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
+                    {/* Edit button (pencil icon) */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditImage(image);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-full transition-colors shadow-lg"
+                      title="Edit Image"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
             
             {/* Image Info */}
@@ -1143,6 +1425,7 @@ const ImageCreator: React.FC = () => {
                 images={generatedImages}
                 isDark={actualTheme === 'dark'}
                 onImageClick={openImagePopup}
+                onEditImage={handleEditImage}
                 t={t}
               />
             </Card>

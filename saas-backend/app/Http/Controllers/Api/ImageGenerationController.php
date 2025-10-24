@@ -777,9 +777,24 @@ class ImageGenerationController extends Controller
 
                 // Refund credits on failure
                 try {
-                    $userCreditController->refundCredits($user, $creditCost);
+                    $result = $userCreditController->refundCreditsInternal($user, $creditCost, 'Refund for failed image-to-image generation');
+                    if (!$result['success']) {
+                        Log::error('Failed to refund credits for failed generation', [
+                            'user_id' => $user->id,
+                            'generate_id' => $generate->id,
+                            'credits' => $creditCost,
+                            'error' => $result['message']
+                        ]);
+                    } else {
+                        Log::info('Credits refunded for failed image-to-image generation', [
+                            'user_id' => $user->id,
+                            'generate_id' => $generate->id,
+                            'refunded_credits' => $creditCost,
+                            'credit_id' => $result['credit_id']
+                        ]);
+                    }
                 } catch (\Exception $refundError) {
-                    Log::error('Failed to refund credits for failed generation', [
+                    Log::error('Exception during credit refund for failed generation', [
                         'user_id' => $user->id,
                         'generate_id' => $generate->id,
                         'credits' => $creditCost,
