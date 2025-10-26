@@ -239,7 +239,7 @@ const TextToSpeech: React.FC = () => {
               {ttsServices.map((service) => (
                 <a 
                   href={service.id === 'elevenlabs' ? '/elevenlabs' : service.id === 'minmax' ? '/minimax' : service.url}
-                  target={service.id === 'elevenlabs' || service.id === 'minmax' ? '_self' : '_blank'}
+                  target={service.id === 'elevenlabs' || service.id === 'minmax' ? '_self' : '_self'}
                   rel="noopener noreferrer"
                   key={service.id}
                   className="block"

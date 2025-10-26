@@ -47,33 +47,78 @@ export interface GenerateStatistics {
   };
 }
 
+export interface FetchOptions {
+  showAuthModal?: () => void;
+  onError?: (error: Error) => void;
+  onLoading?: (loading: boolean) => void;
+}
+
 class GenerateService {
   private baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`;
 
-  private async makeRequest(url: string, options: RequestInit = {}) {
-    const token = authService.getToken();
-    
-    const headers = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-      ...options.headers,
-    };
-
-    const response = await fetch(url, {
-      ...options,
-      headers,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        authService.logout();
-        throw new Error('Unauthorized');
+  private async makeRequest(url: string, options: RequestInit = {}, fetchOptions?: FetchOptions) {
+    try {
+      if (fetchOptions?.onLoading) {
+        fetchOptions.onLoading(true);
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
 
-    return response.json();
+      // Try to get token from both possible locations for backward compatibility
+      let token = authService.getToken();
+      if (!token) {
+        token = localStorage.getItem('token');
+      }
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...options.headers,
+      };
+
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Clear both possible token locations
+          authService.removeToken();
+          localStorage.removeItem('token');
+          
+          if (fetchOptions?.showAuthModal) {
+            fetchOptions.showAuthModal();
+          } else {
+            authService.logout();
+          }
+          throw new Error('Unauthorized - Please login again');
+        }
+        
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // If we can't parse error response, use default message
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      if (fetchOptions?.onError) {
+        fetchOptions.onError(error as Error);
+      }
+      throw error;
+    } finally {
+      if (fetchOptions?.onLoading) {
+        fetchOptions.onLoading(false);
+      }
+    }
   }
 
   async getGenerates(params?: {
@@ -85,7 +130,7 @@ class GenerateService {
     date_to?: string;
     per_page?: number;
     page?: number;
-  }): Promise<GenerateResponse> {
+  }, fetchOptions?: FetchOptions): Promise<GenerateResponse> {
     const searchParams = new URLSearchParams();
     
     if (params) {
@@ -97,11 +142,11 @@ class GenerateService {
     }
 
     const url = `${this.baseUrl}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    return this.makeRequest(url);
+    return this.makeRequest(url, {}, fetchOptions);
   }
 
-  async getGenerate(id: number): Promise<{ success: boolean; data: Generate }> {
-    return this.makeRequest(`${this.baseUrl}/${id}`);
+  async getGenerate(id: number, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate }> {
+    return this.makeRequest(`${this.baseUrl}/${id}`, {}, fetchOptions);
   }
 
   async createGenerate(data: {
@@ -119,20 +164,20 @@ class GenerateService {
     voices?: string;
     audio_format?: string;
     speed?: number;
-  }): Promise<{ success: boolean; data: Generate; message: string }> {
+  }, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate; message: string }> {
     // For NDHub TTS, use specific endpoint
     if (data.type === 'audio' && data.lang && data.voices) {
       const ndhubUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/ndhub-tts`;
       return this.makeRequest(ndhubUrl, {
         method: 'POST',
         body: JSON.stringify(data),
-      });
+      }, fetchOptions);
     }
     
     return this.makeRequest(this.baseUrl, {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, fetchOptions);
   }
 
   async updateGenerate(id: number, data: Partial<{
@@ -144,57 +189,85 @@ class GenerateService {
     file_patch: string;
     task_id: string;
     credit_cost: number;
-  }>): Promise<{ success: boolean; data: Generate; message: string }> {
+  }>, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate; message: string }> {
     return this.makeRequest(`${this.baseUrl}/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
-    });
+    }, fetchOptions);
   }
 
-  async deleteGenerate(id: number): Promise<{ success: boolean; message: string }> {
+  async deleteGenerate(id: number, fetchOptions?: FetchOptions): Promise<{ success: boolean; message: string }> {
     return this.makeRequest(`${this.baseUrl}/${id}`, {
       method: 'DELETE',
-    });
+    }, fetchOptions);
   }
 
-  async getStatistics(): Promise<GenerateStatistics> {
-    return this.makeRequest(`${this.baseUrl}/statistics`);
+  async getStatistics(fetchOptions?: FetchOptions): Promise<GenerateStatistics> {
+    return this.makeRequest(`${this.baseUrl}/statistics`, {}, fetchOptions);
   }
 
-  async getTypes(): Promise<{ success: boolean; data: string[] }> {
-    return this.makeRequest(`${this.baseUrl}/types`);
+  async getTypes(fetchOptions?: FetchOptions): Promise<{ success: boolean; data: string[] }> {
+    return this.makeRequest(`${this.baseUrl}/types`, {}, fetchOptions);
   }
 
   // Method to get download URL with proper authentication
   getDownloadUrl(id: number): string {
-    const token = authService.getToken();
+    let token = authService.getToken();
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
     const baseUrl = `${this.baseUrl}/${id}/download`;
     return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
   }
 
   // Method to download audio file as blob
-  async downloadGenerate(id: number): Promise<Blob> {
-    const token = authService.getToken();
-    
-    const headers: Record<string, string> = {
-      'Accept': 'audio/*,*/*',
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-    };
-
-    const response = await fetch(`${this.baseUrl}/${id}/download`, {
-      method: 'GET',
-      headers,
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        authService.logout();
-        throw new Error('Unauthorized');
+  async downloadGenerate(id: number, fetchOptions?: FetchOptions): Promise<Blob> {
+    try {
+      if (fetchOptions?.onLoading) {
+        fetchOptions.onLoading(true);
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
 
-    return response.blob();
+      let token = authService.getToken();
+      if (!token) {
+        token = localStorage.getItem('token');
+      }
+      
+      const headers: Record<string, string> = {
+        'Accept': 'audio/*,*/*',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+      };
+
+      const response = await fetch(`${this.baseUrl}/${id}/download`, {
+        method: 'GET',
+        headers,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          authService.removeToken();
+          localStorage.removeItem('token');
+          
+          if (fetchOptions?.showAuthModal) {
+            fetchOptions.showAuthModal();
+          } else {
+            authService.logout();
+          }
+          throw new Error('Unauthorized - Please login again');
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      return response.blob();
+    } catch (error) {
+      if (fetchOptions?.onError) {
+        fetchOptions.onError(error as Error);
+      }
+      throw error;
+    } finally {
+      if (fetchOptions?.onLoading) {
+        fetchOptions.onLoading(false);
+      }
+    }
   }
 }
 

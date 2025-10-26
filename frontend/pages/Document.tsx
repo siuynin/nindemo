@@ -149,56 +149,42 @@ const Document: React.FC = () => {
     if (!isAuthenticated) return;
     
     try {
-      setLoading(true);
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      console.log('🔑 Token found:', !!token);
-      if (!token) return;
+      const params = {
+        search: filters.search || undefined,
+        type: filters.type || undefined,
+        status: filters.status || undefined,
+        share: filters.share || undefined,
+        per_page: 20
+      };
 
-      const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.type) params.append('type', filters.type);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.share) params.append('share', filters.share);
-      params.append('per_page', '20');
-
-      console.log('🌐 Fetching from API with params:', params.toString());
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
+      console.log('🌐 Fetching from generateService with params:', params);
+      
+      const response = await generateService.getGenerates(params, {
+        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+        onError: (error) => {
+          console.error('❌ Error fetching generates:', error);
+          showToast('Không thể tải danh sách documents', 'error');
         },
+        onLoading: setLoading
       });
 
-      console.log('📡 Response status:', response.status);
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-        }
-        return;
-      }
-
-      const data = await response.json();
-      console.log('📊 Response data:', data);
+      console.log('📊 Response data:', response);
       
-      if (data.success) {
-        console.log('✅ Response success, data length:', data.data?.length);
+      if (response.success) {
+        console.log('✅ Response success, data length:', response.data?.length);
         // Filter out video content, only keep text and audio
-        const filteredGenerates = data.data.filter(
+        const filteredGenerates = response.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
         );
         console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
       } else {
-        console.log('❌ Response not success:', data);
+        console.log('❌ Response not success:', response);
+        showToast('Không thể tải danh sách documents', 'error');
       }
     } catch (error) {
-      console.error('❌ Error fetching generates:', error);
-      alert('Không thể tải danh sách documents');
-    } finally {
-      setLoading(false);
+      console.error('❌ Error in fetchGenerates:', error);
+      // Error handling is already done in generateService
     }
   };
 

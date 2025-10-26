@@ -42,6 +42,15 @@ const Creation: React.FC = () => {
   // Auth modal state
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' as 'login' | 'register' });
   
+  // Toast state
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning'; visible: boolean }>({ message: '', type: 'success', visible: false });
+  
+  // Show toast function
+  const showToast = (message: string, type: 'success' | 'error' | 'warning') => {
+    setToast({ message, type, visible: true });
+    setTimeout(() => setToast(prev => ({ ...prev, visible: false })), 3000);
+  };
+  
   // Audio player state
   const [audioPlayer, setAudioPlayer] = useState<{
     isVisible: boolean;
@@ -90,38 +99,25 @@ const Creation: React.FC = () => {
     if (!isAuthenticated) return;
     
     try {
-      setLoading(true);
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      if (!token) return;
+      const params = {
+        search: filters.search || undefined,
+        type: filters.type || undefined,
+        status: filters.status || undefined,
+        per_page: 50
+      };
 
-      const params = new URLSearchParams();
-      if (filters.search) params.append('search', filters.search);
-      if (filters.type) params.append('type', filters.type);
-      if (filters.status) params.append('status', filters.status);
-      params.append('per_page', '50');
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
+      const response = await generateService.getGenerates(params, {
+        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+        onError: (error) => {
+          console.error('Error fetching generations:', error);
+          showToast('Không thể tải danh sách creations', 'error');
         },
+        onLoading: setLoading
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-        }
-        return;
-      }
-
-      const data = await response.json();
       
-      if (data.success && data.data) {
+      if (response.success && response.data) {
         // Filter image, audio and video types based on active tab
-        let filteredGenerations = data.data.filter(
+        let filteredGenerations = response.data.filter(
           (gen: Generate) => ['image', 'audio', 'video'].includes(gen.type)
         );
         
@@ -153,12 +149,12 @@ const Creation: React.FC = () => {
         });
         
         setGenerates(processedGenerations);
+      } else {
+        showToast('Không thể tải danh sách creations', 'error');
       }
     } catch (error) {
-      console.error('Error fetching generations:', error);
-      alert('Không thể tải danh sách creations');
-    } finally {
-      setLoading(false);
+      console.error('Error in fetchGenerations:', error);
+      // Error handling is already done in generateService
     }
   };
 

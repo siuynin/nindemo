@@ -249,41 +249,25 @@ const ImageCreator: React.FC = () => {
         setGeneratedImages([]);
         return;
       }
-      
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
-      console.log('🔑 Token found:', !!token);
-      if (!token) {
-        console.log('❌ No auth token found, skipping fetch');
-        setGeneratedImages([]);
-        return;
-      }
 
-      console.log('🌐 Fetching images from API...');
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?type=image&per_page=24&page=1`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
+      console.log('🌐 Fetching images from generateService...');
+      const response = await generateService.getGenerates({
+        type: 'image',
+        per_page: 24,
+        page: 1
+      }, {
+        showAuthModal: () => setShowAuthModal(true),
+        onError: (error) => {
+          console.error('❌ Error fetching generated images:', error);
+          showToast('error', 'Không thể tải danh sách ảnh đã tạo');
+        }
       });
 
-      console.log('📡 Response status:', response.status);
-      if (!response.ok) {
-        console.log('❌ Response not ok:', response.status);
-        if (response.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-        }
-        return;
-      }
-
-      const data = await response.json();
-      console.log('📊 Response data:', data);
+      console.log('📊 Response data:', response);
       
-      if (data.success && data.data) {
-        console.log('✅ Response successful, processing data...', data.data.length, 'items');
-        const images: GeneratedImage[] = data.data.flatMap(generate => {
+      if (response.success && response.data) {
+        console.log('✅ Response successful, processing data...', response.data.length, 'items');
+        const images: GeneratedImage[] = response.data.flatMap(generate => {
           let imageData: Array<{seed: number, url: string}> = [];
           let contentData = null;
           let filePatchData = null;
@@ -385,10 +369,12 @@ const ImageCreator: React.FC = () => {
         console.log('📋 Images data:', images);
         setGeneratedImages(images);
       } else {
-        console.log('❌ API response failed or no data:', data);
+        console.log('❌ API response failed or no data:', response);
+        showToast('error', 'Không thể tải danh sách ảnh đã tạo');
       }
     } catch (error) {
-      console.error('❌ Error fetching generated images:', error);
+      console.error('❌ Error in fetchGeneratedImages:', error);
+      // Error handling is already done in generateService
     }
   };
 
