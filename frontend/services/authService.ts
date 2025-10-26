@@ -39,31 +39,14 @@ class AuthService {
 
   // Get stored token
   getToken(): string | null {
-    const token = localStorage.getItem(this.tokenKey);
-    const expiry = localStorage.getItem(this.tokenExpiryKey);
-    
-    // Check if token is expired
-    if (token && expiry) {
-      const expiryTime = parseInt(expiry);
-      const currentTime = Date.now();
-      
-      if (currentTime >= expiryTime) {
-        // Token expired, remove it
-        this.removeToken();
-        return null;
-      }
-    }
-    
-    return token;
+    // Do not enforce client-side expiry for Sanctum personal access tokens
+    return localStorage.getItem(this.tokenKey);
   }
 
-  // Set token in localStorage with expiry
-  setToken(token: string, expiresIn?: number): void {
+  // Set token in localStorage
+  setToken(token: string, _expiresIn?: number): void {
+    // Store only the token; backend controls validity
     localStorage.setItem(this.tokenKey, token);
-    
-    // Set expiry time (default 24 hours if not provided)
-    const expiryTime = Date.now() + (expiresIn ? expiresIn * 1000 : 24 * 60 * 60 * 1000);
-    localStorage.setItem(this.tokenExpiryKey, expiryTime.toString());
   }
 
   // Set refresh token
@@ -89,16 +72,9 @@ class AuthService {
     return !!token;
   }
 
-  // Check if token will expire soon (within 5 minutes)
+  // Token expiry check disabled (Sanctum tokens typically don't expire client-side)
   isTokenExpiringSoon(): boolean {
-    const expiry = localStorage.getItem(this.tokenExpiryKey);
-    if (!expiry) return false;
-    
-    const expiryTime = parseInt(expiry);
-    const currentTime = Date.now();
-    const fiveMinutes = 5 * 60 * 1000;
-    
-    return (expiryTime - currentTime) <= fiveMinutes;
+    return false;
   }
 
   // Refresh access token using refresh token
@@ -139,13 +115,13 @@ class AuthService {
   private async getAuthHeaders(): Promise<HeadersInit> {
     let token = this.getToken();
     
-    // Try to refresh token if it's expiring soon
-    if (token && this.isTokenExpiringSoon()) {
-      const refreshed = await this.refreshAccessToken();
-      if (refreshed) {
-        token = this.getToken();
-      }
-    }
+    // Client-side expiry is disabled; skip refresh logic unless explicitly used
+    // if (token && this.isTokenExpiringSoon()) {
+    //   const refreshed = await this.refreshAccessToken();
+    //   if (refreshed) {
+    //     token = this.getToken();
+    //   }
+    // }
     
     return {
       'Content-Type': 'application/json',

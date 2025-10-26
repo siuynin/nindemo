@@ -91,16 +91,37 @@ const Creation: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await generateService.getGenerates({
-        search: filters.search || undefined,
-        type: filters.type || undefined,
-        status: filters.status || undefined,
-        per_page: 50
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      if (!token) return;
+
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.type) params.append('type', filters.type);
+      if (filters.status) params.append('status', filters.status);
+      params.append('per_page', '50');
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        return;
+      }
+
+      const data = await response.json();
       
-      if (response.success && response.data) {
+      if (data.success && data.data) {
         // Filter image, audio and video types based on active tab
-        let filteredGenerations = response.data.filter(
+        let filteredGenerations = data.data.filter(
           (gen: Generate) => ['image', 'audio', 'video'].includes(gen.type)
         );
         

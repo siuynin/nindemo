@@ -246,7 +246,7 @@ const TextToSpeech: React.FC = () => {
                 >
                   <Card
                     hover={true}
-                    className="cursor-pointer group relative z-50 pointer-events-auto"
+                    className="cursor-pointer group relative  pointer-events-auto"
                   >
                   <div className="flex flex-col h-full">
                     <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${service.color} text-white mb-3 w-fit`}>

@@ -143,27 +143,59 @@ const Document: React.FC = () => {
 
   // Fetch user's generates (only text and audio)
   const fetchGenerates = async () => {
+    console.log('📄 Document.tsx - fetchGenerates called');
+    console.log('🔐 isAuthenticated:', isAuthenticated);
+    
     if (!isAuthenticated) return;
     
     try {
       setLoading(true);
-      const response = await generateService.getGenerates({
-        search: filters.search || undefined,
-        type: filters.type || undefined,
-        status: filters.status || undefined,
-        share: filters.share || undefined,
-        per_page: 20
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      console.log('🔑 Token found:', !!token);
+      if (!token) return;
+
+      const params = new URLSearchParams();
+      if (filters.search) params.append('search', filters.search);
+      if (filters.type) params.append('type', filters.type);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.share) params.append('share', filters.share);
+      params.append('per_page', '20');
+
+      console.log('🌐 Fetching from API with params:', params.toString());
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
       });
+
+      console.log('📡 Response status:', response.status);
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      console.log('📊 Response data:', data);
       
-      if (response.success) {
+      if (data.success) {
+        console.log('✅ Response success, data length:', data.data?.length);
         // Filter out video content, only keep text and audio
-        const filteredGenerates = response.data.filter(
+        const filteredGenerates = data.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
         );
+        console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
+      } else {
+        console.log('❌ Response not success:', data);
       }
     } catch (error) {
-      console.error('Error fetching generates:', error);
+      console.error('❌ Error fetching generates:', error);
       alert('Không thể tải danh sách documents');
     } finally {
       setLoading(false);
