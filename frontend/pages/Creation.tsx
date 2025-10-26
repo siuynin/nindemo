@@ -209,8 +209,31 @@ const Creation: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa creation này?')) return;
     
     try {
-      const response = await generateService.deleteGenerate(id);
-      if (response.success) {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setAuthModal({ isOpen: true, mode: 'login' });
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setAuthModal({ isOpen: true, mode: 'login' });
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error('Failed to delete creation');
+      }
+
+      const data = await response.json();
+      if (data.success) {
         alert('Xóa creation thành công');
         fetchGenerations();
       }

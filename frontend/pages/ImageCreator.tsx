@@ -1007,7 +1007,29 @@ const ImageCreator: React.FC = () => {
     if (!confirmDelete) return;
 
     try {
-      await generateService.deleteGenerate(image.generateId);
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setShowAuthModal(true);
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${image.generateId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error('Failed to delete image');
+      }
+
       showToast('success', 'Image deleted successfully!');
       
       // Refresh the images list
@@ -1016,7 +1038,7 @@ const ImageCreator: React.FC = () => {
       console.error('Error deleting image:', error);
       showToast('error', 'Failed to delete image. Please try again.');
     }
-  }, [showToast, fetchGeneratedImages]);
+  }, [showToast, fetchGeneratedImages, setShowAuthModal]);
 
   // Memoized ImageGallery component để tránh re-render khi form state thay đổi
   const ImageGallery: React.FC<{

@@ -258,8 +258,31 @@ const Document: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa document này?')) return;
     
     try {
-      const response = await generateService.deleteGenerate(id);
-      if (response.success) {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setShowAuthModal(true);
+        return;
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error('Failed to delete document');
+      }
+
+      const data = await response.json();
+      if (data.success) {
         alert('Xóa document thành công');
         fetchGenerates();
       }
@@ -372,6 +395,12 @@ const Document: React.FC = () => {
     try {
       setIsLoading(true);
       
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        setShowAuthModal(true);
+        return;
+      }
+      
       // Create generate record with default values
       const generateData = {
         name: 'Untitled',
@@ -380,10 +409,29 @@ const Document: React.FC = () => {
         status: 'pending'
       };
       
-      const response = await generateService.createGenerate(generateData);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(generateData),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error('Failed to create document');
+      }
+
+      const data = await response.json();
       
-      if (response.success) {
-        const generateId = response.data.id;
+      if (data.success) {
+        const generateId = data.data.id;
         
         // Navigate to WriteAssistant with the new document
         localStorage.setItem('currentGenerateId', generateId.toString());
@@ -592,10 +640,29 @@ const Document: React.FC = () => {
         status: 'pending'
       };
       
-      const response = await generateService.createGenerate(generateData);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(generateData),
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        }
+        throw new Error('Failed to create document');
+      }
+
+      const data = await response.json();
       
-      if (response.success) {
-        const generateId = response.data.id;
+      if (data.success) {
+        const generateId = data.data.id;
         
         try {
           // Call AI service to generate content
@@ -606,10 +673,27 @@ const Document: React.FC = () => {
           const generatedContent = await aiInstance.processText(fullContent, 'generate_content');
           
           // Update the generate record with the AI response
-          await generateService.updateGenerate(generateId, {
-            content: generatedContent,
-            status: 'completed'
+          const updateResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${generateId}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+              content: generatedContent,
+              status: 'completed'
+            }),
           });
+
+          if (!updateResponse.ok) {
+            if (updateResponse.status === 401) {
+              localStorage.removeItem('auth_token');
+              setShowAuthModal(true);
+              throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+            }
+            throw new Error('Failed to update document');
+          }
           
           // Close modal
           handleModalClose();
@@ -625,9 +709,26 @@ const Document: React.FC = () => {
           
         } catch (aiError) {
           // Update status to failed if AI generation fails
-          await generateService.updateGenerate(generateId, {
-            status: 'failed'
-          });
+          try {
+            const failedResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${generateId}`, {
+              method: 'PUT',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: JSON.stringify({
+                status: 'failed'
+              }),
+            });
+
+            if (!failedResponse.ok && failedResponse.status === 401) {
+              localStorage.removeItem('auth_token');
+              setShowAuthModal(true);
+            }
+          } catch (updateError) {
+            console.error('Error updating failed status:', updateError);
+          }
           
           // Hiển thị thông báo lỗi chi tiết từ AIService
           if (aiError instanceof Error) {
