@@ -109,38 +109,54 @@ const Creation: React.FC = () => {
       return;
     }
     
-    setLoading(true);
-    
     try {
-      const params = {
-        search: filters.search || undefined,
-        type: filters.type || undefined,
-        status: filters.status || undefined,
-        per_page: 40 // Giảm từ 50 xuống 20 để tải nhanh hơn
-      };
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('❌ No auth token found');
+        setGenerates([]);
+        setLoading(false);
+        return;
+      }
 
-      console.log('🌐 Fetching generations with params:', params);
-
-      const response = await generateService.getGenerates(params, {
-        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
-        onError: (error) => {
-          console.error('❌ Error fetching generations:', error);
-          showToast('Không thể tải danh sách creations', 'error');
-          setLoading(false);
-        },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
-        }
+      setLoading(true);
+      
+      const params = new URLSearchParams({
+        per_page: '20'
       });
+
+      if (filters.search) params.append('search', filters.search);
+      if (filters.type) params.append('type', filters.type);
+      if (filters.status) params.append('status', filters.status);
+
+      console.log('🌐 Making direct fetch request with params:', params.toString());
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setAuthModal({ isOpen: true, mode: 'login' });
+        }
+        console.error('❌ Fetch failed with status:', response.status);
+        setGenerates([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('📊 Response data:', data);
       
-      console.log('📊 Response data:', response);
-      
-      if (response && response.success && Array.isArray(response.data)) {
-        console.log('✅ Response successful, processing data...', response.data.length, 'items');
+      if (data && data.success && Array.isArray(data.data)) {
+        console.log('✅ Response successful, processing data...', data.data.length, 'items');
         
         // Filter image, audio and video types based on active tab
-        let filteredGenerations = response.data.filter(
+        let filteredGenerations = data.data.filter(
           (gen: Generate) => ['image', 'audio', 'video'].includes(gen.type)
         );
         
@@ -175,7 +191,7 @@ const Creation: React.FC = () => {
         setGenerates(processedGenerations);
         setLoading(false);
       } else {
-        console.log('❌ API response failed or no data:', response);
+        console.log('❌ API response failed or no data:', data);
         setGenerates([]);
         setLoading(false);
         showToast('Không thể tải danh sách creations', 'error');
@@ -185,7 +201,6 @@ const Creation: React.FC = () => {
       setGenerates([]);
       setLoading(false);
       showToast('Có lỗi xảy ra khi tải danh sách creations', 'error');
-      // Error handling is already done in generateService
     }
   };
 

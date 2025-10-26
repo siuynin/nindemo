@@ -237,45 +237,49 @@ const ImageCreator: React.FC = () => {
 
   // Tải ảnh đã tạo từ database
   const fetchGeneratedImages = async () => {
+    if (!isAuthenticated) return;
+
     try {
       console.log('🖼️ ImageCreator.tsx - fetchGeneratedImages called');
       console.log('🔍 Fetching generated images...');
-      console.log('🔐 Is authenticated:', isAuthenticated);
-      console.log('👤 Current user:', user);
       
-      // Check if user is authenticated before making API call
-      if (!isAuthenticated || !user) {
-        console.log('❌ User not authenticated, skipping fetch');
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('❌ No auth token found');
         setGeneratedImages([]);
         setLoading(false);
         return;
       }
 
       setLoading(true);
-      console.log('🌐 Fetching images from generateService...');
+      console.log('🌐 Making direct fetch request...');
       
-      const response = await generateService.getGenerates({
-        type: 'image',
-        per_page: 22, // Giảm số lượng để tải nhanh hơn
-        page: 1
-      }, {
-        showAuthModal: () => setShowAuthModal(true),
-        onError: (error) => {
-          console.error('❌ Error fetching generated images:', error);
-          showToast('error', 'Không thể tải danh sách ảnh đã tạo');
-          setLoading(false);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?type=image&per_page=12&page=1`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
         },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
-        }
       });
 
-      console.log('📊 Response data:', response);
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setShowAuthModal(true);
+        }
+        console.error('❌ Fetch failed with status:', response.status);
+        setGeneratedImages([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+
+      console.log('📊 Response data:', data);
       
-      if (response && response.success && Array.isArray(response.data)) {
-        console.log('✅ Response successful, processing data...', response.data.length, 'items');
-        const images: GeneratedImage[] = response.data.flatMap(generate => {
+      if (data && data.success && Array.isArray(data.data)) {
+        console.log('✅ Response successful, processing data...', data.data.length, 'items');
+        const images: GeneratedImage[] = data.data.flatMap(generate => {
           let imageData: Array<{seed: number, url: string}> = [];
           let contentData = null;
           let filePatchData = null;
@@ -378,7 +382,7 @@ const ImageCreator: React.FC = () => {
         setGeneratedImages(images);
         setLoading(false);
       } else {
-        console.log('❌ API response failed or no data:', response);
+        console.log('❌ API response failed or no data:', data);
         setGeneratedImages([]);
         setLoading(false);
         showToast('error', 'Không thể tải danh sách ảnh đã tạo');
@@ -388,7 +392,6 @@ const ImageCreator: React.FC = () => {
       setGeneratedImages([]);
       setLoading(false);
       showToast('error', 'Có lỗi xảy ra khi tải danh sách ảnh');
-      // Error handling is already done in generateService
     }
   };
 

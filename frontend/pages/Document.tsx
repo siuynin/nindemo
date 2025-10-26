@@ -153,43 +153,59 @@ const Document: React.FC = () => {
     }
     
     try {
+      const token = localStorage.getItem('auth_token');
+      if (!token) {
+        console.log('❌ No auth token found');
+        setGenerates([]);
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       
-      const params = {
-        search: filters.search || undefined,
-        type: filters.type || undefined,
-        status: filters.status || undefined,
-        share: filters.share || undefined,
-        per_page: 20
-      };
-
-      console.log('🌐 Fetching from generateService with params:', params);
-      
-      const response = await generateService.getGenerates(params, {
-        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
-        onError: (error) => {
-          console.error('❌ Error fetching generates:', error);
-          showToast('Không thể tải danh sách documents', 'error');
-          setLoading(false);
-        },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
-        }
+      const params = new URLSearchParams({
+        per_page: '20'
       });
 
-      console.log('📊 Response data:', response);
+      if (filters.search) params.append('search', filters.search);
+      if (filters.type) params.append('type', filters.type);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.share) params.append('share', filters.share);
+
+      console.log('🌐 Making direct fetch request with params:', params.toString());
       
-      if (response && response.success && Array.isArray(response.data)) {
-        console.log('✅ Response success, data length:', response.data.length);
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('auth_token');
+          setAuthModal({ isOpen: true, mode: 'login' });
+        }
+        console.error('❌ Fetch failed with status:', response.status);
+        setGenerates([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('📊 Response data:', data);
+      
+      if (data && data.success && Array.isArray(data.data)) {
+        console.log('✅ Response success, data length:', data.data.length);
         // Filter out video content, only keep text and audio
-        const filteredGenerates = response.data.filter(
+        const filteredGenerates = data.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
         );
         console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
       } else {
-        console.log('❌ Response not success or no data:', response);
+        console.log('❌ Response not success or no data:', data);
         setGenerates([]);
         showToast('Không thể tải danh sách documents', 'error');
       }
