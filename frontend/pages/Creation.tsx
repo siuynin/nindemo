@@ -94,28 +94,51 @@ const Creation: React.FC = () => {
     createdAt: undefined
   });
 
-  // Fetch user's audio and video generates
+  // Fetch generations from API
   const fetchGenerations = async () => {
-    if (!isAuthenticated) return;
+    console.log('🎨 Creation.tsx - fetchGenerations called');
+    console.log('🔐 Is authenticated:', isAuthenticated);
+    console.log('📋 Active tab:', activeTab);
+    console.log('🔍 Filters:', filters);
+    
+    // Check if user is authenticated before making API call
+    if (!isAuthenticated || !user) {
+      console.log('❌ User not authenticated, skipping fetch');
+      setGenerates([]);
+      setLoading(false);
+      return;
+    }
+    
+    setLoading(true);
     
     try {
       const params = {
         search: filters.search || undefined,
         type: filters.type || undefined,
         status: filters.status || undefined,
-        per_page: 50
+        per_page: 40 // Giảm từ 50 xuống 20 để tải nhanh hơn
       };
+
+      console.log('🌐 Fetching generations with params:', params);
 
       const response = await generateService.getGenerates(params, {
         showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
         onError: (error) => {
-          console.error('Error fetching generations:', error);
+          console.error('❌ Error fetching generations:', error);
           showToast('Không thể tải danh sách creations', 'error');
+          setLoading(false);
         },
-        onLoading: setLoading
+        onLoading: (loadingState) => {
+          console.log('🔄 Loading state changed:', loadingState);
+          setLoading(loadingState);
+        }
       });
       
-      if (response.success && response.data) {
+      console.log('📊 Response data:', response);
+      
+      if (response && response.success && Array.isArray(response.data)) {
+        console.log('✅ Response successful, processing data...', response.data.length, 'items');
+        
         // Filter image, audio and video types based on active tab
         let filteredGenerations = response.data.filter(
           (gen: Generate) => ['image', 'audio', 'video'].includes(gen.type)
@@ -148,12 +171,20 @@ const Creation: React.FC = () => {
           return gen;
         });
         
+        console.log('🎨 Processed generations:', processedGenerations.length, 'items');
         setGenerates(processedGenerations);
+        setLoading(false);
       } else {
+        console.log('❌ API response failed or no data:', response);
+        setGenerates([]);
+        setLoading(false);
         showToast('Không thể tải danh sách creations', 'error');
       }
     } catch (error) {
-      console.error('Error in fetchGenerations:', error);
+      console.error('❌ Error in fetchGenerations:', error);
+      setGenerates([]);
+      setLoading(false);
+      showToast('Có lỗi xảy ra khi tải danh sách creations', 'error');
       // Error handling is already done in generateService
     }
   };

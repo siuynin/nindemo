@@ -146,9 +146,15 @@ const Document: React.FC = () => {
     console.log('📄 Document.tsx - fetchGenerates called');
     console.log('🔐 isAuthenticated:', isAuthenticated);
     
-    if (!isAuthenticated) return;
+    if (!isAuthenticated) {
+      setGenerates([]);
+      setLoading(false);
+      return;
+    }
     
     try {
+      setLoading(true);
+      
       const params = {
         search: filters.search || undefined,
         type: filters.type || undefined,
@@ -164,14 +170,18 @@ const Document: React.FC = () => {
         onError: (error) => {
           console.error('❌ Error fetching generates:', error);
           showToast('Không thể tải danh sách documents', 'error');
+          setLoading(false);
         },
-        onLoading: setLoading
+        onLoading: (loadingState) => {
+          console.log('🔄 Loading state changed:', loadingState);
+          setLoading(loadingState);
+        }
       });
 
       console.log('📊 Response data:', response);
       
-      if (response.success) {
-        console.log('✅ Response success, data length:', response.data?.length);
+      if (response && response.success && Array.isArray(response.data)) {
+        console.log('✅ Response success, data length:', response.data.length);
         // Filter out video content, only keep text and audio
         const filteredGenerates = response.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
@@ -179,12 +189,17 @@ const Document: React.FC = () => {
         console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
       } else {
-        console.log('❌ Response not success:', response);
+        console.log('❌ Response not success or no data:', response);
+        setGenerates([]);
         showToast('Không thể tải danh sách documents', 'error');
       }
     } catch (error) {
       console.error('❌ Error in fetchGenerates:', error);
-      // Error handling is already done in generateService
+      setGenerates([]);
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi tải documents';
+      showToast(errorMessage, 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
