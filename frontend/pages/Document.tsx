@@ -153,59 +153,43 @@ const Document: React.FC = () => {
     }
     
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        console.log('❌ No auth token found');
-        setGenerates([]);
-        setLoading(false);
-        return;
-      }
-
       setLoading(true);
       
-      const params = new URLSearchParams({
-        per_page: '20'
-      });
+      const params = {
+        search: filters.search || undefined,
+        type: filters.type || undefined,
+        status: filters.status || undefined,
+        share: filters.share || undefined,
+        per_page: 20
+      };
 
-      if (filters.search) params.append('search', filters.search);
-      if (filters.type) params.append('type', filters.type);
-      if (filters.status) params.append('status', filters.status);
-      if (filters.share) params.append('share', filters.share);
-
-      console.log('🌐 Making direct fetch request with params:', params.toString());
+      console.log('🌐 Fetching from generateService with params:', params);
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
+      const response = await generateService.getGenerates(params, {
+        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+        onError: (error) => {
+          console.error('❌ Error fetching generates:', error);
+          showToast('Không thể tải danh sách documents', 'error');
+          setLoading(false);
         },
+        onLoading: (loadingState) => {
+          console.log('🔄 Loading state changed:', loadingState);
+          setLoading(loadingState);
+        }
       });
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('auth_token');
-          setAuthModal({ isOpen: true, mode: 'login' });
-        }
-        console.error('❌ Fetch failed with status:', response.status);
-        setGenerates([]);
-        setLoading(false);
-        return;
-      }
-
-      const data = await response.json();
-      console.log('📊 Response data:', data);
+      console.log('📊 Response data:', response);
       
-      if (data && data.success && Array.isArray(data.data)) {
-        console.log('✅ Response success, data length:', data.data.length);
+      if (response && response.success && Array.isArray(response.data)) {
+        console.log('✅ Response success, data length:', response.data.length);
         // Filter out video content, only keep text and audio
-        const filteredGenerates = data.data.filter(
+        const filteredGenerates = response.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
         );
         console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
       } else {
-        console.log('❌ Response not success or no data:', data);
+        console.log('❌ Response not success or no data:', response);
         setGenerates([]);
         showToast('Không thể tải danh sách documents', 'error');
       }
@@ -258,31 +242,8 @@ const Document: React.FC = () => {
     if (!window.confirm('Bạn có chắc chắn muốn xóa document này?')) return;
     
     try {
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setShowAuthModal(true);
-        return;
-      }
-
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${id}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        }
-        throw new Error('Failed to delete document');
-      }
-
-      const data = await response.json();
-      if (data.success) {
+      const response = await generateService.deleteGenerate(id);
+      if (response.success) {
         alert('Xóa document thành công');
         fetchGenerates();
       }
@@ -395,12 +356,6 @@ const Document: React.FC = () => {
     try {
       setIsLoading(true);
       
-      const token = localStorage.getItem('auth_token');
-      if (!token) {
-        setShowAuthModal(true);
-        return;
-      }
-      
       // Create generate record with default values
       const generateData = {
         name: 'Untitled',
@@ -409,29 +364,10 @@ const Document: React.FC = () => {
         status: 'pending'
       };
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(generateData),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        }
-        throw new Error('Failed to create document');
-      }
-
-      const data = await response.json();
+      const response = await generateService.createGenerate(generateData);
       
-      if (data.success) {
-        const generateId = data.data.id;
+      if (response.success) {
+        const generateId = response.data.id;
         
         // Navigate to WriteAssistant with the new document
         localStorage.setItem('currentGenerateId', generateId.toString());
@@ -640,29 +576,10 @@ const Document: React.FC = () => {
         status: 'pending'
       };
       
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify(generateData),
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          localStorage.removeItem('auth_token');
-          setShowAuthModal(true);
-          throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-        }
-        throw new Error('Failed to create document');
-      }
-
-      const data = await response.json();
+      const response = await generateService.createGenerate(generateData);
       
-      if (data.success) {
-        const generateId = data.data.id;
+      if (response.success) {
+        const generateId = response.data.id;
         
         try {
           // Call AI service to generate content
@@ -673,27 +590,10 @@ const Document: React.FC = () => {
           const generatedContent = await aiInstance.processText(fullContent, 'generate_content');
           
           // Update the generate record with the AI response
-          const updateResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${generateId}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-              content: generatedContent,
-              status: 'completed'
-            }),
+          await generateService.updateGenerate(generateId, {
+            content: generatedContent,
+            status: 'completed'
           });
-
-          if (!updateResponse.ok) {
-            if (updateResponse.status === 401) {
-              localStorage.removeItem('auth_token');
-              setShowAuthModal(true);
-              throw new Error('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
-            }
-            throw new Error('Failed to update document');
-          }
           
           // Close modal
           handleModalClose();
@@ -709,26 +609,9 @@ const Document: React.FC = () => {
           
         } catch (aiError) {
           // Update status to failed if AI generation fails
-          try {
-            const failedResponse = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/generates/${generateId}`, {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: JSON.stringify({
-                status: 'failed'
-              }),
-            });
-
-            if (!failedResponse.ok && failedResponse.status === 401) {
-              localStorage.removeItem('auth_token');
-              setShowAuthModal(true);
-            }
-          } catch (updateError) {
-            console.error('Error updating failed status:', updateError);
-          }
+          await generateService.updateGenerate(generateId, {
+            status: 'failed'
+          });
           
           // Hiển thị thông báo lỗi chi tiết từ AIService
           if (aiError instanceof Error) {

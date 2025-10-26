@@ -65,20 +65,35 @@ class GenerateService {
       // Try to get token from both possible locations for backward compatibility
       let token = authService.getToken();
       if (!token) {
-        token = localStorage.getItem('token');
+        token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       }
       
       const headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
         ...(token && { 'Authorization': `Bearer ${token}` }),
         ...options.headers,
       };
 
+      const isSameOrigin = (() => {
+        try {
+          const requestOrigin = new URL(url).origin;
+          return requestOrigin === window.location.origin;
+        } catch {
+          // If URL parsing fails, default to omit credentials to avoid CORS issues
+          return false;
+        }
+      })();
+
       const response = await fetch(url, {
         ...options,
         headers,
+        credentials: isSameOrigin ? 'include' : 'omit',
       });
+
+      // Handle non-JSON responses (e.g., HTML login page)
+      const contentType = response.headers.get('content-type') || '';
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -103,10 +118,28 @@ class GenerateService {
         } catch {
           // If we can't parse error response, use default message
         }
-        
         throw new Error(errorMessage);
       }
 
+      // If server returned HTML, treat as unauthorized/session issue
+      if (contentType.includes('text/html')) {
+        const text = await response.text();
+        // Heuristics to detect login page or HTML response
+        const looksLikeLogin = /<title>.*login.*<\/title>|name="password"|Auth::routes|<form[^>]*action=".*login"/i.test(text);
+        if (looksLikeLogin) {
+          authService.removeToken();
+          localStorage.removeItem('token');
+          if (fetchOptions?.showAuthModal) {
+            fetchOptions.showAuthModal();
+          } else {
+            authService.logout();
+          }
+          throw new Error('Unauthorized - Redirected to login. Please authenticate.');
+        }
+        throw new Error('Unexpected HTML response from API');
+      }
+
+      // Parse JSON normally
       const data = await response.json();
       return data;
     } catch (error) {
@@ -214,7 +247,7 @@ class GenerateService {
   getDownloadUrl(id: number): string {
     let token = authService.getToken();
     if (!token) {
-      token = localStorage.getItem('token');
+      token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     }
     const baseUrl = `${this.baseUrl}/${id}/download`;
     return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
@@ -229,7 +262,7 @@ class GenerateService {
 
       let token = authService.getToken();
       if (!token) {
-        token = localStorage.getItem('token');
+        token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       }
       
       const headers: Record<string, string> = {
@@ -240,6 +273,8 @@ class GenerateService {
       const response = await fetch(`${this.baseUrl}/${id}/download`, {
         method: 'GET',
         headers,
+        // No credentials for cross-origin downloads; use token-based auth
+        credentials: 'omit',
       });
 
       if (!response.ok) {
