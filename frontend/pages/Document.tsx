@@ -165,16 +165,13 @@ const Document: React.FC = () => {
 
       console.log('🌐 Fetching from generateService with params:', params);
       
-      const response = await generateService.getGenerates(params, {
+      // Use the new document-specific endpoint for better performance
+      const response = await generateService.getDocumentGenerations(params, {
         showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
         onError: (error) => {
           console.error('❌ Error fetching generates:', error);
           showToast('Không thể tải danh sách documents', 'error');
           setLoading(false);
-        },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
         }
       });
 
@@ -182,12 +179,7 @@ const Document: React.FC = () => {
       
       if (response && response.success && Array.isArray(response.data)) {
         console.log('✅ Response success, data length:', response.data.length);
-        // Filter out video content, only keep text and audio
-        const filteredGenerates = response.data.filter(
-          (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
-        );
-        console.log('📝 Filtered generates:', filteredGenerates.length);
-        setGenerates(filteredGenerates);
+        setGenerates(response.data);
       } else {
         console.log('❌ Response not success or no data:', response);
         setGenerates([]);

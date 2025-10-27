@@ -29,7 +29,7 @@ interface AIModel {
 interface GeneratedImage {
   id: string;
   url: string;
-  seed?: number; // Thêm seed từ Runware API
+  seed?: number | null; // Seed có thể là number hoặc null
   prompt: string;
   model: string;
   width: number;
@@ -254,8 +254,8 @@ const ImageCreator: React.FC = () => {
       setLoading(true);
       console.log('🌐 Fetching images from generateService...');
       
-      const response = await generateService.getGenerates({
-        type: 'image',
+      // Use the new image-specific endpoint for better performance
+      const response = await generateService.getImageGenerations({
         per_page: 22, // Giảm số lượng để tải nhanh hơn
         page: 1
       }, {
@@ -264,10 +264,6 @@ const ImageCreator: React.FC = () => {
           console.error('❌ Error fetching generated images:', error);
           showToast('error', 'Không thể tải danh sách ảnh đã tạo');
           setLoading(false);
-        },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
         }
       });
 
@@ -283,18 +279,45 @@ const ImageCreator: React.FC = () => {
           // Parse result_url để lấy array các object {seed, url} từ Runware
           if (generate.result_url) {
             try {
-              const resultData = JSON.parse(generate.result_url);
-              // result_url giờ đây chứa array các object {seed, url}
-              if (Array.isArray(resultData)) {
-                imageData = resultData.filter(item => 
-                  item && 
-                  typeof item === 'object' && 
-                  item.url && 
-                  typeof item.url === 'string'
-                );
+              // Kiểm tra xem result_url có phải là JSON string không
+              if (generate.result_url.trim().startsWith('[') || generate.result_url.trim().startsWith('{')) {
+                const resultData = JSON.parse(generate.result_url);
+                // result_url giờ đây chứa array các object {seed, url}
+                if (Array.isArray(resultData)) {
+                  imageData = resultData.filter(item => 
+                    item && 
+                    typeof item === 'object' && 
+                    item.url && 
+                    typeof item.url === 'string'
+                  ).map(item => ({
+                    url: item.url,
+                    seed: item.seed !== null && item.seed !== undefined ? item.seed : (item.seedUsed !== null && item.seedUsed !== undefined ? item.seedUsed : null) // Giữ nguyên null khi không có seed
+                  }));
+                } else if (resultData && typeof resultData === 'object' && resultData.url) {
+                  // Trường hợp result_url là object đơn lẻ
+                  imageData = [{
+                    url: resultData.url,
+                    seed: resultData.seed !== null && resultData.seed !== undefined ? resultData.seed : (resultData.seedUsed !== null && resultData.seedUsed !== undefined ? resultData.seedUsed : null)
+                  }];
+                }
+              } else {
+                // Nếu result_url là URL trực tiếp, tạo object đơn giản
+                if (generate.result_url.startsWith('http')) {
+                  imageData = [{
+                    url: generate.result_url,
+                    seed: null // Không có seed cho URL trực tiếp
+                  }];
+                }
               }
             } catch (parseError) {
               console.error('Error parsing result_url:', parseError);
+              // Fallback: nếu parse lỗi nhưng là URL hợp lệ, vẫn sử dụng
+              if (generate.result_url.startsWith('http')) {
+                imageData = [{
+                  url: generate.result_url,
+                  seed: 0 // Default seed
+                }];
+              }
             }
           }
           
@@ -1170,7 +1193,7 @@ const ImageCreator: React.FC = () => {
               <div className="flex items-center justify-between text-xs">
                 <div className="flex items-center space-x-2">
                   
-                  {image.seed && (
+                  {image.seed !== null && image.seed !== undefined && (
                     <span className={`px-2 py-1 rounded ${isDark ? 'bg-green-900/30 text-green-300' : 'bg-green-100 text-green-600'}`}>
                       Seed: {image.seed}
                     </span>
@@ -1660,7 +1683,7 @@ const ImageCreator: React.FC = () => {
                     {selectedImage.createdAt.toLocaleDateString()}
                   </p>
                 </div>
-                {selectedImage.seed && (
+                {selectedImage.seed !== null && selectedImage.seed !== undefined && (
                   <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
                     <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
                       Seed

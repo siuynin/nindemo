@@ -249,60 +249,111 @@ class GenerateService {
     if (!token) {
       token = localStorage.getItem('auth_token') || localStorage.getItem('token');
     }
-    const baseUrl = `${this.baseUrl}/${id}/download`;
-    return token ? `${baseUrl}?token=${encodeURIComponent(token)}` : baseUrl;
+    return `${this.baseUrl}/${id}/download?token=${token}`;
   }
 
-  // Method to download audio file as blob
+  // Download generate file
   async downloadGenerate(id: number, fetchOptions?: FetchOptions): Promise<Blob> {
+    const url = `${this.baseUrl}/${id}/download`;
+    
     try {
-      if (fetchOptions?.onLoading) {
-        fetchOptions.onLoading(true);
-      }
-
       let token = authService.getToken();
       if (!token) {
         token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       }
-      
-      const headers: Record<string, string> = {
-        'Accept': 'audio/*,*/*',
-        ...(token && { 'Authorization': `Bearer ${token}` }),
-      };
 
-      const response = await fetch(`${this.baseUrl}/${id}/download`, {
+      if (!token) {
+        if (fetchOptions?.showAuthModal) {
+          fetchOptions.showAuthModal();
+        }
+        throw new Error('Authentication required');
+      }
+
+      const response = await fetch(url, {
         method: 'GET',
-        headers,
-        // No credentials for cross-origin downloads; use token-based auth
-        credentials: 'omit',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/octet-stream',
+        },
       });
 
       if (!response.ok) {
         if (response.status === 401) {
-          authService.removeToken();
-          localStorage.removeItem('token');
-          
           if (fetchOptions?.showAuthModal) {
             fetchOptions.showAuthModal();
-          } else {
-            authService.logout();
           }
-          throw new Error('Unauthorized - Please login again');
+          throw new Error('Authentication required');
         }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return response.blob();
+      return await response.blob();
     } catch (error) {
+      console.error('Download error:', error);
       if (fetchOptions?.onError) {
         fetchOptions.onError(error as Error);
       }
       throw error;
-    } finally {
-      if (fetchOptions?.onLoading) {
-        fetchOptions.onLoading(false);
-      }
     }
+  }
+
+  // New methods for specific generation types
+  
+  // Image generations
+  async getImageGenerations(params?: {
+    per_page?: number;
+    page?: number;
+  }, fetchOptions?: FetchOptions): Promise<GenerateResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params?.per_page) searchParams.append('per_page', params.per_page.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
+    
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/images/generations${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    return this.makeRequest(url, {}, fetchOptions);
+  }
+
+  async getImageGeneration(id: number, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate }> {
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/images/generations/${id}`;
+    return this.makeRequest(url, {}, fetchOptions);
+  }
+
+  // Document generations
+  async getDocumentGenerations(params?: {
+    per_page?: number;
+    page?: number;
+  }, fetchOptions?: FetchOptions): Promise<GenerateResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params?.per_page) searchParams.append('per_page', params.per_page.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
+    
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/documents/generations${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    return this.makeRequest(url, {}, fetchOptions);
+  }
+
+  async getDocumentGeneration(id: number, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate }> {
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/documents/generations/${id}`;
+    return this.makeRequest(url, {}, fetchOptions);
+  }
+
+  // Creation generations (audio, text, etc.)
+  async getCreationGenerations(params?: {
+    per_page?: number;
+    page?: number;
+  }, fetchOptions?: FetchOptions): Promise<GenerateResponse> {
+    const searchParams = new URLSearchParams();
+    
+    if (params?.per_page) searchParams.append('per_page', params.per_page.toString());
+    if (params?.page) searchParams.append('page', params.page.toString());
+    
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/creations/generations${searchParams.toString() ? '?' + searchParams.toString() : ''}`;
+    return this.makeRequest(url, {}, fetchOptions);
+  }
+
+  async getCreationGeneration(id: number, fetchOptions?: FetchOptions): Promise<{ success: boolean; data: Generate }> {
+    const url = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/creations/generations/${id}`;
+    return this.makeRequest(url, {}, fetchOptions);
   }
 }
 

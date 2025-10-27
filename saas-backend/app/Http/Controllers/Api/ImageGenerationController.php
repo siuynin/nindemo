@@ -1035,5 +1035,169 @@ class ImageGenerationController extends Controller
         }
     }
 
+    /**
+     * Get user's image generations
+     */
+    public function getUserGenerations(Request $request)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $perPage = $request->get('per_page', 20);
+            
+            $generations = Generate::where('user_id', $user->id)
+                ->where('type', 'image')
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            // Transform data to include parsed content and proper prompt
+            $transformedGenerations = [];
+            foreach ($generations->items() as $generation) {
+                // Parse content JSON to get prompt and settings
+                $contentData = json_decode($generation->content, true) ?? [];
+                
+                // Get prompt from content data
+                $prompt = $contentData['prompt'] ?? $contentData['positivePrompt'] ?? $generation->name ?? '';
+                
+                // Parse result_url for multiple images
+                $resultUrl = $generation->result_url;
+                $imageCount = 1;
+                
+                if ($resultUrl) {
+                    try {
+                        $resultData = json_decode($resultUrl, true);
+                        if (is_array($resultData) && count($resultData) > 0) {
+                            // For images with multiple results, use the first image as preview
+                            $resultUrl = $resultData[0]['url'] ?? $generation->result_url;
+                            $imageCount = count($resultData);
+                        }
+                    } catch (\Exception $parseError) {
+                        Log::error('Error parsing image result_url:', ['error' => $parseError->getMessage()]);
+                    }
+                }
+
+                $transformedGenerations[] = [
+                    'id' => $generation->id,
+                    'name' => $generation->name,
+                    'prompt' => $prompt,
+                    'status' => $generation->status,
+                    'result_url' => $resultUrl,
+                    'imageCount' => $imageCount,
+                    'created_at' => $generation->created_at,
+                    'completed_at' => $generation->completed_at,
+                    'error_message' => $generation->error_message,
+                    'credit_cost' => $generation->credit_cost,
+                    'task_id' => $generation->task_id,
+                    'content' => $generation->content,
+                    'type' => $generation->type,
+                    'share' => $generation->share,
+                    'settings' => $contentData['settings'] ?? []
+                ];
+            }
+
+            // Debug log
+            Log::info('Image generations being returned:', [
+                'user_id' => $user->id,
+                'total_generations' => $generations->total(),
+                'returned_count' => count($transformedGenerations)
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $transformedGenerations,
+                'pagination' => [
+                    'current_page' => $generations->currentPage(),
+                    'last_page' => $generations->lastPage(),
+                    'per_page' => $generations->perPage(),
+                    'total' => $generations->total(),
+                    'from' => $generations->firstItem(),
+                    'to' => $generations->lastItem(),
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get User Image Generations Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'An unexpected error occurred'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get specific image generation by ID
+     */
+    public function getImageGeneration($id)
+    {
+        try {
+            $user = Auth::user();
+            if (!$user) {
+                return response()->json(['error' => 'Unauthorized'], 401);
+            }
+
+            $generation = Generate::where('user_id', $user->id)
+                ->where('type', 'image')
+                ->where('id', $id)
+                ->first();
+
+            if (!$generation) {
+                return response()->json(['error' => 'Generation not found'], 404);
+            }
+
+            // Parse content and result_url
+            $contentData = json_decode($generation->content, true) ?? [];
+            $prompt = $contentData['prompt'] ?? $contentData['positivePrompt'] ?? $generation->name ?? '';
+
+            $resultUrl = $generation->result_url;
+            $imageCount = 1;
+            $allImages = [];
+
+            if ($resultUrl) {
+                try {
+                    $resultData = json_decode($resultUrl, true);
+                    if (is_array($resultData)) {
+                        $allImages = $resultData;
+                        $imageCount = count($resultData);
+                        $resultUrl = $resultData[0]['url'] ?? $generation->result_url;
+                    }
+                } catch (\Exception $parseError) {
+                    Log::error('Error parsing image result_url:', ['error' => $parseError->getMessage()]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'id' => $generation->id,
+                    'name' => $generation->name,
+                    'prompt' => $prompt,
+                    'status' => $generation->status,
+                    'result_url' => $resultUrl,
+                    'all_images' => $allImages,
+                    'imageCount' => $imageCount,
+                    'created_at' => $generation->created_at,
+                    'completed_at' => $generation->completed_at,
+                    'error_message' => $generation->error_message,
+                    'credit_cost' => $generation->credit_cost,
+                    'task_id' => $generation->task_id,
+                    'content' => $generation->content,
+                    'type' => $generation->type,
+                    'share' => $generation->share,
+                    'settings' => $contentData['settings'] ?? []
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Get Image Generation Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'error' => 'An unexpected error occurred'
+            ], 500);
+        }
+    }
+
 
 }

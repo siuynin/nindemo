@@ -96,7 +96,7 @@ const Creation: React.FC = () => {
 
   // Fetch generations from API
   const fetchGenerations = async () => {
-    console.log('🎨 Creation.tsx - fetchGenerations called');
+    console.log('🚀 Starting fetchGenerations...');
     console.log('🔐 Is authenticated:', isAuthenticated);
     console.log('📋 Active tab:', activeTab);
     console.log('🔍 Filters:', filters);
@@ -113,41 +113,88 @@ const Creation: React.FC = () => {
     
     try {
       const params = {
-        search: filters.search || undefined,
-        type: filters.type || undefined,
-        status: filters.status || undefined,
-        per_page: 40 // Giảm từ 50 xuống 20 để tải nhanh hơn
+        per_page: 40 // Giảm từ 50 xuống 40 để tải nhanh hơn
       };
 
       console.log('🌐 Fetching generations with params:', params);
 
-      const response = await generateService.getGenerates(params, {
-        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
-        onError: (error) => {
-          console.error('❌ Error fetching generations:', error);
-          showToast('Không thể tải danh sách creations', 'error');
-          setLoading(false);
-        },
-        onLoading: (loadingState) => {
-          console.log('🔄 Loading state changed:', loadingState);
-          setLoading(loadingState);
-        }
-      });
+      let response;
+      
+      // Use specific endpoints based on active tab for better performance
+      if (activeTab === 'image') {
+        response = await generateService.getImageGenerations(params, {
+          showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+          onError: (error) => {
+            console.error('❌ Error fetching image generations:', error);
+            showToast('Không thể tải danh sách hình ảnh', 'error');
+            setLoading(false);
+          }
+        });
+      } else if (activeTab === 'audio' || activeTab === 'video') {
+        // For audio and video, use creation generations endpoint
+        response = await generateService.getCreationGenerations(params, {
+          showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+          onError: (error) => {
+            console.error('❌ Error fetching creation generations:', error);
+            showToast('Không thể tải danh sách creations', 'error');
+            setLoading(false);
+          }
+        });
+      } else {
+        // For 'all' tab, we need to fetch from multiple endpoints and combine
+        const [imageResponse, creationResponse] = await Promise.all([
+          generateService.getImageGenerations(params, {
+            showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+            onError: (error) => console.error('❌ Error fetching images:', error)
+          }),
+          generateService.getCreationGenerations(params, {
+            showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+            onError: (error) => console.error('❌ Error fetching creations:', error)
+          })
+        ]);
+        
+        // Combine results
+        const allGenerations = [
+          ...(imageResponse?.data || []),
+          ...(creationResponse?.data || [])
+        ];
+        
+        // Sort by created_at descending
+        allGenerations.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        response = {
+          success: true,
+          data: allGenerations,
+          pagination: imageResponse?.pagination || creationResponse?.pagination
+        };
+      }
       
       console.log('📊 Response data:', response);
       
       if (response && response.success && Array.isArray(response.data)) {
         console.log('✅ Response successful, processing data...', response.data.length, 'items');
         
-        // Filter image, audio and video types based on active tab
-        let filteredGenerations = response.data.filter(
-          (gen: Generate) => ['image', 'audio', 'video'].includes(gen.type)
-        );
+        let filteredGenerations = response.data;
         
-        // Apply tab filter
-        if (activeTab !== 'all') {
+        // Apply tab filter if not already filtered by endpoint
+        if (activeTab !== 'all' && (activeTab === 'audio' || activeTab === 'video')) {
           filteredGenerations = filteredGenerations.filter(
             (gen: Generate) => gen.type === activeTab
+          );
+        }
+        
+        // Apply search filter
+        if (filters.search) {
+          filteredGenerations = filteredGenerations.filter((gen: Generate) =>
+            gen.name?.toLowerCase().includes(filters.search.toLowerCase()) ||
+            gen.prompt?.toLowerCase().includes(filters.search.toLowerCase())
+          );
+        }
+        
+        // Apply status filter
+        if (filters.status && filters.status !== 'all') {
+          filteredGenerations = filteredGenerations.filter(
+            (gen: Generate) => gen.status === filters.status
           );
         }
         

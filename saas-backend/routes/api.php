@@ -183,6 +183,21 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/generation/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getGenerationStatus']);
         Route::post('/upscale', [App\Http\Controllers\Api\ImageGenerationController::class, 'upscaleImage']);
         Route::post('/check-task-status', [App\Http\Controllers\Api\ImageGenerationController::class, 'checkTaskStatus']);
+        // New routes for fetching user's image generations
+        Route::get('/generations', [App\Http\Controllers\Api\ImageGenerationController::class, 'getUserGenerations']);
+        Route::get('/generations/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getImageGeneration']);
+    });
+
+    // Document Generation Routes
+    Route::prefix('documents')->group(function () {
+        Route::get('/generations', [App\Http\Controllers\Api\DocumentGenerationController::class, 'getUserGenerations']);
+        Route::get('/generations/{id}', [App\Http\Controllers\Api\DocumentGenerationController::class, 'getDocumentGeneration']);
+    });
+
+    // Creation Generation Routes (audio, text, etc.)
+    Route::prefix('creations')->group(function () {
+        Route::get('/generations', [App\Http\Controllers\Api\CreationGenerationController::class, 'getUserGenerations']);
+        Route::get('/generations/{id}', [App\Http\Controllers\Api\CreationGenerationController::class, 'getCreationGeneration']);
     });
 
     // NDHub TTS Routes
