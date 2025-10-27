@@ -230,34 +230,7 @@ const ImageTools: React.FC = () => {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Stats Section */}
-        <div className={`rounded-lg shadow-md p-6 ${
-          theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-        }`}>
-          <h2 className={`text-xl font-semibold mb-4 ${
-            theme === 'dark' ? 'text-gray-100' : 'text-gray-800'
-          }`}>Storage Stats</h2>
-          <div className="grid grid-cols-4 gap-6">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{recentImages.length}</div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Total Images</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">12.5 GB</div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Used Storage</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">87.5 GB</div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>Free Space</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">24</div>
-              <div className={`text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-500'}`}>This Week</div>
-            </div>
-          </div>
-        </div>
+        </div> 
         </div>
       </div>
       <Outlet />

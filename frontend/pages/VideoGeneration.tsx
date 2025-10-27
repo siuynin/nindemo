@@ -109,9 +109,9 @@ const VideoGeneration: React.FC = () => {
 
   // Aspect ratio options with 720p max resolution
   const aspectRatioOptions = [
-    { value: '16:9', label: '16:9 (1280x720)' },
-    { value: '9:16', label: '9:16 (720x1280)' },
-    { value: '1:1', label: '1:1 (720x720)' }
+    { value: '16:9', label: '16:9 Landscape' },
+    { value: '9:16', label: '9:16 Portrait' },
+    { value: '1:1', label: '1:1 Square' }
   ];
 
   // Get duration options based on selected model

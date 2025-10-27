@@ -212,7 +212,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
           {nav.subItems ? (
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-left rounded-lg transition-all duration-200 group ${
+              className={`w-full flex items-center gap-1 px-3 py-2 text-left rounded-lg transition-all duration-200 group ${
                 openSubmenu?.type === menuType && openSubmenu?.index === index
                   ? theme === 'dark'
                     ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'

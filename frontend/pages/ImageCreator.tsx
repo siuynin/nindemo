@@ -238,6 +238,7 @@ const ImageCreator: React.FC = () => {
   // Tải ảnh đã tạo từ database
   const fetchGeneratedImages = async () => {
     try {
+      console.log('🖼️ ImageCreator.tsx - fetchGeneratedImages called');
       console.log('🔍 Fetching generated images...');
       console.log('🔐 Is authenticated:', isAuthenticated);
       console.log('👤 Current user:', user);
@@ -246,18 +247,33 @@ const ImageCreator: React.FC = () => {
       if (!isAuthenticated || !user) {
         console.log('❌ User not authenticated, skipping fetch');
         setGeneratedImages([]);
+        setLoading(false);
         return;
       }
+
+      setLoading(true);
+      console.log('🌐 Fetching images from generateService...');
       
       const response = await generateService.getGenerates({
         type: 'image',
-        per_page: 24, // Giới hạn tối đa 24 ảnh
+        per_page: 22, // Giảm số lượng để tải nhanh hơn
         page: 1
+      }, {
+        showAuthModal: () => setShowAuthModal(true),
+        onError: (error) => {
+          console.error('❌ Error fetching generated images:', error);
+          showToast('error', 'Không thể tải danh sách ảnh đã tạo');
+          setLoading(false);
+        },
+        onLoading: (loadingState) => {
+          console.log('🔄 Loading state changed:', loadingState);
+          setLoading(loadingState);
+        }
       });
+
+      console.log('📊 Response data:', response);
       
-      console.log('📡 API Response:', response);
-      
-      if (response.success && response.data) {
+      if (response && response.success && Array.isArray(response.data)) {
         console.log('✅ Response successful, processing data...', response.data.length, 'items');
         const images: GeneratedImage[] = response.data.flatMap(generate => {
           let imageData: Array<{seed: number, url: string}> = [];
@@ -368,11 +384,19 @@ const ImageCreator: React.FC = () => {
         });
         console.log('📋 Images data:', images);
         setGeneratedImages(images);
+        setLoading(false);
       } else {
         console.log('❌ API response failed or no data:', response);
+        setGeneratedImages([]);
+        setLoading(false);
+        showToast('error', 'Không thể tải danh sách ảnh đã tạo');
       }
     } catch (error) {
-      console.error('Error fetching generated images:', error);
+      console.error('❌ Error in fetchGeneratedImages:', error);
+      setGeneratedImages([]);
+      setLoading(false);
+      showToast('error', 'Có lỗi xảy ra khi tải danh sách ảnh');
+      // Error handling is already done in generateService
     }
   };
 

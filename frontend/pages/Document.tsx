@@ -143,28 +143,61 @@ const Document: React.FC = () => {
 
   // Fetch user's generates (only text and audio)
   const fetchGenerates = async () => {
-    if (!isAuthenticated) return;
+    console.log('📄 Document.tsx - fetchGenerates called');
+    console.log('🔐 isAuthenticated:', isAuthenticated);
+    
+    if (!isAuthenticated) {
+      setGenerates([]);
+      setLoading(false);
+      return;
+    }
     
     try {
       setLoading(true);
-      const response = await generateService.getGenerates({
+      
+      const params = {
         search: filters.search || undefined,
         type: filters.type || undefined,
         status: filters.status || undefined,
         share: filters.share || undefined,
         per_page: 20
-      });
+      };
+
+      console.log('🌐 Fetching from generateService with params:', params);
       
-      if (response.success) {
+      const response = await generateService.getGenerates(params, {
+        showAuthModal: () => setAuthModal({ isOpen: true, mode: 'login' }),
+        onError: (error) => {
+          console.error('❌ Error fetching generates:', error);
+          showToast('Không thể tải danh sách documents', 'error');
+          setLoading(false);
+        },
+        onLoading: (loadingState) => {
+          console.log('🔄 Loading state changed:', loadingState);
+          setLoading(loadingState);
+        }
+      });
+
+      console.log('📊 Response data:', response);
+      
+      if (response && response.success && Array.isArray(response.data)) {
+        console.log('✅ Response success, data length:', response.data.length);
         // Filter out video content, only keep text and audio
         const filteredGenerates = response.data.filter(
           (gen: Generate) => gen.type === 'text' || gen.type === 'audio'
         );
+        console.log('📝 Filtered generates:', filteredGenerates.length);
         setGenerates(filteredGenerates);
+      } else {
+        console.log('❌ Response not success or no data:', response);
+        setGenerates([]);
+        showToast('Không thể tải danh sách documents', 'error');
       }
     } catch (error) {
-      console.error('Error fetching generates:', error);
-      alert('Không thể tải danh sách documents');
+      console.error('❌ Error in fetchGenerates:', error);
+      setGenerates([]);
+      const errorMessage = error instanceof Error ? error.message : 'Có lỗi xảy ra khi tải documents';
+      showToast(errorMessage, 'error');
     } finally {
       setLoading(false);
     }

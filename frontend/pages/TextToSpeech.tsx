@@ -239,14 +239,14 @@ const TextToSpeech: React.FC = () => {
               {ttsServices.map((service) => (
                 <a 
                   href={service.id === 'elevenlabs' ? '/elevenlabs' : service.id === 'minmax' ? '/minimax' : service.url}
-                  target={service.id === 'elevenlabs' || service.id === 'minmax' ? '_self' : '_blank'}
+                  target={service.id === 'elevenlabs' || service.id === 'minmax' ? '_self' : '_self'}
                   rel="noopener noreferrer"
                   key={service.id}
                   className="block"
                 >
                   <Card
                     hover={true}
-                    className="cursor-pointer group relative z-50 pointer-events-auto"
+                    className="cursor-pointer group relative  pointer-events-auto"
                   >
                   <div className="flex flex-col h-full">
                     <div className={`inline-flex p-3 rounded-xl bg-gradient-to-r ${service.color} text-white mb-3 w-fit`}>
