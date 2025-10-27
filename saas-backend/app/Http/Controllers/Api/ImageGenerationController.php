@@ -948,7 +948,7 @@ class ImageGenerationController extends Controller
                     ]);
 
                 } elseif ($taskResult['status'] === 'failed') {
-                    // Task failed, update database
+                    // Task failed, update database and refund credits
                     $generate->update([
                         'status' => 'failed',
                         'file_patch' => json_encode([
@@ -957,6 +957,44 @@ class ImageGenerationController extends Controller
                             'failed_at' => now()->toISOString()
                         ])
                     ]);
+
+                    // Refund credits on failure
+                    if ($generate->credit_cost > 0) {
+                        try {
+                            $userCreditController = new \App\Http\Controllers\Api\UserCreditController();
+                            $refundResult = $userCreditController->refundCreditsInternal(
+                                $user, 
+                                $generate->credit_cost, 
+                                'Refund for failed RunningHub image generation (Generate ID: ' . $generate->id . ')'
+                            );
+                            
+                            if ($refundResult['success']) {
+                                Log::info('Credits refunded for failed RunningHub task', [
+                                    'user_id' => $user->id,
+                                    'generate_id' => $generate->id,
+                                    'task_id' => $validatedData['task_id'],
+                                    'refunded_credits' => $generate->credit_cost,
+                                    'credit_id' => $refundResult['credit_id']
+                                ]);
+                            } else {
+                                Log::error('Failed to refund credits for failed RunningHub task', [
+                                    'user_id' => $user->id,
+                                    'generate_id' => $generate->id,
+                                    'task_id' => $validatedData['task_id'],
+                                    'credits' => $generate->credit_cost,
+                                    'error' => $refundResult['message']
+                                ]);
+                            }
+                        } catch (\Exception $refundError) {
+                            Log::error('Exception during credit refund for failed RunningHub task', [
+                                'user_id' => $user->id,
+                                'generate_id' => $generate->id,
+                                'task_id' => $validatedData['task_id'],
+                                'credits' => $generate->credit_cost,
+                                'error' => $refundError->getMessage()
+                            ]);
+                        }
+                    }
 
                     return response()->json([
                         'status' => 'failed',

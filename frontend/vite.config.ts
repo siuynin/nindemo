@@ -110,6 +110,11 @@ export default defineConfig(({ mode }) => {
       },
       server: {
         port: 5175,
+        host: '0.0.0.0',
+        hmr: {
+          port: 5175,
+          host: '0.0.0.0'
+        },
         proxy: {
           '/api': {
             target: env.VITE_API_BASE_URL?.replace('/api', '') || 'http://127.0.0.1:8001',

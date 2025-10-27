@@ -316,11 +316,29 @@ const ImageCreator: React.FC = () => {
               status: 'completed' as const
             }));
           } else {
-            // Nếu không có imageData, có thể là ảnh đang processing
-            // Kiểm tra xem có task_id trong file_patch không
+            // Nếu không có imageData, có thể là ảnh đang processing hoặc failed
+            // Kiểm tra trạng thái từ database trước để xác định failed
+            if (generate.status === 'failed') {
+              console.log(`❌ Found failed image: generate ID ${generate.id}`);
+              return [{
+                id: `failed-${generate.id}`,
+                url: '',
+                prompt: contentData?.prompt || generate.name || '',
+                model: contentData?.model || 'Unknown',
+                width: contentData?.width || 1024,
+                height: contentData?.height || 1024,
+                createdAt: new Date(generate.created_at),
+                generateId: generate.id,
+                resultData: filePatchData,
+                status: 'failed' as const
+              }];
+            }
+            
+            // Kiểm tra xem có task_id trong file_patch không (chỉ khi không phải failed)
             const hasTaskId = filePatchData && filePatchData.task_id;
             
             if (hasTaskId) {
+              console.log(`⏳ Found processing image: generate ID ${generate.id}, task ID ${filePatchData.task_id}`);
               // Ảnh đang processing
               return [{
                 id: `processing-${generate.id}`,
@@ -336,28 +354,18 @@ const ImageCreator: React.FC = () => {
               }];
             }
             
-            // Kiểm tra trạng thái từ database để xác định failed
-            if (generate.status === 'failed') {
-              return [{
-                id: `failed-${generate.id}`,
-                url: '',
-                prompt: contentData?.prompt || generate.name || '',
-                model: contentData?.model || 'Unknown',
-                width: contentData?.width || 1024,
-                height: contentData?.height || 1024,
-                createdAt: new Date(generate.created_at),
-                generateId: generate.id,
-                resultData: filePatchData,
-                status: 'failed' as const
-              }];
-            }
-            
             // Nếu không có task_id, imageData và không phải failed, bỏ qua
+            console.log(`⚠️ Skipping generate ID ${generate.id}: no result_url, no task_id, not failed`);
             return [];
           }
         }).filter(img => img !== null); // Lọc ra các item null
         
         console.log('🖼️ Processed images:', images.length, 'images');
+        console.log('📋 Image status breakdown:', {
+          processing: images.filter(img => img.status === 'processing').length,
+          completed: images.filter(img => img.status === 'completed').length,
+          failed: images.filter(img => img.status === 'failed').length
+        });
         console.log('📋 Images data:', images);
         setGeneratedImages(images);
       } else {
@@ -423,6 +431,8 @@ const ImageCreator: React.FC = () => {
                 : img
             ));
             
+            // Refresh images to get the updated status from database
+            await fetchGeneratedImages();
             showToast('error', 'Tạo ảnh thất bại. Vui lòng thử lại.');
             await refreshUser(); // Refresh to show refunded credits if any
             
@@ -446,6 +456,8 @@ const ImageCreator: React.FC = () => {
               : img
           ));
           
+          // Refresh images to get the updated status from database
+          await fetchGeneratedImages();
           showToast('warning', 'Việc tạo ảnh đang mất nhiều thời gian hơn dự kiến. Sẽ cập nhật kết qủa sau.');
           
           // Remove from active polling tasks
@@ -471,6 +483,16 @@ const ImageCreator: React.FC = () => {
   // Auto-start polling for processing images when component mounts or images change
   useEffect(() => {
     const processingImages = generatedImages.filter(img => img.status === 'processing');
+    const failedImages = generatedImages.filter(img => img.status === 'failed');
+    const completedImages = generatedImages.filter(img => img.status === 'completed');
+    
+    console.log('🔄 useEffect polling check:', {
+      total: generatedImages.length,
+      processing: processingImages.length,
+      failed: failedImages.length,
+      completed: completedImages.length,
+      activePollingTasks: Array.from(activePollingTasks.current)
+    });
     
     processingImages.forEach(img => {
       if (img.generateId && img.resultData?.task_id) {
@@ -1244,17 +1266,17 @@ const ImageCreator: React.FC = () => {
                         <label
                           htmlFor="image-upload"
                           className="cursor-pointer flex items-center space-y-2"
-                        > <div className="flex flex-col items-center space-y-2">
+                        > <div className="flex items-center space-y-2">
                             <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
                             <div>
-                            <span className="text-sm text-gray-600 dark:text-gray-400 block">
-                              {uploadedImages.length === 0 ? 'Click to upload images' : 'Add another image'}
-                            </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-500">
-                              PNG, JPG, GIF up to 10MB ({uploadedImages.length}/3)
-                            </span>
+                              <span className="text-sm text-gray-600 dark:text-gray-400 block">
+                                {uploadedImages.length === 0 ? 'Click to upload images' : 'Add another image'}
+                              </span>
+                              <span className="text-xs text-gray-500 dark:text-gray-500">
+                                PNG, JPG, GIF up to 10MB ({uploadedImages.length}/3)
+                              </span>
                             </div>
                           </div>
                         </label>
