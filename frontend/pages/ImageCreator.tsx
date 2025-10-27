@@ -238,10 +238,7 @@ const ImageCreator: React.FC = () => {
   // Tải ảnh đã tạo từ database
   const fetchGeneratedImages = async () => {
     try {
-      console.log('🖼️ ImageCreator.tsx - fetchGeneratedImages called');
-      console.log('🔍 Fetching generated images...');
-      console.log('🔐 Is authenticated:', isAuthenticated);
-      console.log('👤 Current user:', user);
+      console.log('🔍 Fetching generated images (images/generations)');
       
       // Check if user is authenticated before making API call
       if (!isAuthenticated || !user) {
@@ -252,7 +249,7 @@ const ImageCreator: React.FC = () => {
       }
 
       setLoading(true);
-      console.log('🌐 Fetching images from generateService...');
+      console.log('🌐 Calling image-specific endpoint...');
       
       // Use the new image-specific endpoint for better performance
       const response = await generateService.getImageGenerations({
@@ -267,145 +264,98 @@ const ImageCreator: React.FC = () => {
         }
       });
 
-      console.log('📊 Response data:', response);
-      
       if (response && response.success && Array.isArray(response.data)) {
-        console.log('✅ Response successful, processing data...', response.data.length, 'items');
-        const images: GeneratedImage[] = response.data.flatMap(generate => {
-          let imageData: Array<{seed: number, url: string}> = [];
-          let contentData = null;
-          let filePatchData = null;
-          
-          // Parse result_url để lấy array các object {seed, url} từ Runware
-          if (generate.result_url) {
-            try {
-              // Kiểm tra xem result_url có phải là JSON string không
-              if (generate.result_url.trim().startsWith('[') || generate.result_url.trim().startsWith('{')) {
-                const resultData = JSON.parse(generate.result_url);
-                // result_url giờ đây chứa array các object {seed, url}
-                if (Array.isArray(resultData)) {
-                  imageData = resultData.filter(item => 
-                    item && 
-                    typeof item === 'object' && 
-                    item.url && 
-                    typeof item.url === 'string'
-                  ).map(item => ({
-                    url: item.url,
-                    seed: item.seed !== null && item.seed !== undefined ? item.seed : (item.seedUsed !== null && item.seedUsed !== undefined ? item.seedUsed : null) // Giữ nguyên null khi không có seed
-                  }));
-                } else if (resultData && typeof resultData === 'object' && resultData.url) {
-                  // Trường hợp result_url là object đơn lẻ
-                  imageData = [{
-                    url: resultData.url,
-                    seed: resultData.seed !== null && resultData.seed !== undefined ? resultData.seed : (resultData.seedUsed !== null && resultData.seedUsed !== undefined ? resultData.seedUsed : null)
-                  }];
-                }
-              } else {
-                // Nếu result_url là URL trực tiếp, tạo object đơn giản
-                if (generate.result_url.startsWith('http')) {
-                  imageData = [{
-                    url: generate.result_url,
-                    seed: null // Không có seed cho URL trực tiếp
-                  }];
-                }
-              }
-            } catch (parseError) {
-              console.error('Error parsing result_url:', parseError);
-              // Fallback: nếu parse lỗi nhưng là URL hợp lệ, vẫn sử dụng
-              if (generate.result_url.startsWith('http')) {
-                imageData = [{
-                  url: generate.result_url,
-                  seed: 0 // Default seed
-                }];
-              }
-            }
-          }
-          
-          // Parse content để lấy thông tin prompt và model
+        console.log('✅ Response successful, processing', response.data.length, 'items');
+        const processed = await Promise.all(response.data.map(async (generate) => {
+          let contentData: any = null;
           if (generate.content) {
+            try { contentData = JSON.parse(generate.content); } catch {}
+          }
+
+          // For completed items, ensure we have full images array with seeds
+          if (generate.status === 'completed') {
+            let imagesArray: Array<{ seed: number | null, url: string }> = [];
+            const raw = generate.result_url || '';
             try {
-              contentData = JSON.parse(generate.content);
-            } catch (parseError) {
-              console.error('Error parsing content:', parseError);
+              const trimmed = raw.trim();
+              if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) {
+                  imagesArray = parsed.filter(it => it && typeof it === 'object' && typeof it.url === 'string')
+                    .map(it => ({ url: it.url, seed: (it.seed ?? it.seedUsed ?? null) }));
+                } else if (parsed && typeof parsed === 'object' && parsed.url) {
+                  imagesArray = [{ url: parsed.url, seed: (parsed.seed ?? parsed.seedUsed ?? null) }];
+                }
+              } else if (raw.startsWith('http')) {
+                // Fetch full details to get seeds if backend provided only preview URL
+                const detail = await generateService.getImageGeneration(generate.id, {
+                  showAuthModal: () => setShowAuthModal(true),
+                  onError: (err) => console.error('getImageGeneration error:', err),
+                });
+                if (detail?.success && Array.isArray((detail as any).data?.all_images) && (detail as any).data.all_images.length > 0) {
+                  imagesArray = (detail as any).data.all_images.map((it: any) => ({ url: it.url, seed: (it.seed ?? it.seedUsed ?? null) }));
+                } else {
+                  imagesArray = [{ url: raw, seed: null }];
+                }
+              }
+            } catch {
+              if (raw && raw.startsWith('http')) {
+                imagesArray = [{ url: raw, seed: null }];
+              }
+            }
+
+            // Map images to GeneratedImage entries
+            if (imagesArray.length > 0) {
+              return imagesArray.map((imageItem, index) => ({
+                id: `${generate.id}-${index}`,
+                url: imageItem.url,
+                seed: imageItem.seed,
+                prompt: contentData?.prompt || generate.name || '',
+                model: contentData?.model || 'Unknown',
+                width: contentData?.width || 1024,
+                height: contentData?.height || 1024,
+                createdAt: new Date(generate.created_at),
+                generateId: generate.id,
+                status: 'completed' as const,
+              }));
             }
           }
-          
-          // Parse file_patch để lấy thông tin bổ sung
-          if (generate.file_patch) {
-            try {
-              filePatchData = JSON.parse(generate.file_patch);
-            } catch (parseError) {
-              console.error('Error parsing file_patch:', parseError);
-            }
-          }
-          
-          // Nếu có imageData (ảnh đã hoàn thành), tạo GeneratedImage cho mỗi ảnh
-          if (imageData.length > 0) {
-            return imageData.map((imageItem, index) => ({
-              id: `${generate.id}-${index}`,
-              url: imageItem.url,
-              seed: imageItem.seed,
+
+          // Failed item representation
+          if (generate.status === 'failed') {
+            return [{
+              id: `failed-${generate.id}`,
+              url: '',
               prompt: contentData?.prompt || generate.name || '',
               model: contentData?.model || 'Unknown',
               width: contentData?.width || 1024,
               height: contentData?.height || 1024,
               createdAt: new Date(generate.created_at),
               generateId: generate.id,
-              resultData: filePatchData,
-              status: 'completed' as const
-            }));
-          } else {
-            // Nếu không có imageData, có thể là ảnh đang processing hoặc failed
-            // Kiểm tra trạng thái từ database trước để xác định failed
-            if (generate.status === 'failed') {
-              console.log(`❌ Found failed image: generate ID ${generate.id}`);
-              return [{
-                id: `failed-${generate.id}`,
-                url: '',
-                prompt: contentData?.prompt || generate.name || '',
-                model: contentData?.model || 'Unknown',
-                width: contentData?.width || 1024,
-                height: contentData?.height || 1024,
-                createdAt: new Date(generate.created_at),
-                generateId: generate.id,
-                resultData: filePatchData,
-                status: 'failed' as const
-              }];
-            }
-            
-            // Kiểm tra xem có task_id trong file_patch không (chỉ khi không phải failed)
-            const hasTaskId = filePatchData && filePatchData.task_id;
-            
-            if (hasTaskId) {
-              console.log(`⏳ Found processing image: generate ID ${generate.id}, task ID ${filePatchData.task_id}`);
-              // Ảnh đang processing
-              return [{
-                id: `processing-${generate.id}`,
-                url: '', // Không có URL cho ảnh đang processing
-                prompt: contentData?.prompt || generate.name || '',
-                model: contentData?.model || 'Unknown',
-                width: contentData?.width || 1024,
-                height: contentData?.height || 1024,
-                createdAt: new Date(generate.created_at),
-                generateId: generate.id,
-                resultData: filePatchData,
-                status: 'processing' as const
-              }];
-            }
-            
-            // Nếu không có task_id, imageData và không phải failed, bỏ qua
-            console.log(`⚠️ Skipping generate ID ${generate.id}: no result_url, no task_id, not failed`);
-            return [];
+              status: 'failed' as const,
+            }];
           }
-        }).filter(img => img !== null); // Lọc ra các item null
-        
-        console.log('🖼️ Processed images:', images.length, 'images');
-        console.log('📋 Image status breakdown:', {
-          processing: images.filter(img => img.status === 'processing').length,
-          completed: images.filter(img => img.status === 'completed').length,
-          failed: images.filter(img => img.status === 'failed').length
-        });
-        console.log('📋 Images data:', images);
+
+          // Processing item representation (use task_id from endpoint)
+          if (generate.status === 'processing' || (generate.task_id && generate.status !== 'failed')) {
+            return [{
+              id: `processing-${generate.id}`,
+              url: '',
+              prompt: contentData?.prompt || generate.name || '',
+              model: contentData?.model || 'Unknown',
+              width: contentData?.width || 1024,
+              height: contentData?.height || 1024,
+              createdAt: new Date(generate.created_at),
+              generateId: generate.id,
+              status: 'processing' as const,
+            }];
+          }
+
+          // Default: skip if no data
+          return [];
+        }));
+
+        const images: GeneratedImage[] = processed.flat();
         setGeneratedImages(images);
         setLoading(false);
       } else {
