@@ -219,7 +219,14 @@ const ImageCreator: React.FC = () => {
 
   const fetchModels = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/models?type=image`);
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/models?type=image`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Accept': 'application/json',
+        },
+      });
+      
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.data)) {
@@ -235,141 +242,69 @@ const ImageCreator: React.FC = () => {
     }
   };
 
-  // Tải ảnh đã tạo từ database
+  // Tải ảnh đã tạo từ database - Đơn giản hóa như Document.tsx
   const fetchGeneratedImages = async () => {
-    try {
-      console.log('🔍 Fetching generated images (images/generations)');
-      
-      // Check if user is authenticated before making API call
-      if (!isAuthenticated || !user) {
-        console.log('❌ User not authenticated, skipping fetch');
-        setGeneratedImages([]);
-        setLoading(false);
-        return;
-      }
+    console.log('🔍 Fetching generated images (images/generations)');
+    
+    if (!isAuthenticated || !user) {
+      console.log('❌ User not authenticated, skipping fetch');
+      setGeneratedImages([]);
+      setLoading(false);
+      return;
+    }
 
+    try {
       setLoading(true);
-      console.log('🌐 Calling image-specific endpoint...');
       
-      // Use the new image-specific endpoint for better performance
+      // Gọi API đơn giản như Document.tsx
       const response = await generateService.getImageGenerations({
-        per_page: 22, // Giảm số lượng để tải nhanh hơn
+        per_page: 20,
         page: 1
       }, {
         showAuthModal: () => setShowAuthModal(true),
         onError: (error) => {
           console.error('❌ Error fetching generated images:', error);
           showToast('error', 'Không thể tải danh sách ảnh đã tạo');
-          setLoading(false);
         }
       });
 
       if (response && response.success && Array.isArray(response.data)) {
         console.log('✅ Response successful, processing', response.data.length, 'items');
-        const processed = await Promise.all(response.data.map(async (generate) => {
-          let contentData: any = null;
+        
+        // Đơn giản hóa xử lý response - chỉ lấy dữ liệu cần thiết
+        const images: GeneratedImage[] = response.data.map((generate: any) => {
+          let contentData: any = {};
           if (generate.content) {
             try { contentData = JSON.parse(generate.content); } catch {}
           }
 
-          // For completed items, ensure we have full images array with seeds
-          if (generate.status === 'completed') {
-            let imagesArray: Array<{ seed: number | null, url: string }> = [];
-            const raw = generate.result_url || '';
-            try {
-              const trimmed = raw.trim();
-              if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-                const parsed = JSON.parse(trimmed);
-                if (Array.isArray(parsed)) {
-                  imagesArray = parsed.filter(it => it && typeof it === 'object' && typeof it.url === 'string')
-                    .map(it => ({ url: it.url, seed: (it.seed ?? it.seedUsed ?? null) }));
-                } else if (parsed && typeof parsed === 'object' && parsed.url) {
-                  imagesArray = [{ url: parsed.url, seed: (parsed.seed ?? parsed.seedUsed ?? null) }];
-                }
-              } else if (raw.startsWith('http')) {
-                // Fetch full details to get seeds if backend provided only preview URL
-                const detail = await generateService.getImageGeneration(generate.id, {
-                  showAuthModal: () => setShowAuthModal(true),
-                  onError: (err) => console.error('getImageGeneration error:', err),
-                });
-                if (detail?.success && Array.isArray((detail as any).data?.all_images) && (detail as any).data.all_images.length > 0) {
-                  imagesArray = (detail as any).data.all_images.map((it: any) => ({ url: it.url, seed: (it.seed ?? it.seedUsed ?? null) }));
-                } else {
-                  imagesArray = [{ url: raw, seed: null }];
-                }
-              }
-            } catch {
-              if (raw && raw.startsWith('http')) {
-                imagesArray = [{ url: raw, seed: null }];
-              }
-            }
+          return {
+            id: generate.id.toString(),
+            url: generate.result_url || '',
+            seed: contentData.seed || null,
+            prompt: contentData.prompt || generate.name || '',
+            model: contentData.model || 'Unknown',
+            width: contentData.width || 1024,
+            height: contentData.height || 1024,
+            createdAt: new Date(generate.created_at),
+            generateId: generate.id,
+            status: generate.status || 'completed',
+            resultData: generate.result_url
+          };
+        }).filter((img: GeneratedImage) => img.url); // Chỉ giữ ảnh có URL
 
-            // Map images to GeneratedImage entries
-            if (imagesArray.length > 0) {
-              return imagesArray.map((imageItem, index) => ({
-                id: `${generate.id}-${index}`,
-                url: imageItem.url,
-                seed: imageItem.seed,
-                prompt: contentData?.prompt || generate.name || '',
-                model: contentData?.model || 'Unknown',
-                width: contentData?.width || 1024,
-                height: contentData?.height || 1024,
-                createdAt: new Date(generate.created_at),
-                generateId: generate.id,
-                status: 'completed' as const,
-              }));
-            }
-          }
-
-          // Failed item representation
-          if (generate.status === 'failed') {
-            return [{
-              id: `failed-${generate.id}`,
-              url: '',
-              prompt: contentData?.prompt || generate.name || '',
-              model: contentData?.model || 'Unknown',
-              width: contentData?.width || 1024,
-              height: contentData?.height || 1024,
-              createdAt: new Date(generate.created_at),
-              generateId: generate.id,
-              status: 'failed' as const,
-            }];
-          }
-
-          // Processing item representation (use task_id from endpoint)
-          if (generate.status === 'processing' || (generate.task_id && generate.status !== 'failed')) {
-            return [{
-              id: `processing-${generate.id}`,
-              url: '',
-              prompt: contentData?.prompt || generate.name || '',
-              model: contentData?.model || 'Unknown',
-              width: contentData?.width || 1024,
-              height: contentData?.height || 1024,
-              createdAt: new Date(generate.created_at),
-              generateId: generate.id,
-              status: 'processing' as const,
-            }];
-          }
-
-          // Default: skip if no data
-          return [];
-        }));
-
-        const images: GeneratedImage[] = processed.flat();
         setGeneratedImages(images);
-        setLoading(false);
       } else {
         console.log('❌ API response failed or no data:', response);
         setGeneratedImages([]);
-        setLoading(false);
         showToast('error', 'Không thể tải danh sách ảnh đã tạo');
       }
     } catch (error) {
       console.error('❌ Error in fetchGeneratedImages:', error);
       setGeneratedImages([]);
-      setLoading(false);
       showToast('error', 'Có lỗi xảy ra khi tải danh sách ảnh');
-      // Error handling is already done in generateService
+    } finally {
+      setLoading(false);
     }
   };
 

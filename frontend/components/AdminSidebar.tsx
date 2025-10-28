@@ -89,11 +89,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       name: t.sidebar?.imageCanvas?.title || 'Image Canvas',
       path: '/image-canvas',
     },
-    {
-      icon: <ImageIcon className="w-5 h-5" />,
-      name: 'Image Tools',
-      path: '/image-tools',
-    },
+    // {
+    //   icon: <ImageIcon className="w-5 h-5" />,
+    //   name: 'Image Tools',
+    //   path: '/image-tools',
+    // },
     {
       icon: <VideoIcon className="w-5 h-5" />,
       name: t.sidebar?.videoGeneration?.title || 'Video Generation',
@@ -109,11 +109,11 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       name: t.sidebar?.document?.title || 'Document',
       path: '/document',
     },
-    {
-      icon: <VideoIcon className="w-5 h-5" />,
-      name: 'Creation',
-      path: '/creation',
-    },
+    // {
+    //   icon: <VideoIcon className="w-5 h-5" />,
+    //   name: 'Creation',
+    //   path: '/creation',
+    // },
   ];
 
   const marketingItems: NavItem[] = [
