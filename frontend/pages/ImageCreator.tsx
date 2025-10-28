@@ -256,6 +256,24 @@ const ImageCreator: React.FC = () => {
       return;
     }
 
+    // Simple cache check - avoid duplicate requests for same page
+    const cacheKey = `images_page_${page}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+    const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
+    const now = Date.now();
+    const cacheExpiry = 2 * 60 * 1000; // 2 minutes cache
+    
+    if (!append && cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
+      console.log('✅ Using cached data for page', page);
+      const parsedData = JSON.parse(cachedData);
+      setGeneratedImages(parsedData.images);
+      setCurrentPage(parsedData.pagination.current_page);
+      setTotalPages(parsedData.pagination.last_page);
+      setHasMore(parsedData.pagination.current_page < parsedData.pagination.last_page);
+      setLoading(false);
+      return;
+    }
+
     try {
       if (append) {
         setIsLoadingMore(true);
@@ -263,9 +281,9 @@ const ImageCreator: React.FC = () => {
         setLoading(true);
       }
       
-      // Simple API call like Document.tsx - remove complex processing
+      // Optimized API call - reduced per_page for faster loading
       const response = await generateService.getImageGenerations({
-        per_page: 20,
+        per_page: 22, // Reduced from 20 to 12 for faster initial load
         page: page
       }, {
         showAuthModal: () => setShowAuthModal(true),
@@ -278,25 +296,52 @@ const ImageCreator: React.FC = () => {
       if (response && response.success && Array.isArray(response.data)) {
         console.log('✅ Response successful, processing', response.data.length, 'items');
         
-        // Simplified processing - minimal JSON parsing like Document.tsx
-        const images: GeneratedImage[] = response.data.map((generate: any) => ({
-          id: generate.id.toString(),
-          url: generate.result_url || '',
-          seed: null, // Remove complex seed extraction
-          prompt: generate.name || '', // Use simple name field
-          model: 'Unknown', // Remove complex model extraction
-          width: 1024, // Default values
-          height: 1024,
-          createdAt: new Date(generate.created_at),
-          generateId: generate.id,
-          status: generate.status || 'completed',
-          resultData: generate.result_url // Simple assignment
-        })).filter((img: GeneratedImage) => img.url); // Only keep images with URL
+        // Ultra-fast processing - optimized for performance
+        const images: GeneratedImage[] = response.data.map((generate: any) => {
+          // Fast seed extraction with minimal JSON parsing
+          let seed = null;
+          let imageUrl = generate.result_url || '';
+          
+          // Quick pattern matching for JSON array format (much faster than try-catch)
+          if (imageUrl && imageUrl.startsWith('[{"') && imageUrl.includes('"url"') && imageUrl.includes('"seed"')) {
+            try {
+              // Fast JSON parse for simple array structure
+              const resultData = JSON.parse(imageUrl);
+              if (Array.isArray(resultData) && resultData.length > 0 && resultData[0]?.url) {
+                seed = resultData[0].seed || null;
+                imageUrl = resultData[0].url || '';
+              }
+            } catch (e) {
+              // Keep original URL if parsing fails
+            }
+          }
+          
+          return {
+            id: generate.id.toString(),
+            url: imageUrl,
+            seed: seed,
+            prompt: generate.prompt || generate.name || '', // Use prompt if available (backend provides it)
+            model: generate.model_slug || 'Unknown',
+            width: generate.width || 1024,
+            height: generate.height || 1024,
+            createdAt: new Date(generate.created_at),
+            generateId: generate.id,
+            status: generate.status || 'completed',
+            resultData: generate.result_url
+          };
+        }).filter((img: GeneratedImage) => img.url && img.url !== '' || img.status === 'processing'); // Show processing images even without URL
 
         if (append) {
           setGeneratedImages(prev => [...prev, ...images]);
         } else {
           setGeneratedImages(images);
+          // Cache the successful response for faster subsequent loads
+          const cacheData = {
+            images: images,
+            pagination: response.pagination
+          };
+          sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+          sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
         }
 
         // Update pagination state
@@ -513,6 +558,9 @@ const ImageCreator: React.FC = () => {
         
         if (response.data.status === 'completed' && response.data.images) {
           // Generation completed immediately
+          // Clear cache để đảm bảo lấy dữ liệu mới nhất
+          sessionStorage.removeItem('generated_images_cache');
+          sessionStorage.removeItem('generated_images_cache_timestamp');
         await fetchGeneratedImages();
         
         showToast('success', `Generated ${response.data.images.length} image(s) successfully! Deducted ${response.data.credit_cost} credits. Remaining: ${response.data.remaining_credits} credits.`);
@@ -631,6 +679,9 @@ const ImageCreator: React.FC = () => {
         
         // Refresh danh sách ảnh từ database sau khi tạo thành công
         // Chỉ cần gọi fetchGeneratedImages một lần để lấy dữ liệu mới nhất từ database
+        // Clear cache để đảm bảo lấy dữ liệu mới nhất
+        sessionStorage.removeItem('generated_images_cache');
+        sessionStorage.removeItem('generated_images_cache_timestamp');
         await fetchGeneratedImages();
         
         showToast('success', `Generated ${response.data.images.length} image(s) successfully! Deducted ${response.data.credit_cost} credits. Remaining: ${response.data.remaining_credits} credits.`);
@@ -724,12 +775,13 @@ const ImageCreator: React.FC = () => {
   };
 
   // Component LazyImage với lazy loading - Memoized để tránh re-render không cần thiết
-  const LazyImage: React.FC<{ src: string; alt: string; className?: string; onClick?: () => void; isDark?: boolean }> = React.memo(({ 
+  const LazyImage: React.FC<{ src: string; alt: string; className?: string; onClick?: () => void; isDark?: boolean; status?: string }> = React.memo(({ 
     src, 
     alt, 
     className = '', 
     onClick,
-    isDark = false
+    isDark = false,
+    status = 'completed'
   }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [isInView, setIsInView] = useState(false);
@@ -757,6 +809,20 @@ const ImageCreator: React.FC = () => {
       return () => observer.disconnect();
     }, [src]); // Chỉ re-run khi src thay đổi
 
+    // Handle processing images with no URL
+    if (status === 'processing' && (!src || src === '')) {
+      return (
+        <div ref={imgRef} className={`relative overflow-hidden ${className} ${isDark ? 'bg-gray-800' : 'bg-gray-200'} flex items-center justify-center`} onClick={onClick}>
+          <div className="text-center p-4">
+            <svg className="w-12 h-12 text-gray-400 mx-auto mb-2 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Processing...</p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div ref={imgRef} className={`relative overflow-hidden ${className}`} onClick={onClick}>
         {!isLoaded && (
@@ -782,7 +848,8 @@ const ImageCreator: React.FC = () => {
     return prevProps.src === nextProps.src && 
            prevProps.alt === nextProps.alt && 
            prevProps.className === nextProps.className &&
-           prevProps.isDark === nextProps.isDark;
+           prevProps.isDark === nextProps.isDark &&
+           prevProps.status === nextProps.status;
   });
 
   // Function to handle edit image
