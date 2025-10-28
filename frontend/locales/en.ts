@@ -298,7 +298,7 @@ export const en = {
   // Bug Report
   bugReport: {
     reportBug: 'Report Bug',
-    title: 'Title',
+    title: 'Bug Report',
     description: 'Description',
     stepsToReproduce: 'Steps to Reproduce',
     expectedBehavior: 'Expected Behavior',

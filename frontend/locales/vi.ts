@@ -124,7 +124,7 @@ export const vi = {
       description: 'Chuyển đổi văn bản thành giọng nói AI'
     },
     documents: {
-      title: 'Documents',
+      title: 'Trợ lý viết lách',
       description: 'Quản lý documents và templates'
     }
   },
@@ -180,7 +180,7 @@ export const vi = {
     prompt: 'Prompt',
     promptPlaceholder: 'Mô tả hình ảnh bạn muốn tạo... ví dụ: "Một con rồng uy nghiêm bay trên khu rừng huyền bí lúc hoàng hôn"',
     subtitle: 'Tạo ảnh tuyệt đẹp bằng AI',
-    apiKeyMissing: 'Thiếu API key. Vui lòng thêm vào file .env',
+    apiKeyMissing: 'Thiếu key. Vui lòng thêm vào file .env',
     createNewImage: 'Tạo Hình Ảnh Mới',
     selectModel: 'Chọn một model',
     imageSize: 'Kích Thước Hình Ảnh',
@@ -260,7 +260,7 @@ export const vi = {
 
   // Documents
   documents: {
-    title: 'Documents',
+    title: 'Trợ lý viết lách',
     subtitle: 'Quản lý documents và templates của bạn',
     myDocuments: 'My Documents',
     openaiTemplates: 'OpenAI Templates',

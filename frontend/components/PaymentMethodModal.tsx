@@ -174,7 +174,7 @@ const PaymentMethodModal: React.FC<PaymentMethodModalProps> = ({
           </div>
 
         {/* Content */}
-        <div className="p-6 max-h-[calc(90vh-120px)] overflow-y-auto">
+        <div className="p-6 max-h-[calc(90vh-120px)] z-[9999]  overflow-y-auto">
           {showPayPalPayment ? (
             <PayPalPayment
               plan={selectedPlan}

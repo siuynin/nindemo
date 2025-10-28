@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>API Authentication Test</h1>
+    <button onclick="testAuth()">Test Authentication</button>
+    <div id="result"></div>
+
+    <script>
+        async function testAuth() {
+            const resultDiv = document.getElementById('result');
+            
+            // Get token from localStorage
+            const token = localStorage.getItem('auth_token');
+            resultDiv.innerHTML = `<p>Token: ${token ? 'Found' : 'Not found'}</p>`;
+            
+            if (!token) {
+                resultDiv.innerHTML += '<p>Please login first</p>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8001/api/images/generations?page=1&per_page=5', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML += `<p>Status: ${response.status}</p>`;
+                resultDiv.innerHTML += `<p>Success: ${data.success}</p>`;
+                resultDiv.innerHTML += `<p>Data count: ${data.data?.length || 0}</p>`;
+                
+                if (data.success && data.data) {
+                    resultDiv.innerHTML += '<h3>First few items:</h3>';
+                    data.data.slice(0, 2).forEach(item => {
+                        resultDiv.innerHTML += `<p>ID: ${item.id}, Name: ${item.name}, Status: ${item.status}</p>`;
+                    });
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<p style="color: red;">Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-test on load
+        window.onload = testAuth;
+    </script>
+</body>
+</html>

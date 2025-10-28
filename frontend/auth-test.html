@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Test</title>
+</head>
+<body>
+    <h1>Authentication Status Test</h1>
+    <button onclick="checkAuth()">Check Auth Status</button>
+    <button onclick="testAPI()">Test API Call</button>
+    <div id="result"></div>
+
+    <script>
+        function checkAuth() {
+            const resultDiv = document.getElementById('result');
+            const token = localStorage.getItem('auth_token');
+            
+            resultDiv.innerHTML = '<h3>Authentication Status:</h3>';
+            resultDiv.innerHTML += `<p>Token exists: ${token ? 'YES' : 'NO'}</p>`;
+            if (token) {
+                resultDiv.innerHTML += `<p>Token length: ${token.length}</p>`;
+                resultDiv.innerHTML += `<p>Token preview: ${token.substring(0, 20)}...</p>`;
+            }
+        }
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            const token = localStorage.getItem('auth_token');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<p style="color: red;">No token found. Please login first.</p>';
+                return;
+            }
+            
+            try {
+                resultDiv.innerHTML = '<p>Testing API call...</p>';
+                
+                const response = await fetch('http://127.0.0.1:8001/api/images/generations?page=1&per_page=5', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<h3>API Test Results:</h3>';
+                resultDiv.innerHTML += `<p>HTTP Status: ${response.status}</p>`;
+                resultDiv.innerHTML += `<p>Response Success: ${data.success}</p>`;
+                resultDiv.innerHTML += `<p>Data Count: ${data.data?.length || 0}</p>`;
+                
+                if (data.success && data.data) {
+                    resultDiv.innerHTML += '<h4>Sample Data:</h4>';
+                    data.data.slice(0, 2).forEach(item => {
+                        resultDiv.innerHTML += `<p>• ID: ${item.id}, Name: ${item.name}, Status: ${item.status}</p>`;
+                    });
+                } else {
+                    resultDiv.innerHTML += `<p style="color: red;">Error: ${data.error || 'Unknown error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<p style="color: red;">Fetch Error: ${error.message}</p>`;
+            }
+        }
+        
+        // Auto-check auth on load
+        window.onload = checkAuth;
+    </script>
+</body>
+</html>
