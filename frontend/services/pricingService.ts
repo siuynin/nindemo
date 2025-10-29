@@ -10,6 +10,7 @@ export interface PricingPlan {
   duration_days?: number;
   max_voice_clone: number;
   features: number; // 0 or 1
+  feature_list?: string[]; // Danh sách tính năng nổi bật
   is_premium: boolean;
   is_active: boolean;
   created_at: string;

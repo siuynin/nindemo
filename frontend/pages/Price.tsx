@@ -199,6 +199,18 @@ const Price: React.FC = () => {
                       / {formatDuration(plan.billing_cycle, plan.duration_days)}
                     </span>
                   </div>
+                  {/* Credit Info */}
+                  <div className="mt-3 flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 rounded-lg py-2 px-3">
+                    <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-lg font-semibold text-blue-600 dark:text-blue-400">
+                      {plan.credits?.toLocaleString() || 0} credits
+                    </span>
+                    <span className="text-gray-500 dark:text-gray-400 ml-2 text-sm">
+                      ({plan.credits ? (plan.price / plan.credits).toFixed(2) : '0'} {plan.currency || 'VND'}/credit)
+                    </span>
+                  </div>
                 </div>
 
                 {/* Features */}
@@ -210,36 +222,23 @@ const Price: React.FC = () => {
                     <span className="text-gray-700 dark:text-gray-300">
                       {plan.max_voice_clone > 0 ? `Hỗ trợ Voice Clone (${plan.max_voice_clone} giọng)` : 'Không hỗ trợ Voice Clone'}
                     </span>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700 dark:text-gray-300">
-                      {plan.is_premium ? 'Tài khoản Premium' : 'Tài khoản Cơ bản'}
-                    </span>
-                  </div>
+                  </div>   
 
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700 dark:text-gray-300">
-                      Hỗ trợ 24/7
-                    </span>
-                  </div>
-
-                  <div className="flex items-center">
-                    <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-gray-700 dark:text-gray-300">
-                      Cập nhật miễn phí
-                    </span>
-                  </div>
-                </div>
-
+                  {/* Custom Feature List */}
+                  {plan.feature_list && plan.feature_list.length > 0 && (
+                    plan.feature_list.map((feature, index) => (
+                      <div key={index} className="flex items-center">
+                        <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span className="text-gray-700 dark:text-gray-300">
+                          {feature}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div> 
+                
                 {/* CTA Button */}
                 <button
                   onClick={() => handleSelectPlan(plan)}

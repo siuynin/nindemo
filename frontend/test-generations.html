@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Generations API</title>
+</head>
+<body>
+    <h1>Test Generations API</h1>
+    <button onclick="testGenerations()">Test /generations API</button>
+    <div id="result"></div>
+
+    <script>
+        async function testGenerations() {
+            const resultDiv = document.getElementById('result');
+            try {
+                const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+                console.log('Token:', token);
+                
+                const response = await fetch('http://127.0.0.1:8001/api/generations', {
+                    headers: {
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Accept': 'application/json',
+                    }
+                });
+                
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                resultDiv.innerHTML = `
+                    <h3>Success!</h3>
+                    <p>Status: ${response.status}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.innerHTML = `
+                    <h3>Error!</h3>
+                    <p>${error.message}</p>
+                    <pre>${error.stack}</pre>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

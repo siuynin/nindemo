@@ -70,7 +70,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
     }, 60000); // Check every minute
-
     return () => clearInterval(interval);
   }, []);
 
@@ -100,19 +99,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (response && response.success) {
         setUser(response.data.user);
         setTotalCredits(response.data.total_credits || 0);
+        console.log('Debug: AuthContext - User loaded:', response.data.user);
+        console.log('Debug: AuthContext - isAuthenticated:', authService.isAuthenticated());
       } else {
         // Token might be expired or invalid
         setUser(null);
         setTotalCredits(0);
         authService.removeToken();
+        console.log('Debug: AuthContext - User load failed or token invalid.');
       }
     } catch (error) {
       console.error('Error loading user:', error);
       setUser(null);
       setTotalCredits(0);
       authService.removeToken();
+      console.log('Debug: AuthContext - Error during user load, token removed.');
     } finally {
       setIsLoading(false);
+      console.log('Debug: AuthContext - isLoading set to false.');
     }
   };
 
@@ -125,6 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(response.data.user);
         setTotalCredits(0); // Will be loaded by refreshUser
         await refreshUser();
+        console.log('Debug: AuthContext - User logged in:', response.data.user);
         return { success: true, message: response.message };
       } else {
         return { success: false, message: response.message };

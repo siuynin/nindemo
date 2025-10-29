@@ -352,6 +352,8 @@ function viewPlan(id) {
                     </div>
                 </div>
                 ${data.description ? `<div class="mt-3"><h6>Mô tả</h6><p class="text-muted">${data.description}</p></div>` : ''}
+                ${data.feature_list && Array.isArray(data.feature_list) && data.feature_list.length > 0 ? 
+                    `<div class="mt-3"><h6>Danh sách tính năng nổi bật</h6><ul class="list-unstyled">${data.feature_list.map(feature => `<li><i class="fas fa-check text-success me-2"></i>${feature}</li>`).join('')}</ul></div>` : ''}
             `;
             new bootstrap.Modal(document.getElementById('viewPlanModal')).show();
         })

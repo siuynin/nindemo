@@ -31,6 +31,12 @@ class PricingPlanController extends Controller
      */
     public function store(Request $request)
     {
+        // Convert feature_list from textarea to array
+        $featureList = [];
+        if ($request->has('feature_list') && !empty($request->feature_list)) {
+            $featureList = array_filter(array_map('trim', explode("\n", $request->feature_list)));
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:pricing_plans',
             'description' => 'nullable|string',
@@ -40,7 +46,8 @@ class PricingPlanController extends Controller
             'is_popular' => 'boolean',
             'features' => 'boolean',
             'max_voice_clone' => 'required|integer|min:0',
-            'sort_order' => 'required|integer|min:0'
+            'sort_order' => 'required|integer|min:0',
+            'feature_list' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -58,7 +65,8 @@ class PricingPlanController extends Controller
             'is_popular' => $request->has('is_popular'),
             'features' => $request->has('features'),
             'max_voice_clone' => $request->max_voice_clone,
-            'sort_order' => $request->sort_order
+            'sort_order' => $request->sort_order,
+            'feature_list' => $featureList
         ]);
 
         return redirect()->route('admin.pricing-plans.index')
@@ -83,6 +91,7 @@ class PricingPlanController extends Controller
                 'status' => $pricingPlan->status,
                 'is_popular' => $pricingPlan->is_popular,
                 'users_count' => $pricingPlan->users()->count(),
+                'feature_list' => $pricingPlan->feature_list,
                 'created_at' => $pricingPlan->created_at,
                 'updated_at' => $pricingPlan->updated_at
             ]);
@@ -104,6 +113,12 @@ class PricingPlanController extends Controller
      */
     public function update(Request $request, PricingPlan $pricingPlan)
     {
+        // Convert feature_list from textarea to array
+        $featureList = [];
+        if ($request->has('feature_list') && !empty($request->feature_list)) {
+            $featureList = array_filter(array_map('trim', explode("\n", $request->feature_list)));
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255|unique:pricing_plans,name,' . $pricingPlan->id,
             'description' => 'nullable|string',
@@ -113,7 +128,8 @@ class PricingPlanController extends Controller
             'is_popular' => 'boolean',
             'features' => 'boolean',
             'max_voice_clone' => 'required|integer|min:0',
-            'sort_order' => 'required|integer|min:0'
+            'sort_order' => 'required|integer|min:0',
+            'feature_list' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -131,7 +147,8 @@ class PricingPlanController extends Controller
             'is_popular' => $request->has('is_popular'),
             'features' => $request->has('features'),
             'max_voice_clone' => $request->max_voice_clone,
-            'sort_order' => $request->sort_order
+            'sort_order' => $request->sort_order,
+            'feature_list' => $featureList
         ]);
 
         return redirect()->route('admin.pricing-plans.index')

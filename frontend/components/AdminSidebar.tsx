@@ -84,6 +84,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       name: t.sidebar?.imageCreator?.title || 'Image Creator',
       path: '/image-creator',
     },
+   
     {
       icon: <SparklesIcon className="w-5 h-5" />,
       name: t.sidebar?.imageCanvas?.title || 'Image Canvas',

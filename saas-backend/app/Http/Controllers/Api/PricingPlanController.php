@@ -38,6 +38,7 @@ class PricingPlanController extends Controller
             'is_premium' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
+            'feature_list' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -84,6 +85,7 @@ class PricingPlanController extends Controller
             'is_premium' => 'boolean',
             'is_active' => 'boolean',
             'sort_order' => 'integer|min:0',
+            'feature_list' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {

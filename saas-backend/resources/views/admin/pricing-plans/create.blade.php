@@ -131,6 +131,17 @@
                         </div>
 
                         <div class="form-group">
+                            <label for="feature_list">Danh sách tính năng nổi bật</label>
+                            <textarea class="form-control @error('feature_list') is-invalid @enderror" 
+                                      id="feature_list" name="feature_list" rows="3" 
+                                      placeholder="Nhập các tính năng nổi bật, mỗi tính năng trên một dòng">{{ old('feature_list') }}</textarea>
+                            @error('feature_list')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <small class="form-text text-muted">Mỗi tính năng trên một dòng. Ví dụ: Hỗ trợ 24/7, Tính năng cao cấp, Ưu đãi đặc biệt</small>
+                        </div>
+
+                        <div class="form-group">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="is_popular" name="is_popular" value="1" 
                                        {{ old('is_popular') ? 'checked' : '' }}>

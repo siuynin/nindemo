@@ -187,6 +187,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/generations', [App\Http\Controllers\Api\ImageGenerationController::class, 'getUserGenerations']);
         Route::get('/generations/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getImageGeneration']);
     });
+    
+    // Global generations route for images (để tương thích với frontend hiện tại)
+    Route::get('/generations', [App\Http\Controllers\Api\ImageGenerationController::class, 'getUserGenerations']);
+    Route::get('/generations/{id}', [App\Http\Controllers\Api\ImageGenerationController::class, 'getImageGeneration']);
 
     // Document Generation Routes
     Route::prefix('documents')->group(function () {

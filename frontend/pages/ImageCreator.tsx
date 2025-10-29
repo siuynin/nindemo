@@ -196,7 +196,14 @@ const ImageCreator: React.FC = () => {
 
   // Separate useEffect for fetching images when authentication state changes
   useEffect(() => {
-    fetchGeneratedImages(1, false); // Tải ảnh từ database khi authentication state thay đổi
+    console.log('Auth state changed:', { isAuthenticated, user });
+    if (isAuthenticated && user) {
+      console.log('User authenticated, but NOT fetching images automatically');
+      // Không fetch tự động - chỉ fetch khi user click hoặc có hành động
+    } else {
+      console.log('User not authenticated, clearing images');
+      setGeneratedImages([]);
+    }
   }, [isAuthenticated, user]);
 
   // Set up AIService toast callback
@@ -245,9 +252,9 @@ const ImageCreator: React.FC = () => {
     }
   };
 
-  // Tải ảnh đã tạo từ database - Đơn giản hóa như Document.tsx
+  // Tải ảnh đã tạo từ database - Gọi API trực tiếp với base URL
   const fetchGeneratedImages = async (page: number = 1, append: boolean = false) => {
-    console.log('🔍 Fetching generated images (images/generations)', { page, append });
+    console.log('🔍 Fetching generated images (generations)', { page, append, isAuthenticated, user });
     
     if (!isAuthenticated || !user) {
       console.log('❌ User not authenticated, skipping fetch');
@@ -255,24 +262,15 @@ const ImageCreator: React.FC = () => {
       setLoading(false);
       return;
     }
-
-    // Simple cache check - avoid duplicate requests for same page
-    const cacheKey = `images_page_${page}`;
-    const cachedData = sessionStorage.getItem(cacheKey);
-    const cacheTimestamp = sessionStorage.getItem(`${cacheKey}_timestamp`);
-    const now = Date.now();
-    const cacheExpiry = 2 * 60 * 1000; // 2 minutes cache
     
-    if (!append && cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
-      console.log('✅ Using cached data for page', page);
-      const parsedData = JSON.parse(cachedData);
-      setGeneratedImages(parsedData.images);
-      setCurrentPage(parsedData.pagination.current_page);
-      setTotalPages(parsedData.pagination.last_page);
-      setHasMore(parsedData.pagination.current_page < parsedData.pagination.last_page);
-      setLoading(false);
-      return;
-    }
+    console.log('✅ User authenticated, proceeding with fetch...');
+
+    // Cache key for storing data
+    const cacheKey = 'generated_images_cache';
+    const now = Date.now();
+
+    // Xóa cache để debug
+    sessionStorage.clear();
 
     try {
       if (append) {
@@ -281,23 +279,42 @@ const ImageCreator: React.FC = () => {
         setLoading(true);
       }
       
-      // Optimized API call - reduced per_page for faster loading
-      const response = await generateService.getImageGenerations({
-        per_page: 22, // Reduced from 20 to 12 for faster initial load
-        page: page
-      }, {
-        showAuthModal: () => setShowAuthModal(true),
-        onError: (error) => {
-          console.error('❌ Error fetching generated images:', error);
-          showToast('error', 'Không thể tải danh sách ảnh đã tạo');
+      // Gọi API trực tiếp với base URL
+      const baseUrl = 'http://127.0.0.1:8001/api';
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      
+      console.log('📡 Calling API directly:', `${baseUrl}/generations`);
+      console.log('📡 Token:', token);
+      
+      const response = await fetch(`${baseUrl}/generates?per_page=22&page=${page}`, {
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
         }
       });
 
-      if (response && response.success && Array.isArray(response.data)) {
-        console.log('✅ Response successful, processing', response.data.length, 'items');
+      console.log('📡 Response status:', response.status);
+      console.log('📡 Response headers:', response.headers);
+      
+      if (!response.ok) {
+        console.error('❌ API request failed:', response.status, response.statusText);
+        if (response.status === 401) {
+          setShowAuthModal(true);
+        }
+        throw new Error(`API request failed: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('📡 API Response data:', data);
+      console.log('📡 Response success:', data?.success);
+      console.log('📡 Response data isArray:', Array.isArray(data?.data));
+
+      if (data && data.success && Array.isArray(data.data)) {
+        console.log('✅ Response successful, processing', data.data.length, 'items');
         
         // Ultra-fast processing - optimized for performance
-        const images: GeneratedImage[] = response.data.map((generate: any) => {
+        const images: GeneratedImage[] = data.data.map((generate: any) => {
           // Fast seed extraction with minimal JSON parsing
           let seed = null;
           let imageUrl = generate.result_url || '';
@@ -338,20 +355,20 @@ const ImageCreator: React.FC = () => {
           // Cache the successful response for faster subsequent loads
           const cacheData = {
             images: images,
-            pagination: response.pagination
+            pagination: data.pagination
           };
           sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
           sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
         }
 
         // Update pagination state
-        if (response.pagination) {
-          setCurrentPage(response.pagination.current_page);
-          setTotalPages(response.pagination.last_page);
-          setHasMore(response.pagination.current_page < response.pagination.last_page);
+        if (data.pagination) {
+          setCurrentPage(data.pagination.current_page);
+          setTotalPages(data.pagination.last_page);
+          setHasMore(data.pagination.current_page < data.pagination.last_page);
         }
       } else {
-        console.log('❌ API response failed or no data:', response);
+        console.log('❌ API response failed or no data:', data);
         if (!append) {
           setGeneratedImages([]);
         }
@@ -1480,6 +1497,30 @@ const ImageCreator: React.FC = () => {
                   <p className={`text-sm text-gray-500 ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mt-1`}>{t.imageCreator?.generatedImagesDescription || 'Your AI-created masterpieces appear here'}</p>
                 </div>
               </div>
+              
+              {/* Load Generated Images Button - Only show when not authenticated or no images */}
+              {!isAuthenticated || generatedImages.length === 0 ? (
+                <div className="text-center mb-6">
+                  <button
+                    onClick={fetchGeneratedImages}
+                    disabled={loading}
+                    className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
+                      loading
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg dark:bg-blue-500 dark:hover:bg-blue-600'
+                    }`}
+                  >
+                    {loading ? (
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                        <span>Loading...</span>
+                      </div>
+                    ) : (
+                      'Tải ảnh đã tạo'
+                    )}
+                  </button>
+                </div>
+              ) : null}
               
               <ImageGallery
                 images={generatedImages}

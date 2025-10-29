@@ -19,6 +19,7 @@ import NDHubTTS from './pages/NDHubTTS';
 import App from './App';
 import DebugRunware from './debug-runware';
 import UpScaler from './pages/image-tool/UpScaler';
+import ImageCreatorDebug from './pages/ImageCreatorDebug';
 
 // Wrapper component for Canvas page
 const CanvasPage: React.FC = () => {
@@ -106,6 +107,10 @@ export const router = createBrowserRouter([
       {
         path: 'debug-runware',
         element: <DebugRunware />,
+      },
+      {
+        path: 'image-creator-debug',
+        element: <ImageCreatorDebug />,
       },
       {
         path: 'creative-editor',
