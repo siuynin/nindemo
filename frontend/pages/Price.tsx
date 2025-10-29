@@ -225,7 +225,7 @@ const Price: React.FC = () => {
                   </div>   
 
                   {/* Custom Feature List */}
-                  {plan.feature_list && plan.feature_list.length > 0 && (
+                  {plan.feature_list && Array.isArray(plan.feature_list) && plan.feature_list.length > 0 && (
                     plan.feature_list.map((feature, index) => (
                       <div key={index} className="flex items-center">
                         <svg className="w-5 h-5 text-green-500 mr-3" fill="currentColor" viewBox="0 0 20 20">

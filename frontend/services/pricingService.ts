@@ -52,7 +52,9 @@ class PricingService {
       const data = await response.json();
       return (data.data?.pricing_plans || []).map((plan: PricingPlan) => ({
         ...plan,
-        currency: plan.currency || 'VND'
+        currency: plan.currency || 'VND',
+        // Ensure feature_list is always an array
+        feature_list: Array.isArray(plan.feature_list) ? plan.feature_list : []
       }));
     } catch (error) {
       console.error('Error fetching public pricing plans:', error);
@@ -66,7 +68,9 @@ class PricingService {
       const data = await this.makeRequest('/pricing-plans');
       return (data.data?.pricing_plans || []).map((plan: PricingPlan) => ({
         ...plan,
-        currency: plan.currency || 'VND'
+        currency: plan.currency || 'VND',
+        // Ensure feature_list is always an array
+        feature_list: Array.isArray(plan.feature_list) ? plan.feature_list : []
       }));
     } catch (error) {
       console.error('Error fetching pricing plans:', error);
