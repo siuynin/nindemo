@@ -198,8 +198,9 @@ const ImageCreator: React.FC = () => {
   useEffect(() => {
     console.log('Auth state changed:', { isAuthenticated, user });
     if (isAuthenticated && user) {
-      console.log('User authenticated, but NOT fetching images automatically');
-      // Không fetch tự động - chỉ fetch khi user click hoặc có hành động
+      console.log('User authenticated, fetching images automatically');
+      // Tự động fetch ảnh khi user đăng nhập
+      fetchGeneratedImages(1, false);
     } else {
       console.log('User not authenticated, clearing images');
       setGeneratedImages([]);
@@ -265,12 +266,9 @@ const ImageCreator: React.FC = () => {
     
     console.log('✅ User authenticated, proceeding with fetch...');
 
-    // Cache key for storing data
-    const cacheKey = 'generated_images_cache';
-    const now = Date.now();
+    // Không dùng cache để tránh lỗi quota
 
-    // Xóa cache để debug
-    sessionStorage.clear();
+    // Không xóa cache để tránh lỗi quota
 
     try {
       if (append) {
@@ -280,13 +278,13 @@ const ImageCreator: React.FC = () => {
       }
       
       // Gọi API trực tiếp với base URL
-      const baseUrl = 'http://127.0.0.1:8001/api';
+      const baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}`;
       const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       
       console.log('📡 Calling API directly:', `${baseUrl}/generations`);
       console.log('📡 Token:', token);
       
-      const response = await fetch(`${baseUrl}/generates?per_page=22&page=${page}`, {
+      const response = await fetch(`${baseUrl}/generations?per_page=22&page=${page}`, {
         headers: {
           'Authorization': token ? `Bearer ${token}` : '',
           'Accept': 'application/json',
@@ -346,19 +344,17 @@ const ImageCreator: React.FC = () => {
             status: generate.status || 'completed',
             resultData: generate.result_url
           };
-        }).filter((img: GeneratedImage) => img.url && img.url !== '' || img.status === 'processing'); // Show processing images even without URL
+        }).filter((img: GeneratedImage) => {
+          // Only show images that have URL OR are processing (but not failed)
+          return (img.url && img.url !== '') || (img.status === 'processing');
+        });
 
         if (append) {
           setGeneratedImages(prev => [...prev, ...images]);
         } else {
           setGeneratedImages(images);
-          // Cache the successful response for faster subsequent loads
-          const cacheData = {
-            images: images,
-            pagination: data.pagination
-          };
-          sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
-          sessionStorage.setItem(`${cacheKey}_timestamp`, now.toString());
+          // Không cache để tránh lỗi quota
+          console.log('✅ Images loaded successfully, no cache to avoid quota issues');
         }
 
         // Update pagination state
@@ -367,6 +363,7 @@ const ImageCreator: React.FC = () => {
           setTotalPages(data.pagination.last_page);
           setHasMore(data.pagination.current_page < data.pagination.last_page);
         }
+        
       } else {
         console.log('❌ API response failed or no data:', data);
         if (!append) {
@@ -423,7 +420,7 @@ const ImageCreator: React.FC = () => {
           } else if (status === 'failed') {
             await fetchGeneratedImages(1, false);
             showToast('error', 'Tạo ảnh thất bại. Vui lòng thử lại.');
-            return; // Stop polling
+            return; // Stop polling - ĐÃ SỬA: thêm return để dừng polling
             
           } else if (status === 'processing' && attempts < maxAttempts) {
             setTimeout(pollTaskStatus, pollInterval);
@@ -1498,11 +1495,11 @@ const ImageCreator: React.FC = () => {
                 </div>
               </div>
               
-              {/* Load Generated Images Button - Only show when not authenticated or no images */}
-              {!isAuthenticated || generatedImages.length === 0 ? (
-                <div className="text-center mb-6">
+              {/* Load Generated Images Button - Always show when authenticated */}
+              {isAuthenticated && (
+                <div className="text-center mb-6 flex gap-3 justify-center">
                   <button
-                    onClick={fetchGeneratedImages}
+                    onClick={() => fetchGeneratedImages(1, false)}
                     disabled={loading}
                     className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
                       loading
@@ -1519,8 +1516,24 @@ const ImageCreator: React.FC = () => {
                       'Tải ảnh đã tạo'
                     )}
                   </button>
+                  {generatedImages.length > 0 && (
+                    <button
+                      onClick={() => fetchGeneratedImages(1, false)}
+                      disabled={loading}
+                      className={`px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+                        loading
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
+                          : 'bg-green-600 hover:bg-green-700 text-white hover:shadow-lg dark:bg-green-500 dark:hover:bg-green-600'
+                      }`}
+                      title="Refresh danh sách ảnh"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-              ) : null}
+              )}
               
               <ImageGallery
                 images={generatedImages}
@@ -1530,30 +1543,7 @@ const ImageCreator: React.FC = () => {
                 onDeleteImage={handleDeleteImage}
                 t={t}
               />
-              
-              {/* Load More Button */}
-              {hasMore && (
-                <div className="text-center mt-6">
-                  <button
-                    onClick={loadMoreImages}
-                    disabled={isLoadingMore}
-                    className={`px-6 py-3 rounded-lg font-medium transition-all duration-200 ${
-                      isLoadingMore
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed dark:bg-gray-700 dark:text-gray-400'
-                        : 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg dark:bg-blue-500 dark:hover:bg-blue-600'
-                    }`}
-                  >
-                    {isLoadingMore ? (
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
-                        <span>Loading...</span>
-                      </div>
-                    ) : (
-                      'Load More Images'
-                    )}
-                  </button>
-                </div>
-              )}
+               
             </Card>
           </div>
         </div>

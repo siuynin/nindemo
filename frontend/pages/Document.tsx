@@ -727,7 +727,7 @@ const Document: React.FC = () => {
                     startIcon={<PlusIcon className="w-4 h-4" />}
                     className="bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                   >
-                    {isLoading ? 'Creating...' : 'Create New'}
+                    {isLoading ? 'Creating...' : 'Create blank'}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -952,14 +952,7 @@ const Document: React.FC = () => {
                                   </button>
                                 </>
                               ) : (
-                                <>
-                                  <button
-                                    onClick={() => handleViewGenerate(generate)}
-                                    className="text-blue-600 hover:text-blue-900 p-1"
-                                    title="Xem"
-                                  >
-                                    👁️
-                                  </button>
+                                <> 
                                   <button
                                     onClick={() => handleEditGenerate(generate)}
                                     className="text-indigo-600 hover:text-indigo-900 p-1"
