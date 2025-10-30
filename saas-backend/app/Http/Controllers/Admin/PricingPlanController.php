@@ -42,12 +42,15 @@ class PricingPlanController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'credits' => 'required|integer|min:1',
+            'credits_included' => 'nullable|integer|min:0',
+            'billing_cycle' => 'required|in:monthly,yearly,one_time',
             'status' => 'required|in:active,inactive',
             'is_popular' => 'boolean',
             'features' => 'boolean',
             'max_voice_clone' => 'required|integer|min:0',
             'sort_order' => 'required|integer|min:0',
-            'feature_list' => 'nullable|string'
+            'feature_list' => 'nullable|string',
+            'id' => 'nullable|integer|unique:pricing_plans,id'
         ]);
 
         if ($validator->fails()) {
@@ -60,7 +63,10 @@ class PricingPlanController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'price' => $request->price,
+            'currency' => 'VND',
             'credits' => $request->credits,
+            'credits_included' => $request->credits_included ?? $request->credits, // Sử dụng credits nếu credits_included không có
+            'billing_cycle' => $request->billing_cycle,
             'status' => $request->status,
             'is_popular' => $request->has('is_popular'),
             'features' => $request->has('features'),
@@ -124,12 +130,15 @@ class PricingPlanController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'credits' => 'required|integer|min:1',
+            'credits_included' => 'nullable|integer|min:0',
+            'billing_cycle' => 'required|in:monthly,yearly,one_time',
             'status' => 'required|in:active,inactive',
             'is_popular' => 'boolean',
             'features' => 'boolean',
             'max_voice_clone' => 'required|integer|min:0',
             'sort_order' => 'required|integer|min:0',
-            'feature_list' => 'nullable|string'
+            'feature_list' => 'nullable|string',
+            'id' => 'nullable|integer|unique:pricing_plans,id,' . $pricingPlan->id
         ]);
 
         if ($validator->fails()) {
@@ -143,6 +152,8 @@ class PricingPlanController extends Controller
             'description' => $request->description,
             'price' => $request->price,
             'credits' => $request->credits,
+            'credits_included' => $request->credits_included ?? $request->credits, // Sử dụng credits nếu credits_included không có
+            'billing_cycle' => $request->billing_cycle,
             'status' => $request->status,
             'is_popular' => $request->has('is_popular'),
             'features' => $request->has('features'),

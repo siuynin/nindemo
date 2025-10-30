@@ -3,11 +3,9 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import Button from '../components/ui/Button';
-import TextArea from '../components/ui/TextArea';
-import Input from '../components/ui/Input';
+import TextArea from '../components/ui/TextArea'; 
 import Select from '../components/ui/Select';
-import Alert from '../components/ui/Alert';
-import Modal from '../components/ui/Modal';
+import Alert from '../components/ui/Alert'; 
 import Card from '../components/ui/Card';
 import AuthModal from '../components/AuthModal'; 
 
@@ -198,16 +196,21 @@ const VideoGeneration: React.FC = () => {
       const data = await response.json();
       
       // Update generation status
-      setGenerations(prev => prev.map(gen => {
-        if (gen.id === generationId) {
-          return {
-            ...gen,
-            status: data.status,
-            videoUrl: data.result_url || data.videoUrl || gen.videoUrl,
-          };
-        }
-        return gen;
-      }));
+      console.log(`Updating generation ${generationId} status: ${data.status}, videoUrl: ${data.result_url || data.videoUrl}`);
+      setGenerations(prev => {
+        const updated = prev.map(gen => {
+          if (gen.id === generationId) {
+            return {
+              ...gen,
+              status: data.status,
+              videoUrl: data.result_url || data.videoUrl || gen.videoUrl,
+            };
+          }
+          return gen;
+        });
+        console.log('Updated generations:', updated);
+        return updated;
+      });
 
       // Stop polling if completed or failed
       if (data.status === 'completed' || data.status === 'failed') {
@@ -224,17 +227,18 @@ const VideoGeneration: React.FC = () => {
         // Show success/error message
         if (data.status === 'completed') {
           setAlert({ type: 'success', message: 'Video đã được tạo thành công!' });
-          // Auto refresh the generations list to get the latest data
+          // Force immediate refresh of generations list
           setTimeout(() => {
             loadExistingGenerations();
-          }, 1000);
+          }, 500); // Reduced from 1000ms to 500ms for faster update
         } else if (data.status === 'failed') {
           setAlert({ type: 'error', message: data.error_message || 'Tạo video thất bại' });
         }
       }
     } catch (error) {
-      console.error('Error polling video status:', error);
+      console.error(`Error polling video status for ${generationId}:`, error);
       // Continue polling even on error, but log it
+      // Don't stop polling on network errors - video might still be processing
     }
   };
 
@@ -243,14 +247,14 @@ const VideoGeneration: React.FC = () => {
     // Don't start if already polling
     if (pollingIntervals.has(generationId)) return;
 
+    // Poll immediately to get initial status
+    pollVideoStatus(generationId, taskId);
+
     const interval = setInterval(() => {
       pollVideoStatus(generationId, taskId);
     }, 3000); // Poll every 3 seconds for faster updates
 
     setPollingIntervals(prev => new Map(prev.set(generationId, interval)));
-
-    // Also poll immediately to get initial status
-    pollVideoStatus(generationId, taskId);
   };
 
   // Cleanup polling intervals on unmount
@@ -357,18 +361,22 @@ const VideoGeneration: React.FC = () => {
         console.log('Updated videos received:', data.updated_videos);
         
         // Update generations with new status
-        setGenerations(prev => prev.map(gen => {
-          const updatedVideo = data.updated_videos.find((video: any) => video.id.toString() === gen.id);
-          if (updatedVideo) {
-            console.log(`Updating video ${gen.id} from ${gen.status} to ${updatedVideo.status}`);
-            return {
-              ...gen,
-              status: updatedVideo.status,
-              videoUrl: updatedVideo.result_url || gen.videoUrl,
-            };
-          }
-          return gen;
-        }));
+        setGenerations(prev => {
+          const updated = prev.map(gen => {
+            const updatedVideo = data.updated_videos.find((video: any) => video.id.toString() === gen.id);
+            if (updatedVideo) {
+              console.log(`Updating video ${gen.id} from ${gen.status} to ${updatedVideo.status}`);
+              return {
+                ...gen,
+                status: updatedVideo.status,
+                videoUrl: updatedVideo.result_url || gen.videoUrl,
+              };
+            }
+            return gen;
+          });
+          console.log('Auto-refresh updated generations:', updated);
+          return updated;
+        });
 
         // Show notifications for completed videos
         data.updated_videos.forEach((video: any) => {
@@ -783,7 +791,9 @@ const VideoGeneration: React.FC = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {generations.map((generation) => (
+                  {generations.map((generation) => {
+                    console.log(`Rendering generation ${generation.id}: status=${generation.status}, videoUrl=${generation.videoUrl}`);
+                    return (
                     <div key={generation.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
@@ -802,16 +812,24 @@ const VideoGeneration: React.FC = () => {
                       </div>
                       
                       {/* Show video result if available, otherwise show input image */}
-                      {generation.videoUrl && (
+                      {generation.videoUrl ? (
                         <div className="mb-3">
                           <video
                             src={generation.videoUrl}
                             controls
                             className="w-full h-32 object-cover rounded"
                             poster={generation.inputImageUrl}
+                            key={`${generation.id}-${generation.status}`} // Force re-render when status changes
                           />
                         </div>
-                      ) }
+                      ) : generation.status === 'processing' ? (
+                        <div className="mb-3 flex items-center justify-center h-32 bg-gray-100 dark:bg-gray-800 rounded">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Đang xử lý video...</p>
+                          </div>
+                        </div>
+                      ) : null}
                        
                       <p className="text-xs text-gray-600 dark:text-gray-400 mb-3 leading-relaxed line-clamp-2">
                         {generation.prompt}
@@ -842,7 +860,8 @@ const VideoGeneration: React.FC = () => {
                         </div>
                       )}
                     </div>
-                  ))}
+                  );
+                  })}
                 </div>
               )}
             </Card>

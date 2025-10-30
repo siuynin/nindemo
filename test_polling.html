@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Video Polling</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .video-item { border: 1px solid #ccc; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .status { font-weight: bold; }
+        .processing { color: blue; }
+        .completed { color: green; }
+        .failed { color: red; }
+        video { width: 200px; height: 150px; object-fit: cover; }
+    </style>
+</head>
+<body>
+    <h1>Video Generation Polling Test</h1>
+    <div id="videos"></div>
+    <div id="log"></div>
+
+    <script>
+        // Mock data to simulate the polling behavior
+        const mockGenerations = [
+            { id: '1', status: 'processing', prompt: 'Test video 1', videoUrl: null },
+            { id: '2', status: 'completed', prompt: 'Test video 2', videoUrl: 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4' }
+        ];
+
+        let generations = [...mockGenerations];
+        const pollingIntervals = new Map();
+
+        function renderVideos() {
+            const container = document.getElementById('videos');
+            container.innerHTML = '';
+            
+            generations.forEach(gen => {
+                const div = document.createElement('div');
+                div.className = 'video-item';
+                div.innerHTML = `
+                    <div>ID: ${gen.id}</div>
+                    <div>Prompt: ${gen.prompt}</div>
+                    <div class="status ${gen.status}">Status: ${gen.status}</div>
+                    <div>Video URL: ${gen.videoUrl || 'null'}</div>
+                    ${gen.videoUrl ? `<video src="${gen.videoUrl}" controls></video>` : ''}
+                    <button onclick="startPolling('${gen.id}')">Start Polling</button>
+                    <button onclick="stopPolling('${gen.id}')">Stop Polling</button>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += `<div>${new Date().toLocaleTimeString()}: ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function mockPollVideoStatus(generationId) {
+            log(`Polling for generation ${generationId}...`);
+            
+            // Simulate API response
+            setTimeout(() => {
+                const gen = generations.find(g => g.id === generationId);
+                if (!gen) return;
+
+                // Simulate status progression
+                if (gen.status === 'processing') {
+                    // 70% chance to complete, 20% chance to stay processing, 10% chance to fail
+                    const rand = Math.random();
+                    if (rand < 0.7) {
+                        gen.status = 'completed';
+                        gen.videoUrl = 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4';
+                        log(`Generation ${generationId} completed!`);
+                        stopPolling(generationId);
+                    } else if (rand < 0.9) {
+                        log(`Generation ${generationId} still processing...`);
+                    } else {
+                        gen.status = 'failed';
+                        log(`Generation ${generationId} failed!`);
+                        stopPolling(generationId);
+                    }
+                    renderVideos();
+                }
+            }, 1000);
+        }
+
+        function startPolling(generationId) {
+            if (pollingIntervals.has(generationId)) {
+                log(`Already polling for ${generationId}`);
+                return;
+            }
+
+            log(`Starting polling for ${generationId}`);
+            
+            // Poll immediately
+            mockPollVideoStatus(generationId);
+
+            const interval = setInterval(() => {
+                mockPollVideoStatus(generationId);
+            }, 3000);
+
+            pollingIntervals.set(generationId, interval);
+        }
+
+        function stopPolling(generationId) {
+            const interval = pollingIntervals.get(generationId);
+            if (interval) {
+                clearInterval(interval);
+                pollingIntervals.delete(generationId);
+                log(`Stopped polling for ${generationId}`);
+            }
+        }
+
+        // Initialize
+        renderVideos();
+        log('Test polling initialized. Click "Start Polling" to test.');
+    </script>
+</body>
+</html>
