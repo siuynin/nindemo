@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\PricingPlan;
+use App\Observers\PricingPlanObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
@@ -28,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
         if (config('app.env') === 'production') {
             URL::forceScheme('https');
         }
+
+        // Đăng ký PricingPlan observer để ngăn chặn ID trùng lặp
+        PricingPlan::observe(PricingPlanObserver::class);
 
         Event::listen(
             \SePay\SePay\Events\SePayWebhookEvent::class,

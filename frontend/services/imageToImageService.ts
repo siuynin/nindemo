@@ -51,8 +51,8 @@ class ImageToImageService {
    */
   async generateImageToImage(request: ImageToImageRequest): Promise<ImageToImageResponse> {
     try {
-      const token = authService.getToken();
-      if (!token) {
+      const authHeaders = await authService.getAuthHeaders();
+      if (!authHeaders['Authorization']) {
         // Show auth modal if callback is set
         if (this.onAuthRequired) {
           this.onAuthRequired();
@@ -66,7 +66,7 @@ class ImageToImageService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
           'Accept': 'application/json',
         },
         body: JSON.stringify(request),
@@ -91,8 +91,8 @@ class ImageToImageService {
    */
   async checkTaskStatus(generateId: number, taskId: string): Promise<TaskStatusResponse> {
     try {
-      const token = authService.getToken();
-      if (!token) {
+      const authHeaders = await authService.getAuthHeaders();
+      if (!authHeaders['Authorization']) {
         throw new Error('Authentication required');
       }
 
@@ -102,7 +102,7 @@ class ImageToImageService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
+          ...authHeaders,
           'Accept': 'application/json',
         },
         body: JSON.stringify({

@@ -104,6 +104,18 @@ class FixDuplicatePricingPlanIds extends Command
             
             if (empty($remainingDuplicates)) {
                 $this->info('✅ Không còn ID trùng lặp nào.');
+                
+                // Reset AUTO_INCREMENT để tránh lỗi trong tương lai
+                $maxId = PricingPlan::max('id');
+                $nextAutoIncrement = $maxId + 1;
+                
+                // Lấy tên bảng từ model
+                $tableName = (new PricingPlan)->getTable();
+                
+                // Reset AUTO_INCREMENT cho PostgreSQL
+                DB::statement("ALTER SEQUENCE {$tableName}_id_seq RESTART WITH {$nextAutoIncrement}");
+                
+                $this->info("✅ Đã reset AUTO_INCREMENT thành {$nextAutoIncrement}");
             } else {
                 $this->error('⚠️  Vẫn còn ID trùng lặp sau khi sửa:');
                 foreach ($remainingDuplicates as $duplicate) {

@@ -5,7 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { imageGenerationService, ImageGenerationRequest } from '../services/imageGenerationService';
 import { imageToImageService, ImageToImageRequest } from '../services/imageToImageService';
 import AIService from '../services/AIService';
-import { generateService } from '../services/generateService'; 
+import { generateService } from '../services/generateService';
+import { authService } from '../services/authService'; 
 import Button from '../components/ui/Button'; 
 import TextArea from '../components/ui/TextArea';
 import Alert from '../components/ui/Alert';
@@ -43,7 +44,7 @@ interface GeneratedImage {
 const ImageCreator: React.FC = () => {
   const { actualTheme } = useTheme();
   const { t } = useLanguage();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [models, setModels] = useState<AIModel[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [loading, setLoading] = useState(false);
@@ -51,6 +52,7 @@ const ImageCreator: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [showModelPopup, setShowModelPopup] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error' | 'warning' | 'info'; message: string } | null>(null);
   const [selectedImage, setSelectedImage] = useState<GeneratedImage | null>(null);
@@ -184,6 +186,8 @@ const ImageCreator: React.FC = () => {
   }>({});
 
   useEffect(() => {
+    console.log('🚀 Component mounting, initial auth state:', { isAuthenticated, user, authLoading });
+    
     fetchModels();
     
     // Xử lý URL parameters để lấy prompt từ Document page
@@ -194,18 +198,25 @@ const ImageCreator: React.FC = () => {
     }
   }, []);
 
-  // Separate useEffect for fetching images when authentication state changes
+  // Single useEffect to handle auth state changes
   useEffect(() => {
-    console.log('Auth state changed:', { isAuthenticated, user });
+    console.log('Auth state changed:', { authLoading, isAuthenticated, user });
+    
+    // Chỉ xử lý khi AuthContext đã khởi tạo xong
+    if (authLoading) {
+      console.log('⏳ AuthContext still loading, waiting...');
+      return;
+    }
+    
     if (isAuthenticated && user) {
-      console.log('User authenticated, fetching images automatically');
+      console.log('✅ User authenticated, fetching images automatically');
       // Tự động fetch ảnh khi user đăng nhập
       fetchGeneratedImages(1, false);
     } else {
-      console.log('User not authenticated, clearing images');
+      console.log('❌ User not authenticated, clearing images');
       setGeneratedImages([]);
     }
-  }, [isAuthenticated, user]);
+  }, [authLoading, isAuthenticated, user]);
 
   // Set up AIService toast callback
   useEffect(() => {
@@ -253,14 +264,24 @@ const ImageCreator: React.FC = () => {
     }
   };
 
-  // Tải ảnh đã tạo từ database - Gọi API trực tiếp với base URL
+  // Tải ảnh đã tạo từ database - Sử dụng authService để đảm bảo authentication đúng cách
   const fetchGeneratedImages = async (page: number = 1, append: boolean = false) => {
-    console.log('🔍 Fetching generated images (generations)', { page, append, isAuthenticated, user });
+    console.log('🔍 Fetching generated images (generations)', { page, append, isAuthenticated, user, authLoading });
+    
+    if (authLoading) {
+      console.log('⏳ AuthContext still loading, waiting...');
+      return;
+    }
     
     if (!isAuthenticated || !user) {
       console.log('❌ User not authenticated, skipping fetch');
       setGeneratedImages([]);
-      setLoading(false);
+      if (!append) {
+        setLoading(false);
+      } else {
+        setIsLoadingMore(false);
+      }
+      setInitialLoading(false);
       return;
     }
     
@@ -277,16 +298,34 @@ const ImageCreator: React.FC = () => {
         setLoading(true);
       }
       
-      // Gọi API trực tiếp với base URL
+      // Sử dụng authService để lấy headers với token tự động refresh nếu cần
       const baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}`;
-      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      const authHeaders = await authService.getAuthHeaders();
       
-      console.log('📡 Calling API directly:', `${baseUrl}/generations`);
-      console.log('📡 Token:', token);
+      // Debug token từ localStorage
+      const tokenFromStorage = localStorage.getItem('auth_token') || localStorage.getItem('token');
+      console.log('📡 Token from localStorage:', tokenFromStorage);
+      console.log('📡 Token from authService:', authService.getToken());
+      
+      // Debug chi tiết user và trạng thái
+      console.log('📡 User info:', { user, isAuthenticated });
+      console.log('📡 Auth headers chi tiết:', JSON.stringify(authHeaders, null, 2));
+      
+      // Kiểm tra nếu không có Authorization header
+      if (!authHeaders['Authorization']) {
+        console.error('❌ NO AUTHORIZATION HEADER! Token might be missing or invalid.');
+        showToast('error', 'Không có token xác thực. Vui lòng đăng nhập lại.');
+        setShowAuthModal(true);
+        setLoading(false);
+        setIsLoadingMore(false);
+        return;
+      }
+      
+      console.log('📡 Calling API with authService:', `${baseUrl}/generations`);
       
       const response = await fetch(`${baseUrl}/generations?per_page=22&page=${page}`, {
         headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
+          ...authHeaders,
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         }
@@ -294,6 +333,19 @@ const ImageCreator: React.FC = () => {
 
       console.log('📡 Response status:', response.status);
       console.log('📡 Response headers:', response.headers);
+      
+      // Log response body for debugging
+      const responseText = await response.text();
+      console.log('📡 Response body:', responseText);
+      
+      // Parse JSON manually since we already consumed the response
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error('❌ Failed to parse JSON response:', e);
+        throw new Error('Invalid JSON response from server');
+      }
       
       if (!response.ok) {
         console.error('❌ API request failed:', response.status, response.statusText);
@@ -303,7 +355,6 @@ const ImageCreator: React.FC = () => {
         throw new Error(`API request failed: ${response.status}`);
       }
 
-      const data = await response.json();
       console.log('📡 API Response data:', data);
       console.log('📡 Response success:', data?.success);
       console.log('📡 Response data isArray:', Array.isArray(data?.data));
@@ -380,6 +431,7 @@ const ImageCreator: React.FC = () => {
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
+      setInitialLoading(false);
     }
   };
 
@@ -444,7 +496,7 @@ const ImageCreator: React.FC = () => {
 
     // Start polling immediately
     pollTaskStatus();
-  }, [fetchGeneratedImages, showToast]);
+  }, [fetchGeneratedImages, showToast, authLoading]);
 
   // Simplified auto-polling - remove complex polling management
   useEffect(() => {
@@ -997,7 +1049,24 @@ const ImageCreator: React.FC = () => {
     onEditImage: (image: GeneratedImage) => void;
     onDeleteImage: (image: GeneratedImage) => void;
     t: any;
-  }> = React.memo(({ images, isDark, onImageClick, onEditImage, onDeleteImage, t }) => {
+    initialLoading: boolean;
+  }> = React.memo(({ images, isDark, onImageClick, onEditImage, onDeleteImage, t, initialLoading }) => {
+    if (initialLoading) {
+      return (
+        <div className="text-center py-16">
+          <div className="mx-auto w-32 h-32 flex items-center justify-center mb-6">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-3"></div>
+          </div>
+          <h3 className={`text-xl font-semibold mb-3 ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+            Loading your images...
+          </h3>
+          <p className={`text-base ${isDark ? 'text-gray-400' : 'text-gray-500'} max-w-md mx-auto leading-relaxed`}>
+            Please wait while we fetch your generated images
+          </p>
+        </div>
+      );
+    }
+
     if (images.length === 0) {
       return (
         <div className="text-center py-16">
@@ -1138,9 +1207,10 @@ const ImageCreator: React.FC = () => {
       </div>
     );
   }, (prevProps, nextProps) => {
-    // Chỉ re-render khi images array thay đổi hoặc isDark thay đổi
+    // Chỉ re-render khi images array thay đổi hoặc isDark thay đổi hoặc initialLoading thay đổi
     return prevProps.images === nextProps.images && 
-           prevProps.isDark === nextProps.isDark;
+           prevProps.isDark === nextProps.isDark &&
+           prevProps.initialLoading === nextProps.initialLoading;
   });
 
   return (
@@ -1542,6 +1612,7 @@ const ImageCreator: React.FC = () => {
                 onEditImage={handleEditImage}
                 onDeleteImage={handleDeleteImage}
                 t={t}
+                initialLoading={initialLoading}
               />
                
             </Card>
