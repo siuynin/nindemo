@@ -35,6 +35,25 @@ class ImageGenerationController extends Controller
         $this->runningHubService = $runningHubService;
         $this->runningHubImageService = $runningHubImageService;
     }
+    
+    public function proxyImage(Request $request)
+    {
+        $validated = $request->validate([
+            'url' => 'required|url',
+        ]);
+
+        try {
+            $response = Http::get($validated['url']);
+
+            return response($response->body())
+                ->header('Content-Type', $response->header('Content-Type'))
+                ->header('Content-Length', $response->header('Content-Length'));
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to fetch image'], 500);
+        }
+    }
+}
+
 
     /**
      * Create image using complete backend flow
