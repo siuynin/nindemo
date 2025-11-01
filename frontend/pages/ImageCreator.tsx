@@ -299,7 +299,7 @@ const ImageCreator: React.FC = () => {
       }
       
       // Sử dụng authService để lấy headers với token tự động refresh nếu cần
-      const baseUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}`;
+      const baseUrl = 'https://api.ndhubs.com/api';
       const authHeaders = await authService.getAuthHeaders();
       
       // Debug token từ localStorage
