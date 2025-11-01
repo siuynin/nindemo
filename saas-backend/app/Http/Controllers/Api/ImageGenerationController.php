@@ -52,8 +52,6 @@ class ImageGenerationController extends Controller
             return response()->json(['error' => 'Failed to fetch image'], 500);
         }
     }
-}
-
 
     /**
      * Create image using complete backend flow

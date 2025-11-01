@@ -108,8 +108,8 @@ export default defineConfig(({ mode }) => {
       },
       assetsInclude: ['**/*.wasm'],
       optimizeDeps: {
-        include: ['react', 'react-dom']
-      },
+    include: ['react', 'react-dom', '@blueprintjs/core', '@blueprintjs/icons', '@blueprintjs/select', '@blueprintjs/popover2']
+  },
       server: {
         port: 5175,
         host: '0.0.0.0',
