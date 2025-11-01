@@ -488,9 +488,8 @@ const ImageCreator: React.FC = () => {
         
       } catch (error) {
         console.error('Error polling task status:', error);
-        if (attempts < maxAttempts) {
-          setTimeout(pollTaskStatus, pollInterval);
-        }
+        // Stop polling on error - don't retry failed tasks
+        return; // ĐÃ SỬA: Dừng polling khi có lỗi
       }
     };
 
