@@ -321,9 +321,9 @@ const ImageCreator: React.FC = () => {
         return;
       }
       
-      console.log('📡 Calling API with authService:', `${baseUrl}/generations`);
+      console.log('📡 Calling API with authService:', `${baseUrl}/images/generations`);
       
-      const response = await fetch(`${baseUrl}/generations?per_page=22&page=${page}`, {
+      const response = await fetch(`${baseUrl}/images/generations?per_page=22&page=${page}`, {
         headers: {
           ...authHeaders,
           'Accept': 'application/json',
