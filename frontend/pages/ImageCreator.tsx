@@ -212,6 +212,16 @@ const ImageCreator: React.FC = () => {
       console.log('✅ User authenticated, fetching images automatically');
       // Tự động fetch ảnh khi user đăng nhập
       fetchGeneratedImages(1, false);
+      
+      // Thiết lập interval để tự động refresh danh sách ảnh mỗi 30 giây
+      const refreshInterval = setInterval(() => {
+        console.log('🔄 Auto-refreshing image list...');
+        fetchGeneratedImages(1, false);
+      }, 30000); // 30 giây
+      
+      return () => {
+        clearInterval(refreshInterval);
+      };
     } else {
       console.log('❌ User not authenticated, clearing images');
       setGeneratedImages([]);
@@ -299,7 +309,7 @@ const ImageCreator: React.FC = () => {
       }
       
       // Sử dụng authService để lấy headers với token tự động refresh nếu cần
-      const baseUrl = 'https://api.ndhubs.com/api';
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api';
       const authHeaders = await authService.getAuthHeaders();
       
       // Debug token từ localStorage
@@ -323,13 +333,43 @@ const ImageCreator: React.FC = () => {
       
       console.log('📡 Calling API with authService:', `${baseUrl}/images/generations`);
       
-      const response = await fetch(`${baseUrl}/images/generations?per_page=22&page=${page}`, {
-        headers: {
-          ...authHeaders,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+      // Thêm cơ chế retry cho fetch
+      let response;
+      let attempts = 0;
+      const maxAttempts = 3;
+      while (attempts < maxAttempts) {
+        try {
+          response = await fetch(`${baseUrl}/images/generations?per_page=22&page=${page}`, {
+            headers: {
+              ...authHeaders,
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            break; // Thành công, thoát vòng lặp
+          } else if (response.status === 500 || response.status === 429) {
+            attempts++;
+            console.log(`Retry attempt ${attempts}/${maxAttempts} after error ${response.status}`);
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts)); // Delay tăng dần
+            continue;
+          } else {
+            throw new Error(`API request failed: ${response.status}`);
+          }
+        } catch (error) {
+          attempts++;
+          console.error(`Fetch error on attempt ${attempts}:`, error);
+          if (attempts >= maxAttempts) {
+            throw error;
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
         }
-      });
+      }
+
+      if (!response) {
+        throw new Error('Failed to fetch after maximum retries');
+      }
 
       console.log('📡 Response status:', response.status);
       console.log('📡 Response headers:', response.headers);
@@ -427,7 +467,7 @@ const ImageCreator: React.FC = () => {
       if (!append) {
         setGeneratedImages([]);
       }
-      showToast('error', 'Có lỗi xảy ra khi tải danh sách ảnh');
+      showToast('error', 'Có lỗi xảy ra khi tải danh sách ảnh. Đã thử lại nhưng thất bại.');
     } finally {
       setLoading(false);
       setIsLoadingMore(false);
