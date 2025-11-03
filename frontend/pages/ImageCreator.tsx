@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { imageGenerationService, ImageGenerationRequest } from '../services/imageGenerationService';
@@ -42,7 +41,6 @@ interface GeneratedImage {
 }
 
 const ImageCreator: React.FC = () => {
-  const { actualTheme } = useTheme();
   const { t } = useLanguage();
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [models, setModels] = useState<AIModel[]>([]);
@@ -1253,19 +1251,17 @@ const ImageCreator: React.FC = () => {
   });
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-300 ${actualTheme === 'dark' ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-50 to-gray-100'}`}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-30">
-        <div className={`absolute inset-0 ${actualTheme === 'dark' ? 'bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]' : 'bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]'}`}></div>
+        <div className={`absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)] dark:bg-[radial-gradient(circle_at_50%_50%,rgba(120,119,198,0.1),transparent_50%)]`}></div>
       </div>
       
       <div className="relative z-10 container mx-auto px-4 ">
         {/* Header Section */}
         <div className={`p-4`}>
           <div className="flex items-center justify-between mb-3">
-            <h3 className={`font-medium ${
-              actualTheme === 'dark' ? 'text-white' : 'text-gray-800'
-            }`}>{t.imageCreator.title}</h3> 
+            <h3 className={`font-medium text-gray-800 dark:text-white`}>{t.imageCreator.title}</h3> 
           </div>
         </div>
 
@@ -1276,9 +1272,7 @@ const ImageCreator: React.FC = () => {
             <Card className=" backdrop-blur-sm sticky top-8" padding="lg" shadow="lg">
               <div className="flex items-center mb-3"> 
                 <div>
-                  <h2 className={`text-xl font-semibold text-gray-800 ${
-                    actualTheme === 'dark' ? 'text-white' : 'text-gray-800'
-                  }`}>{t.imageCreator?.createImage || 'Create Image'}</h2>
+                  <h2 className={`text-xl font-semibold text-gray-800 dark:text-white`}>{t.imageCreator?.createImage || 'Create Image'}</h2>
                  </div>
               </div>
 
@@ -1443,7 +1437,7 @@ const ImageCreator: React.FC = () => {
                     </Button>
                     
                     {showSizeDropdown && (
-                      <div className={`absolute top-full left-0 right-0 mt-2 rounded-lg border shadow-lg z-10 ${actualTheme === 'dark' ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-200'}`}>
+                      <div className={`absolute top-full left-0 right-0 mt-2 rounded-lg border shadow-lg z-10 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-600`}>
                         {aspectRatios.map((ratio) => (
                           <button
                             key={ratio.ratio}
@@ -1548,11 +1542,7 @@ const ImageCreator: React.FC = () => {
                           step="1"
                           value={formData.numberResults}
                           onChange={handleInputChange}
-                          className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-                            actualTheme === 'dark' 
-                              ? 'bg-gray-700 slider-thumb-dark' 
-                              : 'bg-gray-200 slider-thumb-light'
-                          }`}
+                          className={`w-full h-2 rounded-lg appearance-none cursor-pointer bg-gray-200 slider-thumb-light dark:bg-gray-700 dark:slider-thumb-dark`}
                         />
                       </div>
                     </div>
@@ -1593,14 +1583,14 @@ const ImageCreator: React.FC = () => {
           <div className="xl:col-span-8">
             <Card className="  backdrop-blur-sm h-full" padding="lg" shadow="lg">
               <div className="flex items-center mb-8">
-                <div className={`w-12 h-12 rounded-xl  ${actualTheme === 'dark' ? 'bg-gradient-to-r from-green-500 to-blue-500' : 'bg-gradient-to-r from-green-600 to-blue-600'} flex items-center justify-center mr-4 shadow-lg`}>
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-r from-green-600 to-blue-600 dark:from-green-500 dark:to-blue-500 flex items-center justify-center mr-4 shadow-lg`}>
                   <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
                 <div>
-                  <h2 className={`text-2xl font-bold text-gray-800 ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{t.imageCreator?.generatedImages || 'Generated Images'}</h2>
-                  <p className={`text-sm text-gray-500 ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mt-1`}>{t.imageCreator?.generatedImagesDescription || 'Your AI-created masterpieces appear here'}</p>
+                  <h2 className={`text-2xl font-bold text-gray-800 dark:text-white`}>{t.imageCreator?.generatedImages || 'Generated Images'}</h2>
+                  <p className={`text-sm text-gray-500 dark:text-gray-400 mt-1`}>{t.imageCreator?.generatedImagesDescription || 'Your AI-created masterpieces appear here'}</p>
                 </div>
               </div>
               
@@ -1646,7 +1636,6 @@ const ImageCreator: React.FC = () => {
               
               <ImageGallery
                 images={generatedImages}
-                isDark={actualTheme === 'dark'}
                 onImageClick={openImagePopup}
                 onEditImage={handleEditImage}
                 onDeleteImage={handleDeleteImage}
@@ -1736,39 +1725,39 @@ const ImageCreator: React.FC = () => {
             {/* Information Section - Right Column */}
             <div className="lg:w-1/3 flex flex-col space-y-4 overflow-y-auto">
               {/* Image Information */}
-              <div className={`p-4 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                <h3 className={`font-medium mb-2 ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+              <div className={`p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50`}>
+                <h3 className={`font-medium mb-2 text-gray-800 dark:text-white`}>
                   Prompt
                 </h3>
-                <p className={`text-sm ${actualTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed`}>
+                <p className={`text-sm text-gray-600 dark:text-gray-300 leading-relaxed`}>
                   "{selectedImage.prompt}"
                 </p>
               </div>
               
               {/* Image Details */}
               <div className="space-y-3">
-                <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                  <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                <div className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50`}>
+                  <h4 className={`text-xs font-medium text-gray-500 dark:text-gray-400 mb-1`}>
                     Dimensions
                   </h4>
-                  <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  <p className={`text-sm font-medium text-gray-800 dark:text-white`}>
                     {selectedImage.width} × {selectedImage.height}
                   </p>
                 </div>
-                <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                  <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                <div className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50`}>
+                  <h4 className={`text-xs font-medium text-gray-500 dark:text-gray-400 mb-1`}>
                     Created
                   </h4>
-                  <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                  <p className={`text-sm font-medium text-gray-800 dark:text-white`}>
                     {selectedImage.createdAt.toLocaleDateString()}
                   </p>
                 </div>
                 {selectedImage.seed !== null && selectedImage.seed !== undefined && (
-                  <div className={`p-3 rounded-lg ${actualTheme === 'dark' ? 'bg-gray-800/50' : 'bg-gray-50'}`}>
-                    <h4 className={`text-xs font-medium ${actualTheme === 'dark' ? 'text-gray-400' : 'text-gray-500'} mb-1`}>
+                  <div className={`p-3 rounded-lg bg-gray-50 dark:bg-gray-800/50`}>
+                    <h4 className={`text-xs font-medium text-gray-500 dark:text-gray-400 mb-1`}>
                       Seed
                     </h4>
-                    <p className={`text-sm font-medium ${actualTheme === 'dark' ? 'text-white' : 'text-gray-800'}`}>
+                    <p className={`text-sm font-medium text-gray-800 dark:text-white`}>
                       {selectedImage.seed}
                     </p>
                   </div>

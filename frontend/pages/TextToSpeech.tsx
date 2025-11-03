@@ -216,11 +216,7 @@ const TextToSpeech: React.FC = () => {
   }, [isAuthenticated]);
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      theme === 'dark' 
-        ? 'bg-gray-900 text-white' 
-        : 'bg-gray-50 text-gray-900'
-    }`}>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Page Header */}
       <div className="px-6 py-8">
         <div className="max-w-7xl mx-auto">

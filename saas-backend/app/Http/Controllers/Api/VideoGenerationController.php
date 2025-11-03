@@ -10,8 +10,10 @@ use App\Services\VideoGenApiService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class VideoGenerationController extends Controller
@@ -237,9 +239,38 @@ class VideoGenerationController extends Controller
                     
                     // Generation completed or failed within timeout
                     if ($pollResponse['status'] === 'completed') {
+                        $originalVideoUrl = $pollResponse['video_url'] ?? null;
+                        $finalVideoUrl = $originalVideoUrl; // Default to original URL
+                        
+                        // Try to upload to S3 if configured and video URL is available
+                        if ($originalVideoUrl && $this->isS3Configured()) {
+                            try {
+                                Log::info('Uploading completed video to S3 (immediate completion)', [
+                                    'generate_id' => $generate->id,
+                                    'original_url' => $originalVideoUrl
+                                ]);
+                                
+                                $s3Url = $this->uploadVideoToS3($originalVideoUrl, 'generated-videos');
+                                $finalVideoUrl = $s3Url; // Use S3 URL if upload successful
+                                
+                                Log::info('Video uploaded to S3 successfully (immediate completion)', [
+                                    'generate_id' => $generate->id,
+                                    'original_url' => $originalVideoUrl,
+                                    's3_url' => $s3Url
+                                ]);
+                            } catch (\Exception $s3Error) {
+                                Log::error('S3 upload failed for completed video (immediate completion), using original URL as fallback', [
+                                    'generate_id' => $generate->id,
+                                    'original_url' => $originalVideoUrl,
+                                    'error' => $s3Error->getMessage()
+                                ]);
+                                // Continue with original URL if S3 upload fails
+                            }
+                        }
+                        
                         $generate->update([
                             'status' => 'completed',
-                            'result_url' => $pollResponse['video_url'] ?? null,
+                            'result_url' => $finalVideoUrl,
                             'completed_at' => now(),
                             'api_response' => json_encode($pollResponse)
                         ]);
@@ -251,7 +282,7 @@ class VideoGenerationController extends Controller
                                 'id' => $generate->id,
                                 'generation_id' => $response['generation_id'],
                                 'status' => 'completed',
-                                'video_url' => $pollResponse['video_url'] ?? null,
+                                'video_url' => $finalVideoUrl,
                                 'remainingCredits' => $user->fresh()->total_remaining_credits,
                                 'processing_time' => $pollResponse['processing_time'] ?? null,
                                 'completed_at' => $pollResponse['completed_at'] ?? null
@@ -369,7 +400,36 @@ class VideoGenerationController extends Controller
                         // If completed, save the video URL and additional data
                         if ($newStatus === 'completed') {
                             if (isset($apiStatus['video_url'])) {
-                                $updateData['result_url'] = $apiStatus['video_url'];
+                                $originalVideoUrl = $apiStatus['video_url'];
+                                $finalVideoUrl = $originalVideoUrl; // Default to original URL
+                                
+                                // Try to upload to S3 if configured
+                                if ($this->isS3Configured()) {
+                                    try {
+                                        Log::info('Uploading completed video to S3', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl
+                                        ]);
+                                        
+                                        $s3Url = $this->uploadVideoToS3($originalVideoUrl, 'generated-videos');
+                                        $finalVideoUrl = $s3Url; // Use S3 URL if upload successful
+                                        
+                                        Log::info('Video uploaded to S3 successfully', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl,
+                                            's3_url' => $s3Url
+                                        ]);
+                                    } catch (\Exception $s3Error) {
+                                        Log::error('S3 upload failed for completed video, using original URL as fallback', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl,
+                                            'error' => $s3Error->getMessage()
+                                        ]);
+                                        // Continue with original URL if S3 upload fails
+                                    }
+                                }
+                                
+                                $updateData['result_url'] = $finalVideoUrl;
                             }
                             $updateData['completed_at'] = isset($apiStatus['completed_at']) 
                                 ? $apiStatus['completed_at'] 
@@ -859,6 +919,131 @@ class VideoGenerationController extends Controller
                 'error' => 'Upload failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Upload video from URL to S3
+     * 
+     * @param string $videoUrl
+     * @param string $folder
+     * @return string S3 URL
+     * @throws \Exception
+     */
+    private function uploadVideoToS3(string $videoUrl, string $folder = 'generated-videos'): string
+    {
+        try {
+            Log::info('Starting video upload to S3', [
+                'video_url' => $videoUrl,
+                'folder' => $folder
+            ]);
+
+            // Check if S3 is configured
+            if (empty(env('AWS_ACCESS_KEY_ID')) || 
+                empty(env('AWS_SECRET_ACCESS_KEY')) || 
+                empty(env('AWS_BUCKET')) || 
+                empty(env('AWS_DEFAULT_REGION'))) {
+                throw new \Exception('S3 is not properly configured');
+            }
+
+            // Download video from URL with extended timeout for large video files
+            $response = Http::timeout(300)->get($videoUrl); // 5 minutes timeout
+            
+            if (!$response->successful()) {
+                throw new \Exception('Failed to download video from URL: ' . $videoUrl . ' (HTTP ' . $response->status() . ')');
+            }
+
+            $videoContent = $response->body();
+            $contentLength = strlen($videoContent);
+            
+            Log::info('Video downloaded successfully', [
+                'video_url' => $videoUrl,
+                'content_length' => $contentLength,
+                'content_type' => $response->header('Content-Type')
+            ]);
+
+            // Generate unique filename with proper extension
+            $extension = $this->getVideoExtensionFromUrl($videoUrl, $response->header('Content-Type'));
+            $filename = $folder . '/' . date('Y/m') . '/' . 'video-' . time() . '-' . Str::random(8) . '.' . $extension;
+            
+            // Upload to S3
+            $uploaded = Storage::disk('s3')->put($filename, $videoContent);
+            
+            if (!$uploaded) {
+                throw new \Exception('Failed to upload video to S3');
+            }
+
+            // Get the public URL
+            $s3Url = Storage::disk('s3')->url($filename);
+            
+            Log::info('Video uploaded to S3 successfully', [
+                'original_url' => $videoUrl,
+                's3_url' => $s3Url,
+                'filename' => $filename,
+                'file_size' => $contentLength
+            ]);
+
+            return $s3Url;
+            
+        } catch (\Exception $e) {
+            Log::error('Video upload to S3 failed', [
+                'video_url' => $videoUrl,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Get video file extension from URL or content type
+     * 
+     * @param string $url
+     * @param string|null $contentType
+     * @return string
+     */
+    private function getVideoExtensionFromUrl(string $url, ?string $contentType = null): string
+    {
+        // Try to get extension from URL first
+        $urlPath = parse_url($url, PHP_URL_PATH);
+        if ($urlPath) {
+            $extension = pathinfo($urlPath, PATHINFO_EXTENSION);
+            if (in_array(strtolower($extension), ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv'])) {
+                return strtolower($extension);
+            }
+        }
+
+        // Try to get extension from content type
+        if ($contentType) {
+            $mimeToExtension = [
+                'video/mp4' => 'mp4',
+                'video/avi' => 'avi',
+                'video/quicktime' => 'mov',
+                'video/x-ms-wmv' => 'wmv',
+                'video/x-flv' => 'flv',
+                'video/webm' => 'webm',
+                'video/x-matroska' => 'mkv'
+            ];
+            
+            if (isset($mimeToExtension[$contentType])) {
+                return $mimeToExtension[$contentType];
+            }
+        }
+
+        // Default to mp4 if we can't determine the extension
+        return 'mp4';
+    }
+
+    /**
+     * Check if S3 is configured
+     * 
+     * @return bool
+     */
+    private function isS3Configured(): bool
+    {
+        return !empty(env('AWS_ACCESS_KEY_ID')) && 
+               !empty(env('AWS_SECRET_ACCESS_KEY')) && 
+               !empty(env('AWS_BUCKET')) && 
+               !empty(env('AWS_DEFAULT_REGION'));
     }
 
     /**

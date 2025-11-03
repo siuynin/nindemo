@@ -36,8 +36,8 @@ const Card: React.FC<CardProps> = ({
     lg: "shadow-theme-lg",
   };
 
-  const baseClasses = `${actualTheme === 'dark' ? 'bg-gray-800' : 'bg-white'} rounded-xl transition-all duration-200`;
-  const borderClasses = border ? `border ${actualTheme === 'dark' ? 'border-gray-700' : 'border-gray-200'}` : "";
+  const baseClasses = `g-gray-50 dark:bg-gray-900 rounded-xl transition-all duration-200`;
+  const borderClasses = border ? `border ${actualTheme === 'dark' ? 'dark:border-gray-800' : 'dark:border-gray-200'}` : "";
   const hoverClasses = hover ? "hover:shadow-theme-md hover:-translate-y-1" : "";
 
   return (

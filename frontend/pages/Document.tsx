@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { generateService, type Generate } from '../services/generateService';
 import { openaiService, type OpenAITemplate } from '../services/openaiService';
 import { Table, TableHeader, TableBody, TableRow, TableCell, Badge, Input, Button, Modal, TextArea, Select } from '../components/ui';
@@ -36,7 +35,6 @@ interface TemplateModalState {
 
 const Document: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
-  const { theme } = useTheme();
   const navigate = useNavigate();
 
   // Set page title
@@ -637,27 +635,19 @@ const Document: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50'
-    }`}>
+    <div className={`min-h-screen transition-colors duration-200 bg-gray-50 dark:bg-gray-900`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8 flex justify-between items-center">
           <div>
-            <h1 className={`text-3xl font-bold ${
-              theme === 'dark' ? 'text-white' : 'text-gray-900'
-            }`}>Documents</h1>
-            <p className={`mt-2 ${
-              theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-            }`}>Quản lý documents và templates của bạn</p>
+            <h1 className={`text-3xl font-bold text-gray-900 dark:text-white`}>Documents</h1>
+            <p className={`mt-2 text-gray-600 dark:text-gray-300`}>Quản lý documents và templates của bạn</p>
           </div> 
         </div>
 
         {/* Tabs */}
         <div className="mb-6">
-          <div className={`border-b ${
-             theme === 'dark' ? 'border-gray-700' : 'border-gray-200'
-           }`}>
+          <div className={`border-b border-gray-200 dark:border-gray-700`}>
              <nav className="-mb-px flex space-x-8">
                {isAuthenticated && (
                  <button
@@ -665,11 +655,7 @@ const Document: React.FC = () => {
                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
                      activeTab === 'my-documents'
                        ? 'border-blue-500 text-blue-600'
-                       : `border-transparent ${
-                         theme === 'dark'
-                           ? 'text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                           : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                       }`
+                       : `border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600`
                    }`}
                  >
                    My Documents
@@ -680,11 +666,7 @@ const Document: React.FC = () => {
                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
                    activeTab === 'templates'
                      ? 'border-blue-500 text-blue-600'
-                     : `border-transparent ${
-                       theme === 'dark'
-                         ? 'text-gray-400 hover:text-gray-200 hover:border-gray-600'
-                         : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                     }`
+                     : `border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-200 dark:hover:border-gray-600`
                  }`}
                >
                 Prompt Templates
@@ -697,14 +679,10 @@ const Document: React.FC = () => {
         {isAuthenticated && activeTab === 'my-documents' && (
           <div>
             {/* Header with Search */}
-            <div className={`rounded-2xl border shadow-theme-sm p-6 mb-6 ${
-               theme === 'dark' ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-             }`}>
+            <div className={`rounded-2xl border shadow-theme-sm p-6 mb-6 bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700`}>
               <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between mb-6">
                 <div className="flex items-center gap-4">
-                  <h3 className={`font-semibold text-title-md ${
-                     theme === 'dark' ? 'text-white' : 'text-gray-900'
-                   }`}>My Documents</h3>
+                  <h3 className={`font-semibold text-title-md text-gray-900 dark:text-white`}>My Documents</h3>
                   <Input
                     type="search"
                     placeholder="Tìm theo tên..."
@@ -745,19 +723,13 @@ const Document: React.FC = () => {
               {/* Filters */}
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <label className={`block font-medium text-sm mb-2 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <label className={`block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300`}>
                     Loại
                   </label>
                   <select
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
-                      theme === 'dark'
-                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
-                    }`}
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:border-brand-400 dark:focus:ring-brand-100`}
                   >
                     <option value="">Tất cả</option>
                     <option value="text">Text</option>
@@ -765,19 +737,13 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block font-medium text-sm mb-2 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <label className={`block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300`}>
                     Trạng thái
                   </label>
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
-                      theme === 'dark'
-                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
-                    }`}
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:border-brand-400 dark:focus:ring-brand-100`}
                   >
                     <option value="">Tất cả</option>
                     <option value="pending">Pending</option>
@@ -787,19 +753,13 @@ const Document: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className={`block font-medium text-sm mb-2 ${
-                    theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                  }`}>
+                  <label className={`block font-medium text-sm mb-2 text-gray-700 dark:text-gray-300`}>
                     Chia sẻ
                   </label>
                   <select
                     value={filters.share}
                     onChange={(e) => setFilters({ ...filters, share: e.target.value })}
-                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 ${
-                      theme === 'dark'
-                        ? 'bg-gray-800 border-gray-600 text-white focus:border-brand-400 focus:ring-brand-100'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100'
-                    }`}
+                    className={`h-9 w-full rounded-lg border px-4 py-2 text-sm shadow-theme-xs focus:outline-none focus:ring-4 transition-all duration-200 bg-white border-gray-300 text-gray-900 focus:border-brand-500 focus:ring-brand-100 dark:bg-gray-800 dark:border-gray-600 dark:text-white dark:focus:border-brand-400 dark:focus:ring-brand-100`}
                   >
                     <option value="">Tất cả</option>
                     <option value="private">Private</option>
@@ -810,73 +770,55 @@ const Document: React.FC = () => {
             </div>
 
             {/* Documents List */}
-            <div className={`overflow-hidden rounded-xl border shadow ${
-              theme === 'dark' 
-                ? 'border-white/[0.05] bg-white/[0.03]' 
-                : 'border-gray-200 bg-white'
-            }`}>
+            <div className={`overflow-hidden rounded-xl border shadow border-gray-200 bg-white dark:border-white/[0.05] dark:bg-white/[0.03]`}>
               {loading ? (
                 <div className="p-8 text-center">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-                  <p className={`mt-4 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}`}>Đang tải...</p>
+                  <p className={`mt-4 text-gray-600 dark:text-gray-300`}>Đang tải...</p>
                 </div>
               ) : generates.length === 0 ? (
                 <div className="p-8 text-center">
-                  <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>Không có documents nào</p>
+                  <p className={`text-gray-600 dark:text-gray-300`}>Không có documents nào</p>
                 </div>
               ) : (
                 <div className="max-w-full overflow-x-auto">
                   <Table>
                     {/* Table Header */}
-                    <TableHeader className={`border-b ${
-                      theme === 'dark' ? 'border-white/[0.05]' : 'border-gray-100'
-                    }`}>
+                    <TableHeader className={`border-b border-gray-100 dark:border-white/[0.05]`}>
                       <TableRow>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Document
                         </TableCell>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Loại
                         </TableCell>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Trạng thái
                         </TableCell>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Ngày tạo
                         </TableCell>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-left text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Chi phí
                         </TableCell>
                         <TableCell
                           isHeader
-                          className={`px-5 py-3 font-medium text-right text-sm uppercase tracking-wider ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}
+                          className={`px-5 py-3 font-medium text-right text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400`}
                         >
                           Thao tác
                         </TableCell>
@@ -884,37 +826,27 @@ const Document: React.FC = () => {
                     </TableHeader>
 
                     {/* Table Body */}
-                    <TableBody className={`divide-y ${
-                      theme === 'dark' ? 'divide-white/[0.05]' : 'divide-gray-100'
-                    }`}>
+                    <TableBody className={`divide-y divide-gray-100 dark:divide-white/[0.05]`}>
                       {generates.map((generate) => (
                         <TableRow key={generate.id}>
                           <TableCell className="px-5 py-4 sm:px-6 text-start">
                             <div className="flex items-center gap-3">
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-                                theme === 'dark' ? 'bg-gray-700' : 'bg-gray-100'
-                              }`}>
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg bg-gray-100 dark:bg-gray-700`}>
                                 📄
                               </div>
                               <div>
-                                <span className={`block font-medium text-sm ${
-                                  theme === 'dark' ? 'text-white/90' : 'text-gray-800'
-                                }`}>
+                                <span className={`block font-medium text-sm text-gray-800 dark:text-white/90`}>
                                   {generate.name}
                                 </span> 
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell className={`px-4 py-3 text-start text-sm ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>
+                          <TableCell className={`px-4 py-3 text-start text-sm text-gray-500 dark:text-gray-400`}>
                             <Badge size="sm" color="primary">
                               {generate.type}
                             </Badge>
                           </TableCell>
-                          <TableCell className={`px-4 py-3 text-start text-sm ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>
+                          <TableCell className={`px-4 py-3 text-start text-sm text-gray-500 dark:text-gray-400`}>
                             <Badge
                               size="sm"
                               color={getStatusBadgeColor(generate.status)}
@@ -922,14 +854,10 @@ const Document: React.FC = () => {
                               {generate.status}
                             </Badge>
                           </TableCell>
-                          <TableCell className={`px-4 py-3 text-sm ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>
+                          <TableCell className={`px-4 py-3 text-sm text-gray-500 dark:text-gray-400`}>
                             {formatDate(generate.created_at)}
                           </TableCell>
-                          <TableCell className={`px-4 py-3 text-sm ${
-                            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                          }`}>
+                          <TableCell className={`px-4 py-3 text-sm text-gray-500 dark:text-gray-400`}>
                             {generate.credit_cost} credits
                           </TableCell>
                           <TableCell className="px-4 py-3 text-gray-400">
@@ -985,14 +913,10 @@ const Document: React.FC = () => {
         {activeTab === 'templates' && (
           <div>
             {/* Header with Search */}
-            <div className={`p-6 rounded-lg shadow mb-6 ${
-              theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-            }`}>
+            <div className={`p-6 rounded-lg shadow mb-6 bg-white dark:bg-gray-800`}>
               <div className="flex justify-between items-center mb-6">
                 <div className="flex items-center gap-4">
-                  <h3 className={`text-lg font-semibold ${
-                    theme === 'dark' ? 'text-white' : 'text-gray-900'
-                  }`}>OpenAI Templates</h3>
+                  <h3 className={`text-lg font-semibold text-gray-900 dark:text-white`}>OpenAI Templates</h3>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">🔍</span>
                     <input
@@ -1000,11 +924,7 @@ const Document: React.FC = () => {
                       placeholder="Tìm theo tên..."
                       value={templateFilters.search}
                       onChange={(e) => setTemplateFilters({ ...templateFilters, search: e.target.value })}
-                      className={`w-56 pl-10 pr-4 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600 text-white placeholder-gray-400'
-                          : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
-                      }`}
+                      className={`w-56 pl-10 pr-4 py-1.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white border-gray-300 text-gray-900 placeholder-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400`}
                     />
                   </div>
                 </div>
@@ -1018,9 +938,7 @@ const Document: React.FC = () => {
                     className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                       templateFilters.filters === ''
                         ? 'bg-blue-600 text-white'
-                        : theme === 'dark'
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                     }`}
                   >
                     Tất Cả
@@ -1032,9 +950,7 @@ const Document: React.FC = () => {
                       className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                         templateFilters.filters === filter
                           ? 'bg-blue-600 text-white'
-                          : theme === 'dark'
-                          ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                       }`}
                     >
                       {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -1052,7 +968,7 @@ const Document: React.FC = () => {
                 </div>
               ) : templates.length === 0 ? (
                 <div className="col-span-full text-center py-12">
-                  <p className={theme === 'dark' ? 'text-gray-300' : 'text-gray-600'}>
+                  <p className="text-gray-600 dark:text-gray-300">
                     Không tìm thấy template nào
                   </p>
                 </div>
@@ -1061,11 +977,7 @@ const Document: React.FC = () => {
                    <div
                      key={template.id}
                      onClick={() => handleTemplateClick(template)}
-                     className={`p-6 hover:shadow-md transition-shadow cursor-pointer ${
-                       theme === 'dark'
-                         ? 'bg-gray-800 hover:bg-gray-750'
-                         : 'bg-white hover:bg-gray-50'
-                     }`}
+                     className={`p-6 hover:shadow-md transition-shadow cursor-pointer bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-750`}
                    >
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -1081,15 +993,11 @@ const Document: React.FC = () => {
                               />
                             </div>
                           )}
-                          <h4 className={`font-semibold text-lg ${
-                            theme === 'dark' ? 'text-white' : 'text-gray-900'
-                          }`}>
+                          <h4 className={`font-semibold text-lg text-gray-900 dark:text-white`}>
                             {template.title}
                           </h4>
                         </div>
-                        <p className={`text-sm mb-3 line-clamp-2 ${
-                          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                        }`}>
+                        <p className={`text-sm mb-3 line-clamp-2 text-gray-600 dark:text-gray-300`}>
                           {template.description}
                         </p>
                       </div>
@@ -1290,9 +1198,7 @@ const Document: React.FC = () => {
                  
                  {/* Image Counter */}
                  {imageModal.images.length > 1 && (
-                   <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium ${
-                     theme === 'dark' ? 'bg-black/70 text-white' : 'bg-white/90 text-gray-700'
-                   } backdrop-blur-sm`}>
+                   <div className={`absolute top-2 right-2 px-3 py-1 rounded-full text-sm font-medium bg-white/90 text-gray-700 drak:bg-black/70 drak:text-white backdrop-blur-sm`}>
                      {imageModal.currentIndex + 1} / {imageModal.images.length}
                    </div>
                  )}
@@ -1304,9 +1210,7 @@ const Document: React.FC = () => {
                {/* Navigation Buttons */}
                {imageModal.images.length > 1 && (
                  <div className="flex flex-col space-y-2">
-                   <h4 className={`text-sm font-medium ${
-                     theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                   }`}>
+                   <h4 className={`text-sm font-medium text-gray-700 drak:text-gray-300`}>
                      Navigation
                    </h4>
                    <div className="flex space-x-2">
@@ -1339,7 +1243,7 @@ const Document: React.FC = () => {
                {/* Download Button */}
                <div className="space-y-2">
                  <h4 className={`text-sm font-medium ${
-                   theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
+                   'text-gray-700 drak:text-gray-300'
                  }`}>
                    Actions
                  </h4>

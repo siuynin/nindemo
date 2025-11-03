@@ -207,20 +207,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   };
 
   const renderMenuItems = (items: NavItem[], menuType: "main" | "marketing" | "others") => (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-1">
       {items.map((nav, index) => (
         <li key={nav.name}>
           {nav.subItems ? (
             <button
               onClick={() => handleSubmenuToggle(index, menuType)}
-              className={`w-full flex items-center gap-1 px-3 py-2 text-left rounded-lg transition-all duration-200 group ${
+              className={`w-full flex items-center gap-1 px-3 py-1.5 text-left rounded-lg transition-all duration-200 group ${
                 openSubmenu?.type === menuType && openSubmenu?.index === index
-                  ? theme === 'dark'
-                    ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
-                    : 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                  : theme === 'dark'
-                    ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-400'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white'
               } ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
@@ -277,14 +273,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <Link
               to={nav.path}
               onClick={handleMobileLinkClick}
-              className={`w-full flex items-center gap-3 px-3 py-3 text-left rounded-lg transition-all duration-200 group ${
+              className={`w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg transition-all duration-200 group ${
                 isActive(nav.path)
-                  ? theme === 'dark'
-                    ? 'bg-blue-900/50 text-blue-300 border-l-4 border-blue-400'
-                    : 'bg-blue-50 text-blue-700 border-l-4 border-blue-500'
-                  : theme === 'dark'
-                    ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
-                    : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+                  ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-500 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-400'
+                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white'
               } ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
@@ -313,20 +305,16 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
                     : "0px",
               }}
             >
-              <ul className="mt-2 space-y-1 ml-9">
+              <ul className="mt-1 space-y-0.5 ml-9">
                 {nav.subItems.map((subItem) => (
                   <li key={subItem.name}>
                     <Link
                       to={subItem.path}
                       onClick={handleMobileLinkClick}
-                      className={`block px-3 py-2 text-sm rounded-lg transition-colors ${
+                      className={`block px-3 py-1.5 text-sm rounded-lg transition-colors ${
                         isActive(subItem.path)
-                          ? theme === 'dark'
-                            ? 'bg-blue-900/30 text-blue-300'
-                            : 'bg-blue-100 text-blue-700'
-                          : theme === 'dark'
-                            ? 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -358,11 +346,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
   return (
     <>
     <aside
-      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r lg:pt-0 ${
-        theme === 'dark'
-          ? 'bg-gray-900 border-gray-800 text-gray-100'
-          : 'bg-white border-gray-200 text-gray-900'
-      } ${
+      className={`fixed flex flex-col top-0 left-0 h-screen transition-all duration-300 ease-in-out z-50 border-r lg:pt-0 bg-white border-gray-200 text-gray-900 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-100 ${
         isExpanded || isMobileOpen
           ? "w-[290px]"
           : isHovered
@@ -401,12 +385,10 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
       {/* Navigation */}
       <div className="flex flex-col overflow-y-auto duration-300 ease-linear px-5 pb-5">
         <nav className="mb-6">
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
             {/* Main Menu */}
             <div>
-              <h2 className={`mb-4 text-xs uppercase font-semibold flex leading-[20px] ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-              } ${
+              <h2 className={`mb-3 text-xs uppercase font-semibold flex leading-[20px] text-gray-500 dark:text-gray-400 ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
                   : "justify-start"
@@ -422,9 +404,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
             {/* Marketing Menu */}
             <div>
-              <h2 className={`mb-4 text-xs uppercase font-semibold flex leading-[20px] ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-              } ${
+              <h2 className={`mb-3 text-xs uppercase font-semibold flex leading-[20px] text-gray-500 dark:text-gray-400 ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
                   : "justify-start"
@@ -440,9 +420,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
             {/* Others Menu */}
             <div>
-              <h2 className={`mb-4 text-xs uppercase font-semibold flex leading-[20px] ${
-                theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-              } ${
+              <h2 className={`mb-3 text-xs uppercase font-semibold flex leading-[20px] text-gray-500 dark:text-gray-400 ${
                 !isExpanded && !isHovered
                   ? "lg:justify-center"
                   : "justify-start"
@@ -460,15 +438,9 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
 
         {/* Credits Widget */}
         {(isExpanded || isHovered || isMobileOpen) && isAuthenticated && (
-          <div className={`mt-auto p-4 rounded-lg ${
-            theme === 'dark' 
-              ? 'bg-gray-800 border border-gray-700' 
-              : 'bg-gray-50 border border-gray-200'
-          }`}>
+          <div className={`mt-auto p-4 rounded-lg bg-gray-50 border border-gray-200 dark:bg-gray-800 dark:border-gray-700`}>
             <div className="text-center">
-              <div className={`text-sm font-medium ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-              }`}>
+              <div className={`text-sm font-medium text-gray-700 dark:text-gray-300`}>
                 {t.sidebar?.credits || 'Credits'}
               </div>
               <div className="text-2xl font-bold text-blue-600 mt-1">

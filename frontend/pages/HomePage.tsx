@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { PenIcon, ImageIcon, PencilIcon } from '../components/icons';
 import SimpleInstallPrompt from '../components/SimpleInstallPrompt';
@@ -30,7 +29,6 @@ interface PaginationData {
 }
 
 const HomePage: React.FC = () => {
-  const { theme } = useTheme();
   const { t } = useLanguage();
   const [publicImages, setPublicImages] = useState<PublicGenerate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,30 +164,20 @@ const HomePage: React.FC = () => {
             <Link
               key={index}
               to={service.link}
-              className={`group p-6 rounded-xl transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 ${
-                theme === 'dark'
-                  ? 'bg-gray-800/50 backdrop-blur-sm border border-gray-700 hover:bg-gray-800'
-                  : 'bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-white'
-              }`}
+              className={`group p-6 rounded-xl transition-all duration-300 hover:shadow-xl transform hover:-translate-y-1 bg-white/80 backdrop-blur-sm border border-gray-200 hover:bg-white dark:bg-gray-800/50 dark:border-gray-700 dark:hover:bg-gray-800`}
             >
               <div className={`w-12 h-12 bg-gradient-to-br ${service.gradient} rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 <div className="text-white">
                   {service.icon}
                 </div>
               </div>
-              <h3 className={`text-lg font-bold mb-3 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
+              <h3 className={`text-lg font-bold mb-3 text-gray-900 dark:text-white`}>
                 {service.title}
               </h3>
-              <p className={`text-sm leading-relaxed ${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+              <p className={`text-sm leading-relaxed text-gray-600 dark:text-gray-300`}>
                 {service.description}
               </p>
-              <div className={`mt-4 flex items-center text-xs font-medium ${
-                theme === 'dark' ? 'text-blue-400' : 'text-blue-600'
-              }`}>
+              <div className={`mt-4 flex items-center text-xs font-medium text-blue-600 dark:text-blue-400`}>
                 {t.homepage?.explore || 'Khám phá'} →
               </div>
             </Link>
@@ -197,11 +185,7 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Public Images Gallery */}
-        <div className={` mb-16 ${
-          theme === 'dark'
-            ? 'bg-gray-800/30   border-gray-700'
-            : 'bg-white/50 r border-gray-200'
-        }`}> 
+        <div className={`mb-16 bg-white/50 border-gray-200 dark:bg-gray-800/30 dark:border-gray-700`}> 
           
           {loading ? (
             <div className="flex justify-center items-center py-12">
@@ -216,9 +200,7 @@ const HomePage: React.FC = () => {
                     key={image.id}
                     className="break-inside-avoid overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group relative"
                     style={{
-                      background: theme === 'dark' 
-                        ? 'linear-gradient(135deg, #1f2937 0%, #374151 100%)' 
-                        : 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
+                      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)'
                     }}
                   >
                     <div className="relative overflow-hidden">
@@ -226,7 +208,7 @@ const HomePage: React.FC = () => {
                         data-src={getImageUrl(image.result_url)}
                         alt={image.name}
                         className="w-full h-auto object-cover lazy-load transition-transform duration-300 group-hover:scale-105"
-                        style={{ backgroundColor: theme === 'dark' ? '#374151' : '#f3f4f6' }}
+                        style={{ backgroundColor: '#f3f4f6' }}
                         onLoad={(e) => {
                           const img = e.target as HTMLImageElement;
                           img.classList.add('loaded');
@@ -245,20 +227,14 @@ const HomePage: React.FC = () => {
                       </div>
                     </div>
                     <div className="p-2 absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <h3 className={`font-semibold text-sm mb-2 line-clamp-2 ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-900'
-                      }`}>
+                      <h3 className={`font-semibold text-sm mb-2 line-clamp-2 text-gray-900 dark:text-white`}>
                         {image.name}
                       </h3>
                       <div className="flex items-center justify-between">
-                        <span className={`text-xs ${
-                          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                        }`}>
+                        <span className={`text-xs text-gray-600 dark:text-gray-300`}>
                           {image.user?.name || 'Anonymous'}
                         </span>
-                        <span className={`text-xs ${
-                          theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-                        }`}>
+                        <span className={`text-xs text-gray-600 dark:text-gray-300`}>
                           {new Date(image.created_at).toLocaleDateString('vi-VN')}
                         </span>
                       </div>
@@ -295,14 +271,8 @@ const HomePage: React.FC = () => {
         </div>
 
         {/* Features Section */}
-        <div className={`text-center p-12 rounded-2xl ${
-          theme === 'dark'
-            ? 'bg-gray-800/30 border border-gray-700'
-            : 'bg-white/50 border border-gray-200'
-        }`}>
-          <h2 className={`text-3xl md:text-4xl font-bold mb-6 ${
-            theme === 'dark' ? 'text-white' : 'text-gray-900'
-          }`}>
+        <div className={`text-center p-12 rounded-2xl bg-white/50 border border-gray-200 dark:bg-gray-800/30 dark:border-gray-700`}>
+          <h2 className={`text-3xl md:text-4xl font-bold mb-6 text-gray-900 dark:text-white`}>
             {t.homepage?.whyChoose || 'Tại sao chọn AI Studio?'}
           </h2>
           <div className="grid md:grid-cols-3 gap-8 mt-12">
@@ -312,14 +282,10 @@ const HomePage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <h3 className={`text-xl font-semibold mb-2 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
+              <h3 className={`text-xl font-semibold mb-2 text-gray-900 dark:text-white`}>
                 {t.homepage?.fastPowerful || 'Nhanh & Mạnh mẽ'}
               </h3>
-              <p className={`${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+              <p className={`text-gray-600 dark:text-gray-300`}>
                 {t.homepage?.fastDesc || 'Công nghệ AI tiên tiến cho kết quả nhanh chóng và chính xác'}
               </p>
             </div>
@@ -329,14 +295,10 @@ const HomePage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </div>
-              <h3 className={`text-xl font-semibold mb-2 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
+              <h3 className={`text-xl font-semibold mb-2 text-gray-900 dark:text-white`}>
                 {t.homepage?.easyToUse || 'Dễ sử dụng'}
               </h3>
-              <p className={`${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+              <p className={`text-gray-600 dark:text-gray-300`}>
                 {t.homepage?.easyDesc || 'Giao diện thân thiện, không cần kinh nghiệm kỹ thuật'}
               </p>
             </div>
@@ -346,14 +308,10 @@ const HomePage: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                 </svg>
               </div>
-              <h3 className={`text-xl font-semibold mb-2 ${
-                theme === 'dark' ? 'text-white' : 'text-gray-900'
-              }`}>
+              <h3 className={`text-xl font-semibold mb-2 text-gray-900 dark:text-white`}>
                 {t.homepage?.creative || 'Sáng tạo'}
               </h3>
-              <p className={`${
-                theme === 'dark' ? 'text-gray-300' : 'text-gray-600'
-              }`}>
+              <p className={`text-gray-600 dark:text-gray-300`}>
                 {t.homepage?.creativeDesc || 'Giải phóng tiềm năng sáng tạo với công cụ AI đa dạng'}
               </p>
             </div>
@@ -368,9 +326,7 @@ const HomePage: React.FC = () => {
       {/* Modal popup */}
       {showModal && selectedImage && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
-          <div className={`relative max-w-6xl w-full max-h-[90vh] rounded-xl overflow-hidden ${
-            theme === 'dark' ? 'bg-gray-800' : 'bg-white'
-          }`}>
+          <div className={`relative max-w-6xl w-full max-h-[90vh] rounded-xl overflow-hidden bg-white dark:bg-gray-800`}>
             {/* Close button at modal corner */}
             <button
               onClick={() => setShowModal(false)}
@@ -396,17 +352,11 @@ const HomePage: React.FC = () => {
                 <div className="p-6 space-y-6">
                   {/* Prompt Section */}
                   <div>
-                    <h3 className={`text-lg font-semibold mb-3 ${
-                      theme === 'dark' ? 'text-white' : 'text-gray-900'
-                    }`}>
+                    <h3 className={`text-lg font-semibold mb-3 text-gray-900 dark:text-white`}>
                       Prompt
                     </h3>
-                    <div className={`p-4 rounded-lg ${
-                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
-                    }`}>
-                      <p className={`text-sm leading-relaxed ${
-                        theme === 'dark' ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                    <div className={`p-4 rounded-lg bg-gray-50 dark:bg-gray-700/50`}>
+                      <p className={`text-sm leading-relaxed text-gray-700 dark:text-gray-300`}>
                         {(() => {
                           console.log('Modal selectedImage.content:', selectedImage.content);
                           console.log('Modal content type:', typeof selectedImage.content);
@@ -465,31 +415,19 @@ const HomePage: React.FC = () => {
 
                   {/* Creator Info */}
                   <div className="space-y-3">
-                    <div className={`p-3 rounded-lg ${
-                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
-                    }`}>
-                      <h4 className={`text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+                    <div className={`p-3 rounded-lg dark:bg-gray-700/50 bg-gray-50 `}>
+                      <h4 className={`text-xs font-medium mb-1 drak:text-gray-400 text-gray-500`}>
                         Tạo bởi
                       </h4>
-                      <p className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-800'
-                      }`}>
+                      <p className={`text-sm font-medium dark:text-white text-gray-800`}>
                         {selectedImage.user?.name || 'Anonymous'}
                       </p>
                     </div>
-                    <div className={`p-3 rounded-lg ${
-                      theme === 'dark' ? 'bg-gray-700/50' : 'bg-gray-50'
-                    }`}>
-                      <h4 className={`text-xs font-medium mb-1 ${
-                        theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+                      <div className={`p-3 rounded-lg dark bg-gray-700/50 bg-gray-50`}>
+                      <h4 className={`text-xs font-medium mb-1 dark:text-gray-400 text-gray-500`}>
                         Ngày tạo
                       </h4>
-                      <p className={`text-sm font-medium ${
-                        theme === 'dark' ? 'text-white' : 'text-gray-800'
-                      }`}>
+                      <p className={`text-sm font-medium dark:text-white text-gray-800`}>
                         {new Date(selectedImage.created_at).toLocaleDateString('vi-VN', {
                           year: 'numeric',
                           month: 'long',
@@ -519,11 +457,7 @@ const HomePage: React.FC = () => {
                     </button>
                     <button
                       onClick={() => setShowModal(false)}
-                      className={`w-full px-4 py-3 rounded-lg font-medium transition-colors duration-200 ${
-                        theme === 'dark' 
-                          ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                          : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                      }`}
+                      className={`w-full px-4 py-3 rounded-lg font-medium transition-colors duration-200 bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-white`}
                     >
                       Đóng
                     </button>
