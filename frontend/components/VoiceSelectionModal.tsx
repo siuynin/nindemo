@@ -17,7 +17,6 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
   onSelectVoice,
   selectedVoiceId
 }) => {
-  const [voices, setVoices] = useState<ElevenLabsVoice[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
@@ -32,67 +31,78 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
     category: ''
   });
 
-  // Pagination for lazy loading
-  const [displayCount, setDisplayCount] = useState(20);
+  // Pagination for API-level pagination (starts from 0)
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMoreFromAPI, setHasMoreFromAPI] = useState(true);
+  const [allVoices, setAllVoices] = useState<ElevenLabsVoice[]>([]);
+
+  // Display all voices from API (no client-side pagination)
   const [hasMore, setHasMore] = useState(true);
 
   // Fetch voices from API
-  const fetchVoices = useCallback(async () => {
+  const fetchVoices = useCallback(async (page: number = 0, resetVoices: boolean = true) => {
     if (!isOpen) return;
     
     setLoading(true);
     setError(null);
     
     try {
-      const response = await elevenLabsService.fetchSharedVoices();
-      setVoices(response.voices || []);
+      const response = await elevenLabsService.fetchSharedVoices({
+        ...filters,
+        page
+      });
+      
+      if (resetVoices) {
+        setAllVoices(response.voices || []);
+      } else {
+        setAllVoices(prev => [...prev, ...(response.voices || [])]);
+      }
+      
+      setHasMoreFromAPI(response.has_more || false);
+      setHasMore(response.has_more || false);
     } catch (err) {
       setError('Không thể tải danh sách giọng nói. Vui lòng thử lại.');
       console.error('Error fetching voices:', err);
     } finally {
       setLoading(false);
     }
-  }, [isOpen]);
+  }, [isOpen, filters]);
 
-  // Load voices when modal opens
+  // Load voices when modal opens or filters change
   useEffect(() => {
     if (isOpen) {
-      fetchVoices();
+      setCurrentPage(0);
+      setAllVoices([]);
+      fetchVoices(0, true);
     }
-  }, [isOpen, fetchVoices]);
+  }, [isOpen, filters.search, filters.language, filters.gender, filters.age, filters.category]);
 
-  // Filter voices based on current filters
+  // Filter voices based on current filters (client-side filtering for search)
   const filteredVoices = useMemo(() => {
-    return voices.filter(voice => {
-      const matchesSearch = !filters.search || 
-        voice.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        (voice.description && voice.description.toLowerCase().includes(filters.search.toLowerCase()));
-      
-      const matchesLanguage = !filters.language || 
-        (Array.isArray(voice.language) 
-          ? voice.language.some(lang => (typeof lang === 'object' ? lang.language : lang) === filters.language)
-          : voice.language === filters.language);
-      const matchesGender = !filters.gender || voice.gender === filters.gender;
-      const matchesAge = !filters.age || voice.age === filters.age;
-      const matchesCategory = !filters.category || voice.category === filters.category;
-      
-      return matchesSearch && matchesLanguage && matchesGender && matchesAge && matchesCategory;
-    });
-  }, [voices, filters]);
-
-  // Get displayed voices with lazy loading
-  const displayedVoices = useMemo(() => {
-    const result = filteredVoices.slice(0, displayCount);
-    setHasMore(result.length < filteredVoices.length);
-    return result;
-  }, [filteredVoices, displayCount]);
-
-  // Load more voices
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      setDisplayCount(prev => prev + 20);
+    if (!filters.search) {
+      return allVoices;
     }
-  }, [hasMore]);
+    
+    return allVoices.filter(voice => {
+      const matchesSearch = voice.name.toLowerCase().includes(filters.search!.toLowerCase()) ||
+        (voice.description && voice.description.toLowerCase().includes(filters.search!.toLowerCase()));
+      return matchesSearch;
+    });
+  }, [allVoices, filters.search]);
+
+  // Display all filtered voices (no client-side pagination)
+  const displayedVoices = filteredVoices;
+
+  // Load more voices from API
+  const loadMore = useCallback(async () => {
+    if (hasMoreFromAPI && !loading) {
+      const nextPage = currentPage + 1;
+      setCurrentPage(nextPage);
+      await fetchVoices(nextPage, false);
+    }
+  }, [hasMoreFromAPI, loading, currentPage, fetchVoices]);
+
+
 
   // Handle voice preview
   const handleVoicePreview = useCallback(async (voice: ElevenLabsVoice) => {
@@ -162,19 +172,93 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
       age: undefined,
       category: ''
     });
-    setDisplayCount(20);
+    setCurrentPage(0);
+    setAllVoices([]);
   }, []);
 
-  // Get unique values for filter options
+  // Language mapping for display names
+  const languageMap = {
+    'en': 'English',
+    'vi': 'Vietnamese',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'pl': 'Polish',
+    'tr': 'Turkish',
+    'ru': 'Russian',
+    'nl': 'Dutch',
+    'cs': 'Czech',
+    'ar': 'Arabic',
+    'zh': 'Chinese',
+    'ja': 'Japanese',
+    'hi': 'Hindi',
+    'ko': 'Korean',
+    'sv': 'Swedish',
+    'da': 'Danish',
+    'no': 'Norwegian',
+    'fi': 'Finnish',
+    'uk': 'Ukrainian',
+    'el': 'Greek',
+    'he': 'Hebrew',
+    'th': 'Thai',
+    'id': 'Indonesian',
+    'ms': 'Malay',
+    'tl': 'Filipino',
+    'bn': 'Bengali',
+    'ta': 'Tamil',
+    'te': 'Telugu',
+    'mr': 'Marathi',
+    'gu': 'Gujarati',
+    'kn': 'Kannada',
+    'ml': 'Malayalam',
+    'pa': 'Punjabi',
+    'ur': 'Urdu',
+    'fa': 'Persian',
+    'hu': 'Hungarian',
+    'ro': 'Romanian',
+    'bg': 'Bulgarian',
+    'hr': 'Croatian',
+    'sk': 'Slovak',
+    'sl': 'Slovenian',
+    'et': 'Estonian',
+    'lv': 'Latvian',
+    'lt': 'Lithuanian',
+    'mt': 'Maltese',
+    'is': 'Icelandic',
+    'ga': 'Irish',
+    'cy': 'Welsh',
+    'eu': 'Basque',
+    'ca': 'Catalan',
+    'gl': 'Galician',
+    'af': 'Afrikaans',
+    'sw': 'Swahili',
+    'am': 'Amharic',
+    'yo': 'Yoruba',
+    'zu': 'Zulu',
+    'xh': 'Xhosa'
+  };
+
+  // Get unique values for filter options from all fetched voices
   const filterOptions = useMemo(() => {
-    const languages = [...new Set(
-      voices.flatMap(v => 
-        Array.isArray(v.language) 
-          ? v.language.map(lang => typeof lang === 'object' ? lang.language : lang)
-          : [v.language]
-      )
-    )].filter(Boolean).sort();
-    const categories = [...new Set(voices.map(v => v.category))].filter(Boolean).sort();
+    // Define popular languages to show first
+    const popularLanguages = ['en', 'vi', 'zh', 'es', 'fr', 'de', 'ja', 'ko', 'hi'];
+    
+    // Get all language codes and sort them by display name
+    const allLanguageCodes = Object.keys(languageMap);
+    const otherLanguages = allLanguageCodes
+      .filter(code => !popularLanguages.includes(code))
+      .sort((a, b) => {
+        const nameA = languageMap[a as keyof typeof languageMap] || a;
+        const nameB = languageMap[b as keyof typeof languageMap] || b;
+        return nameA.localeCompare(nameB);
+      });
+    
+    // Combine popular languages first, then sorted others
+    const languages = [...popularLanguages, ...otherLanguages];
+    
+    const categories = [...new Set(allVoices.map(v => v.category))].filter(Boolean).sort();
     
     return {
       languages,
@@ -182,7 +266,7 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
       genders: ['male', 'female', 'neutral'] as const,
       ages: ['young', 'middle_aged', 'old'] as const
     };
-  }, [voices]);
+  }, [allVoices]);
 
   // Handle voice selection
   const handleSelectVoice = useCallback((voice: ElevenLabsVoice) => {
@@ -203,8 +287,8 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-3 border-b border-gray-200 dark:border-gray-700">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -221,19 +305,8 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
         {/* Search and Filters */}
         <div className="p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="space-y-4">
-            {/* Search */}
-            <Input
-              placeholder="Tìm theo tên hoặc mô tả..."
-              value={filters.search || ''}
-              onChange={(e) => handleFilterChange('search', e.target.value)}
-              className="w-full"
-            />
-
             {/* Clear All Filters Button */}
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Bộ lọc
-              </h3>
+            <div className="flex justify-between items-center"> 
               <button
                 onClick={clearFilters}
                 className="text-sm text-purple-500 hover:text-purple-600 transition-colors"
@@ -242,40 +315,75 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
               </button>
             </div>
 
-            {/* Filter Dropdowns */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Language */}
-              <div>
+            {/* Search and Filter Dropdowns in flexible layout */}
+            <div className="flex flex-wrap items-end gap-2 sm:gap-3">
+              {/* Search */}
+              <div className="flex-1 min-w-[180px] sm:min-w-[200px]">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Tìm kiếm:
+                </label>
+                <Input
+                  placeholder="Tên hoặc mô tả..."
+                  value={filters.search || ''}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Language with Flag Icons */}
+              <div className="min-w-[130px] sm:min-w-[140px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Ngôn ngữ:
                 </label>
-                <select
-                  value={filters.language || ''}
-                  onChange={(e) => handleFilterChange('language', e.target.value || undefined)}
-                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300"
-                >
-                  <option value="">Tất cả ngôn ngữ</option>
-                  {filterOptions.languages.map(lang => {
-                    const langValue = typeof lang === 'object' ? lang.language : lang;
-                    const langDisplay = typeof langValue === 'string' ? langValue.toUpperCase() : 'N/A';
-                    return (
-                      <option key={langValue} value={langValue}>{langDisplay}</option>
-                    );
-                  })}
-                </select>
+                <div className="relative">
+                  <select
+                    value={filters.language || ''}
+                    onChange={(e) => handleFilterChange('language', e.target.value || undefined)}
+                    className={`w-full px-3 py-2 pr-8 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300 text-sm appearance-none ${filters.language ? 'pl-9' : ''}`}
+                  >
+                    <option value="">🌐 Tất cả</option>
+                    {filterOptions.languages.map(langCode => {
+                      const langDisplay = languageMap[langCode as keyof typeof languageMap] || langCode?.toUpperCase() || 'N/A';
+                      return (
+                        <option key={langCode} value={langCode}>
+                          {langDisplay}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {/* Flag icon overlay */}
+                  {filters.language && (
+                    <div className="absolute left-3 top-1/2 transform -translate-y-1/2 pointer-events-none">
+                      <img 
+                        src={`https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/${filters.language}.svg`}
+                        alt={filters.language}
+                        className="w-4 h-3 rounded-sm"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  )}
+                  {/* Custom dropdown arrow */}
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
               </div>
 
               {/* Gender */}
-              <div>
+              <div className="min-w-[100px] sm:min-w-[110px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Giới tính:
                 </label>
                 <select
                   value={filters.gender || ''}
                   onChange={(e) => handleFilterChange('gender', e.target.value as any || undefined)}
-                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300"
+                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300 text-sm"
                 >
-                  <option value="">Tất cả giới tính</option>
+                  <option value="">Tất cả</option>
                   <option value="male">Nam</option>
                   <option value="female">Nữ</option>
                   <option value="neutral">Trung tính</option>
@@ -283,16 +391,16 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
               </div>
 
               {/* Age */}
-              <div>
+              <div className="min-w-[100px] sm:min-w-[110px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Độ tuổi:
                 </label>
                 <select
                   value={filters.age || ''}
                   onChange={(e) => handleFilterChange('age', e.target.value as any || undefined)}
-                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300"
+                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300 text-sm"
                 >
-                  <option value="">Tất cả độ tuổi</option>
+                  <option value="">Tất cả</option>
                   <option value="young">Trẻ</option>
                   <option value="middle_aged">Trung niên</option>
                   <option value="old">Lớn tuổi</option>
@@ -300,16 +408,16 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
               </div>
 
               {/* Category */}
-              <div>
+              <div className="min-w-[110px] sm:min-w-[120px]">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Danh mục:
                 </label>
                 <select
                   value={filters.category || ''}
                   onChange={(e) => handleFilterChange('category', e.target.value || undefined)}
-                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300"
+                  className="w-full px-3 py-2 text-left bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-700 dark:text-gray-300 text-sm"
                 >
-                  <option value="">Tất cả danh mục</option>
+                  <option value="">Tất cả</option>
                   {filterOptions.categories.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
                   ))}
@@ -329,7 +437,7 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
           ) : error ? (
             <div className="text-center py-8">
               <p className="text-red-500 mb-4">{error}</p>
-              <Button onClick={fetchVoices} variant="outline">
+              <Button onClick={() => fetchVoices(0, true)} variant="outline">
                 Thử lại
               </Button>
             </div>
@@ -395,8 +503,16 @@ const VoiceSelectionModal: React.FC<VoiceSelectionModalProps> = ({
                   <Button
                     onClick={loadMore}
                     className="px-6 py-2"
+                    disabled={loading}
                   >
-                    Tải thêm ({filteredVoices.length - displayCount} còn lại)
+                    {loading ? (
+                      <>
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        Đang tải...
+                      </>
+                    ) : (
+                      'Tải thêm giọng nói'
+                    )}
                   </Button>
                 </div>
               )}

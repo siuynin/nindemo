@@ -1653,7 +1653,7 @@ const ImageCreator: React.FC = () => {
         isOpen={showModelPopup}
         onClose={() => setShowModelPopup(false)}
         title={t.imageCreator?.selectModel || 'Select AI Model'}
-        size="xl"
+        size="xl" 
       >
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto px-4 py-2">
           {models.map((model) => (
@@ -1710,7 +1710,7 @@ const ImageCreator: React.FC = () => {
         size="xl"
       >
         {selectedImage && (
-          <div className="flex flex-col lg:flex-row gap-6 max-h-[90vh] overflow-hidden">
+          <div className="flex flex-col lg:flex-row dra gap-6 max-h-[90vh] overflow-hidden">
             {/* Image Section - Left Column */}
             <div className="lg:w-2/3 flex items-center justify-center">
               <div className="relative">

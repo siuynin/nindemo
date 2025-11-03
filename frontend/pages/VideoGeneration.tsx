@@ -45,6 +45,7 @@ const VideoGeneration: React.FC = () => {
   const [pollingIntervals, setPollingIntervals] = useState<Map<string, NodeJS.Timeout>>(new Map());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const autoRefreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Video models with their specifications
   const videoModels = [
@@ -227,10 +228,7 @@ const VideoGeneration: React.FC = () => {
         // Show success/error message
         if (data.status === 'completed') {
           setAlert({ type: 'success', message: 'Video đã được tạo thành công!' });
-          // Force immediate refresh of generations list
-          setTimeout(() => {
-            loadExistingGenerations();
-          }, 500); // Reduced from 1000ms to 500ms for faster update
+          // No need to call loadExistingGenerations() - the state is already updated above
         } else if (data.status === 'failed') {
           setAlert({ type: 'error', message: data.error_message || 'Tạo video thất bại' });
         }
@@ -406,31 +404,38 @@ const VideoGeneration: React.FC = () => {
 
   // Auto-refresh effect to check video processing status every 5 seconds when user is on screen
   useEffect(() => {
-    if (!isAuthenticated) return;
-
-    // Only start auto-refresh if we have processing videos
-    const hasProcessingVideos = generations.some(gen => gen.status === 'processing' || gen.status === 'pending');
-    console.log('Auto-refresh effect: hasProcessingVideos =', hasProcessingVideos, 'generations count =', generations.length);
-
-    if (!hasProcessingVideos) {
-      console.log('No processing videos, skipping auto-refresh setup');
+    if (!isAuthenticated) {
+      // Clear interval if user is not authenticated
+      if (autoRefreshIntervalRef.current) {
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
       return;
     }
 
-    // Check immediately when component mounts
-    console.log('Starting auto-refresh for processing videos');
-    checkVideoProcessingStatus();
+    // Only start auto-refresh if we have processing videos
+    const hasProcessingVideos = generations.some(gen => gen.status === 'processing' || gen.status === 'pending');
+    
+    if (hasProcessingVideos && !autoRefreshIntervalRef.current) {
+      console.log('Starting auto-refresh for processing videos');
+      // Set up interval to check every 5 seconds
+      autoRefreshIntervalRef.current = setInterval(() => {
+        console.log('Auto-refresh interval triggered');
+        checkVideoProcessingStatus();
+      }, 5000);
+    } else if (!hasProcessingVideos && autoRefreshIntervalRef.current) {
+      console.log('No processing videos, stopping auto-refresh');
+      clearInterval(autoRefreshIntervalRef.current);
+      autoRefreshIntervalRef.current = null;
+    }
 
-    // Set up interval to check every 5 seconds
-    const interval = setInterval(() => {
-      console.log('Auto-refresh interval triggered');
-      checkVideoProcessingStatus();
-    }, 5000);
-
-    // Cleanup interval on unmount or when user logs out
+    // Cleanup interval on unmount
     return () => {
-      console.log('Cleaning up auto-refresh interval');
-      clearInterval(interval);
+      if (autoRefreshIntervalRef.current) {
+        console.log('Cleaning up auto-refresh interval');
+        clearInterval(autoRefreshIntervalRef.current);
+        autoRefreshIntervalRef.current = null;
+      }
     };
   }, [isAuthenticated, generations]); // Add generations as dependency
 
