@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Chatbot API</title>
+</head>
+<body>
+    <h1>Test Chatbot API</h1>
+    <div>
+        <label>Token (lấy từ localStorage):</label><br>
+        <textarea id="token" rows="3" cols="50" placeholder="Nhập token auth"></textarea>
+    </div>
+    <div>
+        <label>Message:</label><br>
+        <input type="text" id="message" value="tạo prompt video 2 người cãi nhau" size="50">
+    </div>
+    <div>
+        <label>Provider:</label>
+        <select id="provider">
+            <option value="gemini">Gemini</option>
+            <option value="openai">OpenAI</option>
+        </select>
+    </div>
+    <button onclick="testChatbot()">Test Chatbot</button>
+    <button onclick="getTokenFromStorage()">Lấy Token từ localStorage</button>
+    
+    <h3>Response:</h3>
+    <pre id="response" style="background: #f0f0f0; padding: 10px; white-space: pre-wrap;"></pre>
+
+    <script>
+        function getTokenFromStorage() {
+            const token = localStorage.getItem('auth_token');
+            document.getElementById('token').value = token || '';
+            document.getElementById('response').textContent = token ? 'Token đã được lấy!' : 'Không tìm thấy token trong localStorage';
+        }
+
+        async function testChatbot() {
+            const token = document.getElementById('token').value;
+            const message = document.getElementById('message').value;
+            const provider = document.getElementById('provider').value;
+            
+            if (!token) {
+                alert('Vui lòng nhập token!');
+                return;
+            }
+
+            const responseDiv = document.getElementById('response');
+            responseDiv.textContent = 'Đang gọi API...';
+
+            try {
+                const endpoint = provider === 'gemini' 
+                    ? 'http://127.0.0.1:8001/api/ai/process-text-gemini'
+                    : 'http://127.0.0.1:8001/api/ai/process-text';
+
+                const requestBody = {
+                    prompt: message,
+                    model: provider === 'gemini' ? 'gemini-2.5-flash' : 'gpt-4.1-mini',
+                    max_tokens: 500,
+                    temperature: 0.7
+                };
+
+                console.log('Request:', { endpoint, requestBody, token });
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                const responseData = await response.json();
+                console.log('Response:', { status: response.status, data: responseData });
+
+                responseDiv.textContent = `HTTP Status: ${response.status}\n\n${JSON.stringify(responseData, null, 2)}`;
+                
+                if (!response.ok) {
+                    responseDiv.textContent += `\n\nERROR: Request failed with status ${response.status}`;
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                responseDiv.textContent = `Error: ${error.message}\n\n${error.stack}`;
+            }
+        }
+
+        // Tự động lấy token khi load trang
+        window.onload = function() {
+            getTokenFromStorage();
+        };
+    </script>
+</body>
+</html>

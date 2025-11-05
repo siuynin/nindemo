@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Chatbot API</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        input, button { padding: 10px; margin: 5px; }
+        input { width: 300px; }
+        button { cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .log { margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 4px; white-space: pre-wrap; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Chatbot API</h1>
+        
+        <div>
+            <label>Token (tùy chọn):</label><br>
+            <input type="text" id="token" placeholder="Nhập token nếu có">
+        </div>
+        
+        <div>
+            <label>Tin nhắn:</label><br>
+            <input type="text" id="message" placeholder="Nhập tin nhắn" value="tạo prompt video 2 người cãi nhau">
+        </div>
+        
+        <div>
+            <button onclick="testGemini()">Test Gemini</button>
+            <button onclick="testOpenAI()">Test OpenAI</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+        
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://127.0.0.1:8001/api';
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : '';
+            logDiv.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        function getToken() {
+            const token = document.getElementById('token').value.trim();
+            if (!token) {
+                // Thử lấy token từ localStorage
+                const authToken = localStorage.getItem('auth_token');
+                const altToken = localStorage.getItem('token');
+                return authToken || altToken || null;
+            }
+            return token;
+        }
+        
+        async function testGemini() {
+            const message = document.getElementById('message').value.trim();
+            const token = getToken();
+            
+            if (!message) {
+                log('Vui lòng nhập tin nhắn', 'error');
+                return;
+            }
+            
+            log(`Testing Gemini with message: "${message}"`);
+            log(`Token: ${token ? token.substring(0, 10) + '...' : 'No token'}`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ai/process-text`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: message,
+                        model: 'gemini-2.5-flash',
+                        max_tokens: 500,
+                        temperature: 0.7
+                    })
+                });
+                
+                log(`Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+                if (data.success && data.data && data.data.text) {
+                    log(`✅ Success! Response: ${data.data.text}`, 'success');
+                } else {
+                    log(`❌ Error: ${data.error || 'No text in response'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Network/Other error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testOpenAI() {
+            const message = document.getElementById('message').value.trim();
+            const token = getToken();
+            
+            if (!message) {
+                log('Vui lòng nhập tin nhắn', 'error');
+                return;
+            }
+            
+            log(`Testing OpenAI with message: "${message}"`);
+            log(`Token: ${token ? token.substring(0, 10) + '...' : 'No token'}`);
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ai/process-text`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': token ? `Bearer ${token}` : '',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        prompt: message,
+                        model: 'gpt-4.1-mini',
+                        max_tokens: 500,
+                        temperature: 0.7
+                    })
+                });
+                
+                log(`Response status: ${response.status}`);
+                
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+                if (data.success && data.data && data.data.text) {
+                    log(`✅ Success! Response: ${data.data.text}`, 'success');
+                } else {
+                    log(`❌ Error: ${data.error || 'No text in response'}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Network/Other error: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+        
+        // Load token từ localStorage khi page load
+        window.onload = function() {
+            const authToken = localStorage.getItem('auth_token');
+            const altToken = localStorage.getItem('token');
+            const token = authToken || altToken;
+            if (token) {
+                document.getElementById('token').value = token;
+                log(`Loaded token from localStorage: ${token.substring(0, 10)}...`);
+            } else {
+                log('No token found in localStorage');
+            }
+        };
+    </script>
+</body>
+</html>

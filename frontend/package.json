@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:vercel": "vite build && echo 'Build completed with version tracking enabled'",
     "preview": "vite preview"
   },
   "dependencies": {

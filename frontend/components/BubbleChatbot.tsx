@@ -41,18 +41,22 @@ const BubbleChatbot: React.FC<BubbleChatbotProps> = ({ className = '' }) => {
     setIsLoading(true);
 
     try {
-      const response = await chatbotService.sendMessage(inputMessage);
+      console.log('Sending message:', inputMessage, 'Provider:', selectedProvider);
+      const response = await chatbotService.sendMessage(inputMessage, selectedProvider);
+      console.log('Chatbot response:', response);
       
       if (response.success) {
         const assistantMessage = chatbotService.createAssistantMessage(response.message);
         setMessages(prev => [...prev, assistantMessage]);
       } else {
+        console.warn('Chatbot error response:', response.error);
         const errorMessage = chatbotService.createAssistantMessage(
           response.error || 'Xin lỗi, đã có lỗi xảy ra. Vui lòng thử lại.'
         );
         setMessages(prev => [...prev, errorMessage]);
       }
     } catch (error) {
+      console.error('Chatbot exception:', error);
       const errorMessage = chatbotService.createAssistantMessage(
         'Xin lỗi, tôi đang gặp sự cố kỹ thuật. Vui lòng thử lại sau.'
       );

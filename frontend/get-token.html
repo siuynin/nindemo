@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Get Auth Token</title>
+</head>
+<body>
+    <h1>Auth Token:</h1>
+    <pre id="token"></pre>
+    <script>
+        const token = localStorage.getItem('auth_token');
+        document.getElementById('token').textContent = token || 'No token found';
+        console.log('Auth token:', token);
+    </script>
+</body>
+</html>

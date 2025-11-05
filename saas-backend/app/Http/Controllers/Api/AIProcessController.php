@@ -24,7 +24,7 @@ class AIProcessController extends Controller
         try {
             $validated = $request->validate([
                 'prompt' => 'required|string',
-                'model' => 'string|in:gpt-4.1-mini',
+                'model' => 'string|in:gpt-4.1-mini,gpt-3.5-turbo,gpt-4,gpt-4-turbo',
                 'max_tokens' => 'integer|min:1|max:4000',
                 'temperature' => 'numeric|min:0|max:2'
             ]);
@@ -38,33 +38,49 @@ class AIProcessController extends Controller
                 ], 500);
             }
 
-            // Prepare request data for OpenAI
+            // Prepare request data for OpenAI Responses API
             $requestData = [
                 'model' => $validated['model'] ?? 'gpt-4.1-mini',
-                'messages' => [
+                'input' => [
                     [
                         'role' => 'user',
-                        'content' => $validated['prompt']
+                        'content' => [
+                            [
+                                'type' => 'text',
+                                'text' => $validated['prompt']
+                            ]
+                        ]
                     ]
                 ],
-                'max_tokens' => $validated['max_tokens'] ?? 1000,
+                'max_output_tokens' => $validated['max_tokens'] ?? 1000,
                 'temperature' => $validated['temperature'] ?? 0.7
             ];
 
-            // Make request to OpenAI API
+            // Make request to OpenAI Responses API
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $openaiApiKey,
                 'Content-Type' => 'application/json'
-            ])->timeout(60)->post('https://api.openai.com/v1/chat/completions', $requestData);
+            ])->timeout(60)->post('https://api.openai.com/v1/responses', $requestData);
 
             if ($response->successful()) {
                 $data = $response->json();
                 
+                // Extract text from Responses API format
+                $text = $data['output_text'] ?? '';
+                if (!$text) {
+                    if (isset($data['output'][0]['content'][0]['text'])) {
+                        $text = $data['output'][0]['content'][0]['text'];
+                    } elseif (isset($data['choices'][0]['message']['content'])) {
+                        // Fallback in case some gateways still return chat-completions-like payload
+                        $text = $data['choices'][0]['message']['content'];
+                    }
+                }
+
                 return response()->json([
                     'success' => true,
                     'data' => [
-                        'text' => $data['choices'][0]['message']['content'] ?? '',
-                        'usage' => $data['usage'] ?? null
+                        'text' => $text,
+                        'usage' => $data['usage'] ?? ($data['usageMetadata'] ?? null)
                     ]
                 ]);
             } else {
@@ -73,10 +89,12 @@ class AIProcessController extends Controller
                     'body' => $response->body()
                 ]);
 
+                $errJson = $response->json();
+                $errMsg = $errJson['error']['message'] ?? ($errJson['message'] ?? 'Failed to process text with OpenAI API');
                 return response()->json([
                     'success' => false,
-                    'error' => 'Failed to process text with OpenAI API',
-                    'details' => $response->json()
+                    'error' => $errMsg,
+                    'details' => $errJson
                 ], $response->status());
             }
 
@@ -101,7 +119,7 @@ class AIProcessController extends Controller
         try {
             $validated = $request->validate([
                 'prompt' => 'required|string',
-                'model' => 'string|in:gemini-2.5-flash',
+                'model' => 'string|in:gemini-2.5-flash,gemini-pro,gemini-1.5-flash',
                 'max_tokens' => 'integer|min:1|max:4000',
                 'temperature' => 'numeric|min:0|max:2'
             ]);
@@ -113,10 +131,11 @@ class AIProcessController extends Controller
                 try {
                     $model = $validated['model'] ?? 'gemini-2.5-flash';
                     
-                    // Prepare request data for Gemini
+                    // Prepare request data for Gemini với system prompt
                     $requestData = [
                         'contents' => [
                             [
+                                'role' => 'user',
                                 'parts' => [
                                     [
                                         'text' => $validated['prompt']
@@ -124,9 +143,36 @@ class AIProcessController extends Controller
                                 ]
                             ]
                         ],
+                        'systemInstruction' => [
+                            'parts' => [
+                                [
+                                    'text' => 'Bạn là một trợ lý AI hữu ích. Hãy trả lời câu hỏi một cách trực tiếp và ngắn gọn. Không cần suy nghĩ quá nhiều, chỉ cần đưa ra câu trả lời phù hợp.'
+                                ]
+                            ]
+                        ],
                         'generationConfig' => [
-                            'temperature' => $validated['temperature'] ?? 0.7,
-                            'maxOutputTokens' => $validated['max_tokens'] ?? 1000
+                            'temperature' => 0.1, // Giảm temperature để trả lời trực tiếp
+                            'maxOutputTokens' => $validated['max_tokens'] ?? 1000,
+                            'candidateCount' => 1,
+                            'stopSequences' => []
+                        ],
+                        'safetySettings' => [
+                            [
+                                'category' => 'HARM_CATEGORY_HARASSMENT',
+                                'threshold' => 'BLOCK_ONLY_HIGH'
+                            ],
+                            [
+                                'category' => 'HARM_CATEGORY_HATE_SPEECH',
+                                'threshold' => 'BLOCK_ONLY_HIGH'
+                            ],
+                            [
+                                'category' => 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+                                'threshold' => 'BLOCK_ONLY_HIGH'
+                            ],
+                            [
+                                'category' => 'HARM_CATEGORY_DANGEROUS_CONTENT',
+                                'threshold' => 'BLOCK_ONLY_HIGH'
+                            ]
                         ]
                     ];
 
@@ -138,9 +184,27 @@ class AIProcessController extends Controller
                     if ($response->successful()) {
                         $data = $response->json();
                         
+                        // Debug log để xem full response
+                        Log::info('Gemini API Response', ['full_response' => $data]);
+                        
                         $text = '';
+                        
+                        // Trích xuất text từ nhiều cấp độ khác nhau
                         if (isset($data['candidates'][0]['content']['parts'][0]['text'])) {
                             $text = $data['candidates'][0]['content']['parts'][0]['text'];
+                        } elseif (isset($data['candidates'][0]['content']['parts'][0])) {
+                            // Nếu parts[0] là object khác
+                            $part = $data['candidates'][0]['content']['parts'][0];
+                            if (is_string($part)) {
+                                $text = $part;
+                            } elseif (isset($part['text'])) {
+                                $text = $part['text'];
+                            }
+                        }
+                        
+                        // Nếu vẫn rỗng, thử các cấp độ khác
+                        if (empty($text) && isset($data['output'])) {
+                            $text = is_string($data['output']) ? $data['output'] : json_encode($data['output']);
                         }
                         
                         return response()->json([
@@ -175,33 +239,48 @@ class AIProcessController extends Controller
                 ], 500);
             }
 
-            // Prepare request data for OpenAI
+            // Prepare request data for OpenAI Responses API (fallback)
             $requestData = [
                 'model' => 'gpt-4.1-mini',
-                'messages' => [
+                'input' => [
                     [
                         'role' => 'user',
-                        'content' => $validated['prompt']
+                        'content' => [
+                            [
+                                'type' => 'text',
+                                'text' => $validated['prompt']
+                            ]
+                        ]
                     ]
                 ],
-                'max_tokens' => $validated['max_tokens'] ?? 1000,
+                'max_output_tokens' => $validated['max_tokens'] ?? 1000,
                 'temperature' => $validated['temperature'] ?? 0.7
             ];
 
-            // Make request to OpenAI API
+            // Make request to OpenAI Responses API
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $openaiApiKey,
                 'Content-Type' => 'application/json'
-            ])->timeout(60)->post('https://api.openai.com/v1/chat/completions', $requestData);
+            ])->timeout(60)->post('https://api.openai.com/v1/responses', $requestData);
 
             if ($response->successful()) {
                 $data = $response->json();
                 
+                // Extract text robustly
+                $text = $data['output_text'] ?? '';
+                if (!$text) {
+                    if (isset($data['output'][0]['content'][0]['text'])) {
+                        $text = $data['output'][0]['content'][0]['text'];
+                    } elseif (isset($data['choices'][0]['message']['content'])) {
+                        $text = $data['choices'][0]['message']['content'];
+                    }
+                }
+
                 return response()->json([
                     'success' => true,
                     'data' => [
-                        'text' => $data['choices'][0]['message']['content'] ?? '',
-                        'usage' => $data['usage'] ?? null
+                        'text' => $text,
+                        'usage' => $data['usage'] ?? ($data['usageMetadata'] ?? null)
                     ]
                 ]);
             } else {
@@ -210,10 +289,12 @@ class AIProcessController extends Controller
                     'openai_body' => $response->body()
                 ]);
 
+                $errJson = $response->json();
+                $errMsg = $errJson['error']['message'] ?? ($errJson['message'] ?? 'Both Gemini and OpenAI APIs are currently unavailable');
                 return response()->json([
                     'success' => false,
-                    'error' => 'Both Gemini and OpenAI APIs are currently unavailable',
-                    'details' => $response->json()
+                    'error' => $errMsg,
+                    'details' => $errJson
                 ], $response->status());
             }
 

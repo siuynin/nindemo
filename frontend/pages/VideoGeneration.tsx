@@ -172,13 +172,13 @@ const VideoGeneration: React.FC = () => {
     }
   };
 
-  // Polling function to check video generation status
+  // Poll video status for a specific generation
   const pollVideoStatus = async (generationId: string, taskId: string) => {
     try {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generation/${generationId}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/generation-status/${generationId}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -195,21 +195,21 @@ const VideoGeneration: React.FC = () => {
       }
 
       const data = await response.json();
+      console.log(`Individual poll: Updating generation ${generationId} status: ${data.status}, videoUrl: ${data.result_url || data.videoUrl}`);
       
-      // Update generation status
-      console.log(`Updating generation ${generationId} status: ${data.status}, videoUrl: ${data.result_url || data.videoUrl}`);
       setGenerations(prev => {
         const updated = prev.map(gen => {
           if (gen.id === generationId) {
-            return {
+            const updatedGen = {
               ...gen,
               status: data.status,
               videoUrl: data.result_url || data.videoUrl || gen.videoUrl,
             };
+            console.log(`Generation ${generationId} updated from ${gen.status} to ${data.status}`);
+            return updatedGen;
           }
           return gen;
         });
-        console.log('Updated generations:', updated);
         return updated;
       });
 
@@ -223,12 +223,12 @@ const VideoGeneration: React.FC = () => {
             newMap.delete(generationId);
             return newMap;
           });
+          console.log(`Stopped individual polling for generation ${generationId}`);
         }
 
         // Show success/error message
         if (data.status === 'completed') {
           setAlert({ type: 'success', message: 'Video đã được tạo thành công!' });
-          // No need to call loadExistingGenerations() - the state is already updated above
         } else if (data.status === 'failed') {
           setAlert({ type: 'error', message: data.error_message || 'Tạo video thất bại' });
         }
@@ -323,7 +323,7 @@ const VideoGeneration: React.FC = () => {
     }
   };
 
-  // Auto-refresh function to check video processing status every 5 seconds
+  // Auto-refresh function to check video processing status every 10 seconds (reduced frequency)
   const checkVideoProcessingStatus = async () => {
     if (!isAuthenticated) return;
 
@@ -331,20 +331,33 @@ const VideoGeneration: React.FC = () => {
       const token = localStorage.getItem('auth_token');
       if (!token) return;
 
-      // Debug: Check if we have any processing videos
-      const processingVideos = generations.filter(gen => gen.status === 'processing' || gen.status === 'pending');
-      console.log('Processing videos found:', processingVideos.length, processingVideos.map(v => ({ id: v.id, status: v.status })));
+      // Only check videos that are NOT being individually polled to avoid conflicts
+      const unpolledProcessingVideos = generations.filter(gen => 
+        (gen.status === 'processing' || gen.status === 'pending') && 
+        !pollingIntervals.has(gen.id)
+      );
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/check-processing-status`, {
-        method: 'GET',
+      if (unpolledProcessingVideos.length === 0) {
+        console.log('No videos need batch status check (all are individually polled)');
+        return;
+      }
+
+      console.log(`Checking batch status for ${unpolledProcessingVideos.length} unpolled videos`);
+
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'}/api/video/check-processing-status`, {
+        method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
+          'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ 
+          video_ids: unpolledProcessingVideos.map(v => v.id) 
+        })
       });
 
       if (!response.ok) {
-        console.error('Check processing status failed:', response.status, response.statusText);
+        console.error('Batch check failed:', response.status, response.statusText);
         if (response.status === 401) {
           localStorage.removeItem('auth_token');
           setShowAuthModal(true);
@@ -353,17 +366,17 @@ const VideoGeneration: React.FC = () => {
       }
 
       const data = await response.json();
-      console.log('Check processing status response:', data);
+      console.log('Batch check response:', data);
       
       if (data.success && data.updated_videos && data.updated_videos.length > 0) {
-        console.log('Updated videos received:', data.updated_videos);
+        console.log(`Batch update received for ${data.updated_videos.length} videos`);
         
-        // Update generations with new status
+        // Update generations with new status - only for videos not being individually polled
         setGenerations(prev => {
           const updated = prev.map(gen => {
             const updatedVideo = data.updated_videos.find((video: any) => video.id.toString() === gen.id);
-            if (updatedVideo) {
-              console.log(`Updating video ${gen.id} from ${gen.status} to ${updatedVideo.status}`);
+            if (updatedVideo && !pollingIntervals.has(gen.id)) {
+              console.log(`Batch check: Updating video ${gen.id} from ${gen.status} to ${updatedVideo.status}`);
               return {
                 ...gen,
                 status: updatedVideo.status,
@@ -372,24 +385,23 @@ const VideoGeneration: React.FC = () => {
             }
             return gen;
           });
-          console.log('Auto-refresh updated generations:', updated);
           return updated;
         });
 
         // Show notifications for completed videos
         data.updated_videos.forEach((video: any) => {
           if (video.status === 'completed') {
-            setAlert({ type: 'success', message: `Video "${video.prompt.substring(0, 30)}..." đã được tạo thành công!` });
+            setAlert({ type: 'success', message: `Video "${video.prompt?.substring(0, 30)}..." đã được tạo thành công!` });
           } else if (video.status === 'failed') {
-            setAlert({ type: 'error', message: `Video "${video.prompt.substring(0, 30)}..." tạo thất bại: ${video.error_message || 'Lỗi không xác định'}` });
+            setAlert({ type: 'error', message: `Video "${video.prompt?.substring(0, 30)}..." tạo thất bại: ${video.error_message || 'Lỗi không xác định'}` });
           }
         });
       } else {
-        console.log('No updated videos or request failed');
+        console.log('Batch check: No updated videos');
       }
 
     } catch (error) {
-      console.error('Error checking video processing status:', error);
+      console.error('Error in batch status check:', error);
     }
   };
 
@@ -402,7 +414,7 @@ const VideoGeneration: React.FC = () => {
     }
   }, [isAuthenticated]);
 
-  // Auto-refresh effect to check video processing status every 5 seconds when user is on screen
+  // Auto-refresh effect to check video processing status every 10 seconds when user is on screen
   useEffect(() => {
     if (!isAuthenticated) {
       // Clear interval if user is not authenticated
@@ -413,31 +425,47 @@ const VideoGeneration: React.FC = () => {
       return;
     }
 
-    // Only start auto-refresh if we have processing videos
-    const hasProcessingVideos = generations.some(gen => gen.status === 'processing' || gen.status === 'pending');
+    // Only start auto-refresh if we have processing videos that are NOT being individually polled
+    const hasUnpolledProcessingVideos = generations.some(gen => 
+      (gen.status === 'processing' || gen.status === 'pending') && 
+      !pollingIntervals.has(gen.id)
+    );
     
-    if (hasProcessingVideos && !autoRefreshIntervalRef.current) {
-      console.log('Starting auto-refresh for processing videos');
-      // Set up interval to check every 5 seconds
+    if (hasUnpolledProcessingVideos && !autoRefreshIntervalRef.current) {
+      console.log('Starting batch auto-refresh for unpolled processing videos');
+      // Set up interval to check every 10 seconds (reduced frequency to avoid conflicts)
       autoRefreshIntervalRef.current = setInterval(() => {
-        console.log('Auto-refresh interval triggered');
+        console.log('Batch auto-refresh interval triggered');
         checkVideoProcessingStatus();
-      }, 5000);
-    } else if (!hasProcessingVideos && autoRefreshIntervalRef.current) {
-      console.log('No processing videos, stopping auto-refresh');
+      }, 10000);
+    } else if (!hasUnpolledProcessingVideos && autoRefreshIntervalRef.current) {
+      console.log('No unpolled processing videos, stopping batch auto-refresh');
       clearInterval(autoRefreshIntervalRef.current);
       autoRefreshIntervalRef.current = null;
     }
+  }, [isAuthenticated, generations, pollingIntervals]); // Add pollingIntervals as dependency
 
-    // Cleanup interval on unmount
+  // Comprehensive cleanup effect for component unmount
+  useEffect(() => {
     return () => {
+      console.log('Component unmounting, cleaning up all intervals...');
+      
+      // Clear auto-refresh interval
       if (autoRefreshIntervalRef.current) {
-        console.log('Cleaning up auto-refresh interval');
         clearInterval(autoRefreshIntervalRef.current);
         autoRefreshIntervalRef.current = null;
       }
+      
+      // Clear all individual polling intervals
+      pollingIntervals.forEach((intervalId, videoId) => {
+        console.log(`Cleaning up polling interval for video ${videoId}`);
+        clearInterval(intervalId);
+      });
+      
+      // Clear polling intervals Map
+      pollingIntervals.clear();
     };
-  }, [isAuthenticated, generations]); // Add generations as dependency
+  }, []); // Only run on mount/unmount
 
   const handleGenerate = async () => {
     if (!isAuthenticated) {

@@ -3,6 +3,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
+import { versionService } from './src/services/versionService';
 
 // Register service worker for PWA
 if ('serviceWorker' in navigator) {
@@ -20,6 +21,12 @@ if ('serviceWorker' in navigator) {
       const registration = await navigator.serviceWorker.register(swUrl);
       console.log('SW registered successfully:', registration);
       console.log('SW scope:', registration.scope);
+      
+      // Start version checking for auto-reload on new deployments
+      if (import.meta.env.PROD) {
+        console.log('Starting version checking for auto-reload...');
+        versionService.start();
+      }
       
       // Check for updates
       registration.addEventListener('updatefound', () => {

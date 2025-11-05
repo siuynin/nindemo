@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import CreativeEditor, { useConfig, useConfigure, useCreativeEditor } from './lib/CreativeEditor';
+import VersionInfo from '../../components/VersionInfo';
 import './styles.css';
 
 const CaseComponent = () => {
@@ -185,6 +186,11 @@ const CaseComponent = () => {
             </div>
           </div>
         </div>
+      </div>
+      
+      {/* Version Info Footer */}
+      <div className="w-full p-2 bg-gray-100 border-t border-gray-200">
+        <VersionInfo />
       </div>
     </div>
   );

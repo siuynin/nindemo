@@ -10,6 +10,7 @@ import './index.css';
 import App from './App';
 import './logger';
 import { ErrorBoundary } from 'react-error-boundary';
+import { versionService } from './services/versionService';
 
 if (window.location.host !== 'ai-studio.com') {
   console.log(
@@ -71,3 +72,9 @@ root.render(
     </ProjectContext.Provider>
   </ErrorBoundary>
 );
+
+// Start version checking service in production
+if (import.meta.env.PROD) {
+  versionService.start();
+  console.log('[Version Service] Started version checking service');
+}

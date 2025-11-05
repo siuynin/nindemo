@@ -435,8 +435,10 @@ class VideoGenerationController extends Controller
                                 ? $apiStatus['completed_at'] 
                                 : now();
                             
-                            // Store additional response data
-                            $updateData['api_response'] = json_encode($apiStatus);
+                            // Store additional response data - merge with existing
+                            $existingApiResponse = json_decode($generate->api_response, true) ?? [];
+                            $mergedApiResponse = array_merge($existingApiResponse, $apiStatus);
+                            $updateData['api_response'] = json_encode($mergedApiResponse);
                             
                         } elseif (in_array($newStatus, ['failed', 'error'])) {
                             $updateData['error_message'] = $apiStatus['message'] ?? $apiStatus['error'] ?? 'Generation failed';
@@ -508,11 +510,23 @@ class VideoGenerationController extends Controller
                 return response()->json(['error' => 'Unauthorized'], 401);
             }
 
-            // Get all processing videos for the user
-            $processingVideos = Generate::where('user_id', $user->id)
-                ->whereIn('type', ['video'])
-                ->whereIn('status', ['pending', 'processing'])
-                ->get();
+            // Get specific video IDs from request body, or use all user's processing videos
+            $videoIds = $request->input('video_ids', []);
+            
+            if (!empty($videoIds)) {
+                // Check specific videos
+                $processingVideos = Generate::where('user_id', $user->id)
+                    ->whereIn('type', ['video'])
+                    ->whereIn('id', $videoIds)
+                    ->whereIn('status', ['pending', 'processing'])
+                    ->get();
+            } else {
+                // Get all processing videos for the user
+                $processingVideos = Generate::where('user_id', $user->id)
+                    ->whereIn('type', ['video'])
+                    ->whereIn('status', ['pending', 'processing'])
+                    ->get();
+            }
 
             $updatedVideos = [];
 
@@ -563,7 +577,36 @@ class VideoGenerationController extends Controller
                             $updateData = ['status' => $newStatus];
                             
                             if ($newStatus === 'completed' && isset($apiStatus['video_url'])) {
-                                $updateData['result_url'] = $apiStatus['video_url'];
+                                $originalVideoUrl = $apiStatus['video_url'];
+                                $finalVideoUrl = $originalVideoUrl; // Default to original URL
+                                
+                                // Try to upload to S3 if configured
+                                if ($this->isS3Configured()) {
+                                    try {
+                                        Log::info('Uploading completed video to S3 (batch check)', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl
+                                        ]);
+                                        
+                                        $s3Url = $this->uploadVideoToS3($originalVideoUrl, 'generated-videos');
+                                        $finalVideoUrl = $s3Url; // Use S3 URL if upload successful
+                                        
+                                        Log::info('Video uploaded to S3 successfully (batch check)', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl,
+                                            's3_url' => $s3Url
+                                        ]);
+                                    } catch (\Exception $s3Error) {
+                                        Log::error('S3 upload failed for completed video (batch check), using original URL as fallback', [
+                                            'generate_id' => $generate->id,
+                                            'original_url' => $originalVideoUrl,
+                                            'error' => $s3Error->getMessage()
+                                        ]);
+                                        // Continue with original URL if S3 upload fails
+                                    }
+                                }
+                                
+                                $updateData['result_url'] = $finalVideoUrl;
                                 $updateData['completed_at'] = isset($apiStatus['completed_at']) 
                                     ? $apiStatus['completed_at'] 
                                     : now();
@@ -1063,7 +1106,7 @@ class VideoGenerationController extends Controller
             case 'processing':
             case 'pending':
             case 'queued':
-            case 'in_progress':
+            case 'processing':
                 return 'processing';
             default:
                 Log::warning('Unknown API status received', ['status' => $apiStatus]);

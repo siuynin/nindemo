@@ -73,8 +73,8 @@ class ChatbotService {
       const systemPrompt = this.getSystemPrompt(detectedLang);
       const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
+      // Get auth token from localStorage với fallback
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication required. Please log in.');
       }
@@ -101,11 +101,19 @@ class ChatbotService {
       }
 
       const data = await response.json();
+      console.log('Gemini API Response:', data); // Debug log
+      
       if (!data.success) {
         throw new Error(data.error || 'Failed to process text');
       }
 
-      return data.data.text || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      // Kiểm tra cấu trúc response
+      if (data.data && data.data.text) {
+        return data.data.text;
+      } else {
+        console.warn('No text in response:', data);
+        return 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      }
     } catch (error) {
       console.error('Gemini API error:', error);
       throw error;
@@ -118,8 +126,8 @@ class ChatbotService {
       const systemPrompt = this.getSystemPrompt(detectedLang);
       const fullPrompt = `${systemPrompt}\n\nUser: ${message}`;
 
-      // Get auth token from localStorage
-      const token = localStorage.getItem('auth_token');
+      // Get auth token from localStorage với fallback
+      const token = localStorage.getItem('auth_token') || localStorage.getItem('token');
       if (!token) {
         throw new Error('Authentication required. Please log in.');
       }
@@ -146,11 +154,19 @@ class ChatbotService {
       }
 
       const data = await response.json();
+      console.log('OpenAI API Response:', data); // Debug log
+      
       if (!data.success) {
         throw new Error(data.error || 'Failed to process text');
       }
 
-      return data.data.text || 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      // Kiểm tra cấu trúc response
+      if (data.data && data.data.text) {
+        return data.data.text;
+      } else {
+        console.warn('No text in response:', data);
+        return 'Xin lỗi, tôi không thể trả lời câu hỏi này.';
+      }
     } catch (error) {
       console.error('OpenAI API error:', error);
       throw error;

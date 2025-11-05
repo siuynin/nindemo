@@ -2,12 +2,45 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import { createHash } from 'crypto';
+import { readFileSync, writeFileSync } from 'fs';
+
+// Build version tracking plugin
+const versionTrackingPlugin = () => {
+  const buildTimestamp = new Date().toISOString();
+  const buildVersion = createHash('md5').update(buildTimestamp).digest('hex').substring(0, 8);
+  const buildDate = new Date().toLocaleString('vi-VN');
+
+  return {
+    name: 'version-tracking',
+    buildStart() {
+      // Generate version.json for runtime checking
+      const versionData = {
+        version: buildVersion,
+        buildTimestamp: buildTimestamp,
+        buildDate: buildDate,
+        buildTime: Date.now()
+      };
+      
+      writeFileSync('public/version.json', JSON.stringify(versionData, null, 2));
+      console.log(`Build version: ${buildVersion} (${buildDate})`);
+    },
+    transformIndexHtml(html: string) {
+      // Replace placeholders in index.html
+      return html
+        .replace('%BUILD_VERSION%', buildVersion)
+        .replace('%BUILD_TIMESTAMP%', buildTimestamp)
+        .replace('%BUILD_DATE%', buildDate);
+    }
+  };
+};
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
       plugins: [
         react(),
+        versionTrackingPlugin(), // Add version tracking
         VitePWA({
           registerType: 'autoUpdate',
           devOptions: {
