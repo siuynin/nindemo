@@ -40,6 +40,7 @@ class RunningHubImageService
     /**
      * Get Base URL
      */
+    
     public function getBaseUrl(): string
     {
         return $this->baseUrl;
