@@ -745,11 +745,24 @@ class ImageGenerationController extends Controller
 
                 // Check if generation completed immediately
                 if ($result['status'] === 'completed' && isset($result['images']) && !empty($result['images'])) {
+                    // Dọn dẹp các file input lưu local nếu có
+                    $localInputs = $result['local_input_files'] ?? [];
+                    $deletedInputs = [];
+                    foreach ($localInputs as $li) {
+                        if (isset($li['path'])) {
+                            $ok = $this->imageStorageService->deleteLocalFileByPath($li['path']);
+                            $deletedInputs[] = ['path' => $li['path'], 'deleted' => $ok];
+                        }
+                    }
                     // Update Generate record with success
                     $generate->update([
                         'status' => 'completed',
                         'result_url' => json_encode($result['images']),
-                        'file_patch' => json_encode($allImages) // Store all uploaded images
+                        'file_patch' => json_encode([
+                            'all_input_images' => $allImages,
+                            'local_input_files' => $localInputs,
+                            'local_input_deleted' => $deletedInputs
+                        ])
                     ]);
 
                     return response()->json([
@@ -768,7 +781,10 @@ class ImageGenerationController extends Controller
                     $generate->update([
                         'status' => 'processing',
                         'task_id' => $result['task_id'],
-                        'file_patch' => json_encode($allImages) // Store all uploaded images
+                        'file_patch' => json_encode([
+                            'all_input_images' => $allImages,
+                            'local_input_files' => $result['local_input_files'] ?? []
+                        ])
                     ]);
 
                     return response()->json([
@@ -942,14 +958,26 @@ class ImageGenerationController extends Controller
                         }
                     }
 
+                    // Cleanup local input files if any were recorded
+                    $existingPatch = json_decode($generate->file_patch ?? '[]', true);
+                    $localInputs = $existingPatch['local_input_files'] ?? [];
+                    $deletedInputs = [];
+                    foreach ($localInputs as $li) {
+                        if (isset($li['path'])) {
+                            $ok = $this->imageStorageService->deleteLocalFileByPath($li['path']);
+                            $deletedInputs[] = ['path' => $li['path'], 'deleted' => $ok];
+                        }
+                    }
+
                     // Update Generate record
                     $generate->update([
                         'status' => 'completed',
                         'result_url' => json_encode($imageResults),
-                        'file_patch' => json_encode([
+                        'file_patch' => json_encode(array_merge($existingPatch ?? [], [
                             'task_id' => $validatedData['task_id'],
-                            'completed_at' => now()->toISOString()
-                        ])
+                            'completed_at' => now()->toISOString(),
+                            'local_input_deleted' => $deletedInputs
+                        ]))
                     ]);
 
                     Log::info('Task status updated to completed', [
@@ -966,13 +994,25 @@ class ImageGenerationController extends Controller
 
                 } elseif ($taskResult['status'] === 'failed') {
                     // Task failed, update database and refund credits
+                    // Cleanup local input files if any
+                    $existingPatch = json_decode($generate->file_patch ?? '[]', true);
+                    $localInputs = $existingPatch['local_input_files'] ?? [];
+                    $deletedInputs = [];
+                    foreach ($localInputs as $li) {
+                        if (isset($li['path'])) {
+                            $ok = $this->imageStorageService->deleteLocalFileByPath($li['path']);
+                            $deletedInputs[] = ['path' => $li['path'], 'deleted' => $ok];
+                        }
+                    }
+
                     $generate->update([
                         'status' => 'failed',
-                        'file_patch' => json_encode([
+                        'file_patch' => json_encode(array_merge($existingPatch ?? [], [
                             'task_id' => $validatedData['task_id'],
                             'error' => $taskResult['error'] ?? 'Task failed',
-                            'failed_at' => now()->toISOString()
-                        ])
+                            'failed_at' => now()->toISOString(),
+                            'local_input_deleted' => $deletedInputs
+                        ]))
                     ]);
 
                     // Refund credits on failure

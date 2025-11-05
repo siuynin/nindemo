@@ -185,4 +185,83 @@ class ImageStorageService
             'region_set' => !empty(env('AWS_DEFAULT_REGION')),
         ];
     }
+
+    /**
+     * Download image from URL and store on local 'public' disk, returning URL and path
+     */
+    public function uploadImageFromUrlToLocalPublic(string $imageUrl, string $folder = 'input-images'): array
+    {
+        try {
+            Log::info('Downloading image to local public storage', ['url' => $imageUrl, 'folder' => $folder]);
+
+            // Fetch image
+            $response = Http::timeout(30)->get($imageUrl);
+            if (!$response->successful()) {
+                throw new \Exception('Failed to download image from URL: ' . $imageUrl . ' (HTTP ' . $response->status() . ')');
+            }
+
+            $imageContent = $response->body();
+
+            // Build date-based directory for organization
+            $datePath = date('Y/m/d');
+            $directory = trim($folder, '/') . '/' . $datePath;
+
+            // Ensure directory exists on local storage path
+            $fullDirectory = storage_path('app/public/' . $directory);
+            if (!file_exists($fullDirectory)) {
+                @mkdir($fullDirectory, 0755, true);
+            }
+
+            // Determine extension from content-type if possible
+            $contentType = $response->header('Content-Type');
+            $extension = 'png';
+            if ($contentType && preg_match('/image\/([a-zA-Z0-9]+)/', $contentType, $m)) {
+                $extension = strtolower($m[1]);
+            }
+
+            // Generate filename
+            $filename = 'local-input-' . time() . '-' . uniqid() . '.' . $extension;
+            $path = $directory . '/' . $filename;
+
+            // Write to public disk
+            $stored = Storage::disk('public')->put($path, $imageContent);
+            if (!$stored) {
+                throw new \Exception('Failed to store image on local public disk');
+            }
+
+            $publicUrl = Storage::disk('public')->url($path);
+
+            Log::info('Image stored locally on public disk', ['path' => $path, 'url' => $publicUrl]);
+
+            return [
+                'url' => $publicUrl,
+                'path' => $path,
+                'content_type' => $contentType ?? null,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Local public upload failed', [
+                'url' => $imageUrl,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Delete a file from local 'public' disk by its storage path
+     */
+    public function deleteLocalFileByPath(string $path): bool
+    {
+        try {
+            Log::info('Deleting local public file', ['path' => $path]);
+            if (Storage::disk('public')->exists($path)) {
+                return Storage::disk('public')->delete($path);
+            }
+            // If not exists, consider deletion successful (already gone)
+            return true;
+        } catch (\Exception $e) {
+            Log::error('Failed to delete local public file', ['path' => $path, 'error' => $e->getMessage()]);
+            return false;
+        }
+    }
 }

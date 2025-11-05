@@ -45,7 +45,8 @@ const ImageCreator: React.FC = () => {
   const { isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [models, setModels] = useState<AIModel[]>([]);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // dùng cho tải danh sách ảnh
+  const [isGenerating, setIsGenerating] = useState(false); // tách riêng cho quá trình tạo ảnh
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -183,6 +184,12 @@ const ImageCreator: React.FC = () => {
     message?: string;
   }>({});
 
+  // Guard để tránh gọi API chồng chéo
+  const isFetchingGenerationsRef = useRef(false);
+
+  // Đảm bảo chỉ có một interval refresh đang chạy
+  const refreshIntervalRef = useRef<number | null>(null);
+
   useEffect(() => {
     console.log('🚀 Component mounting, initial auth state:', { isAuthenticated, user, authLoading });
     
@@ -196,7 +203,7 @@ const ImageCreator: React.FC = () => {
     }
   }, []);
 
-  // Single useEffect to handle auth state changes
+  // Single useEffect to handle auth state changes (và quản lý interval một cách an toàn)
   useEffect(() => {
     console.log('Auth state changed:', { authLoading, isAuthenticated, user });
     
@@ -205,26 +212,30 @@ const ImageCreator: React.FC = () => {
       console.log('⏳ AuthContext still loading, waiting...');
       return;
     }
-    
-    if (isAuthenticated && user) {
-      console.log('✅ User authenticated, fetching images automatically');
-      // Tự động fetch ảnh khi user đăng nhập
-      fetchGeneratedImages(1, false);
-      
-      // Thiết lập interval để tự động refresh danh sách ảnh mỗi 30 giây
-      const refreshInterval = setInterval(() => {
-        console.log('🔄 Auto-refreshing image list...');
-        fetchGeneratedImages(1, false);
-      }, 30000); // 30 giây
-      
-      return () => {
-        clearInterval(refreshInterval);
-      };
-    } else {
-      console.log('❌ User not authenticated, clearing images');
+
+    // Khi chưa đăng nhập hoặc user không có, clear interval và clear images
+    if (!isAuthenticated || !user) {
+      console.log('❌ User not authenticated, clearing images and intervals');
       setGeneratedImages([]);
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+      return;
     }
-  }, [authLoading, isAuthenticated, user]);
+
+    // Đã authenticated: đảm bảo chỉ tạo một interval và fetch ngay lần đầu
+    console.log('✅ User authenticated, ensuring single refresh interval');
+    fetchGeneratedImages(1, false);
+
+    // Cleanup khi unmount hoặc dependency thay đổi
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [authLoading, isAuthenticated]);
 
   // Set up AIService toast callback
   useEffect(() => {
@@ -276,10 +287,18 @@ const ImageCreator: React.FC = () => {
   const fetchGeneratedImages = async (page: number = 1, append: boolean = false) => {
     console.log('🔍 Fetching generated images (generations)', { page, append, isAuthenticated, user, authLoading });
     
+    // Đợi auth xong trước khi đánh dấu in-flight
     if (authLoading) {
       console.log('⏳ AuthContext still loading, waiting...');
       return;
     }
+    
+    // Tránh gọi API chồng chéo khi một request đang chạy
+    if (isFetchingGenerationsRef.current) {
+      console.log('⏭️ Skip fetch: previous request still in-flight');
+      return;
+    }
+    isFetchingGenerationsRef.current = true;
     
     if (!isAuthenticated || !user) {
       console.log('❌ User not authenticated, skipping fetch');
@@ -470,6 +489,7 @@ const ImageCreator: React.FC = () => {
       setLoading(false);
       setIsLoadingMore(false);
       setInitialLoading(false);
+      isFetchingGenerationsRef.current = false;
     }
   };
 
@@ -483,6 +503,9 @@ const ImageCreator: React.FC = () => {
       await fetchGeneratedImages(currentPage + 1, true);
     }
   };
+
+  // Track tasks already being polled to avoid duplicate polling
+  const polledTasksRef = useRef<Set<string>>(new Set());
 
   // Simplified polling mechanism - remove complex polling like Document.tsx
   const startTaskStatusPolling = useCallback(async (generateId: number, taskId: string) => {
@@ -502,15 +525,53 @@ const ImageCreator: React.FC = () => {
           const { status } = response.data;
           
           if (status === 'completed') {
-            // Simple refresh like other pages
-            await fetchGeneratedImages(1, false);
+            // Update only the specific image item without refetching the whole list
+            const resultData = response.data.result_url;
+            let imageUrl: string = '';
+
+            // result_url có thể là array hoặc JSON string; xử lý linh hoạt
+            if (Array.isArray(resultData) && resultData.length > 0) {
+              imageUrl = typeof resultData[0] === 'string' ? resultData[0] : (resultData[0]?.url || '');
+            } else if (typeof resultData === 'string') {
+              try {
+                const parsed = JSON.parse(resultData);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  imageUrl = typeof parsed[0] === 'string' ? parsed[0] : (parsed[0]?.url || '');
+                }
+              } catch (_) {
+                // Nếu không parse được JSON, coi như là URL trực tiếp
+                imageUrl = resultData;
+              }
+            }
+
+            setGeneratedImages(prev => prev.map(img => {
+              if (img.generateId === generateId) {
+                return {
+                  ...img,
+                  status: 'completed',
+                  url: imageUrl || img.url,
+                  resultData: response.data.result_url || img.resultData
+                };
+              }
+              return img;
+            }));
+
             showToast('success', 'Ảnh đã được tạo thành công!');
             return; // Stop polling
             
           } else if (status === 'failed') {
-            await fetchGeneratedImages(1, false);
+            // Cập nhật trạng thái item sang failed, không refetch list
+            setGeneratedImages(prev => prev.map(img => {
+              if (img.generateId === generateId) {
+                return {
+                  ...img,
+                  status: 'failed'
+                };
+              }
+              return img;
+            }));
             showToast('error', 'Tạo ảnh thất bại. Vui lòng thử lại.');
-            return; // Stop polling - ĐÃ SỬA: thêm return để dừng polling
+            return; // Stop polling
             
           } else if (status === 'processing' && attempts < maxAttempts) {
             setTimeout(pollTaskStatus, pollInterval);
@@ -520,7 +581,6 @@ const ImageCreator: React.FC = () => {
         
         // Stop polling after max attempts
         if (attempts >= maxAttempts) {
-          await fetchGeneratedImages(1, false);
           showToast('warning', 'Việc tạo ảnh đang mất nhiều thời gian hơn dự kiến.');
         }
         
@@ -537,14 +597,17 @@ const ImageCreator: React.FC = () => {
 
   // Simplified auto-polling - remove complex polling management
   useEffect(() => {
-    // Simple check like other pages - only poll if there are processing images
+    // Chỉ poll cho các ảnh đang processing và chưa bị poll trước đó
     const processingImages = generatedImages.filter(img => img.status === 'processing');
     
     if (processingImages.length > 0) {
       console.log('Found processing images, starting simple polling:', processingImages.length);
       processingImages.forEach(img => {
-        if (img.generateId && img.resultData?.task_id) {
-          startTaskStatusPolling(img.generateId, img.resultData.task_id);
+        const taskId = img.resultData?.task_id;
+        const key = `${img.generateId}-${taskId}`;
+        if (img.generateId && taskId && !polledTasksRef.current.has(key)) {
+          polledTasksRef.current.add(key);
+          startTaskStatusPolling(img.generateId, taskId);
         }
       });
     }
@@ -636,7 +699,7 @@ const ImageCreator: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setIsGenerating(true);
     try {
       // Create request for image-to-image with multiple images
       const request: ImageToImageRequest = {
@@ -720,7 +783,7 @@ const ImageCreator: React.FC = () => {
         showToast('error', 'Failed to generate image. Please try again.');
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -755,7 +818,7 @@ const ImageCreator: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setIsGenerating(true);
     try {
       // Tạo request cho backend
       const request: ImageGenerationRequest = {
@@ -811,7 +874,7 @@ const ImageCreator: React.FC = () => {
         showToast('error', 'Failed to generate image. Please try again.');
       }
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -1554,11 +1617,11 @@ const ImageCreator: React.FC = () => {
                   <Button
                     type="submit"
                     variant="primary"
-                    disabled={loading || !formData.prompt.trim() || !formData.model || (activeTab === 'image-to-image' && uploadedImageFiles.length === 0)}
+                    disabled={isGenerating || !formData.prompt.trim() || !formData.model || (activeTab === 'image-to-image' && uploadedImageFiles.length === 0)}
                     className="w-full h-11 text-sm font-medium bg-blue-500 hover:bg-blue-600 text-white rounded transition-colors"
                     size="md"
                     startIcon={
-                      loading ? (
+                      isGenerating ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       ) : (
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ maxWidth: '100%', height: 'auto' }}>
@@ -1567,7 +1630,7 @@ const ImageCreator: React.FC = () => {
                       )
                     }
                   >
-                    {loading 
+                    {isGenerating 
                       ? t.imageCreator?.generating || 'Generating...' 
                       : activeTab === 'image-to-image' 
                         ? 'Transform Image' 

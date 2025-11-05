@@ -53,45 +53,56 @@ class RunningHubImageService
         try {
             // Process all images and convert them to appropriate format
             $processedImages = [];
+            $localInputFiles = [];
             
             foreach ($images as $index => $image) {
-                $imageUrl = $image;
-                
-                // Check if image is base64 encoded
+                // Mặc định giữ nguyên input
+                $imageInput = $image;
+
+                // Nếu là base64 data URL thì dùng trực tiếp (không đẩy lên S3)
                 if (str_starts_with($image, 'data:image/')) {
-                    // Base64 image - upload to S3 first
-                    Log::info('Converting base64 image to S3 URL for RunningHub', ['image_index' => $index, 'image_prefix' => substr($image, 0, 50)]);
-                    $s3Url = $this->imageStorageService->uploadImageFromBase64($image, 'runninghub-images');
-                    Log::info('Base64 image uploaded to S3 successfully', ['image_index' => $index, 's3_url' => $s3Url]);
-                    
-                    // Use S3 URL directly instead of converting to base64
-                    $imageUrl = $s3Url;
-                    Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index, 's3_url' => $s3Url]);
+                    Log::info('Using base64 data URL directly for RunningHub', ['image_index' => $index]);
+                    $imageInput = $image;
+
+                // Nếu là HTTP URL
                 } elseif (str_starts_with($image, 'http')) {
-                    // HTTP URL - use S3 URLs directly
-                    if (str_contains($image, 's3.amazonaws.com') || str_contains($image, 'amazonaws.com')) {
-                        Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index, 's3_url' => $image]);
-                        $imageUrl = $image;
-                    } else {
-                        // Non-S3 HTTP URL - upload to S3 first
-                        Log::info('Uploading HTTP image to S3 before sending to RunningHub', ['image_index' => $index, 'original_image' => $image]);
-                        try {
-                            $s3Url = $this->imageStorageService->uploadImageFromUrl($image, 'runninghub-images');
-                            Log::info('HTTP image uploaded to S3 successfully', ['image_index' => $index, 's3_url' => $s3Url]);
-                            $imageUrl = $s3Url;
-                            Log::info('Using S3 URL directly for RunningHub', ['image_index' => $index]);
-                        } catch (\Exception $e) {
-                            Log::warning('Failed to upload to S3, using original URL', ['image_index' => $index, 'error' => $e->getMessage(), 'original_url' => $image]);
-                            $imageUrl = $image; // Fallback to original URL
+                    // Với mọi HTTP URL, tải về và lưu ở local public để RunningHub truy cập ổn định
+                    try {
+                        $stored = $this->imageStorageService->uploadImageFromUrlToLocalPublic($image, 'runninghub-inputs');
+                        $imageInput = $stored['url'];
+                        $localInputFiles[] = $stored; // Lưu để dọn dẹp sau
+                        Log::info('Stored HTTP input image locally for RunningHub', ['index' => $index, 'local_url' => $stored['url']]);
+                    } catch (\Exception $e) {
+                        // Nếu lưu local thất bại, thử chuyển S3 sang base64 hoặc dùng URL gốc làm dự phòng
+                        if (str_contains($image, 's3.amazonaws.com') || str_contains($image, 'amazonaws.com')) {
+                            try {
+                                $imageInput = $this->convertS3UrlToBase64($image);
+                                Log::info('Fallback converted S3 URL to base64 for RunningHub', ['image_index' => $index]);
+                            } catch (\Exception $e2) {
+                                Log::warning('Failed local store and base64 convert; fallback to original URL', [
+                                    'image_index' => $index,
+                                    'store_error' => $e->getMessage(),
+                                    'convert_error' => $e2->getMessage(),
+                                    'url' => $image
+                                ]);
+                                $imageInput = $image;
+                            }
+                        } else {
+                            Log::warning('Failed to store HTTP input locally; using original URL', [
+                                'image_index' => $index,
+                                'error' => $e->getMessage(),
+                                'url' => $image
+                            ]);
+                            $imageInput = $image;
                         }
                     }
                 } else {
-                    // Assume it's a direct URL or path
-                    Log::info('Using image URL directly', ['image_index' => $index, 'image_url' => $image]);
-                    $imageUrl = $image;
+                    // Chuỗi khác (đường dẫn nội bộ, v.v.), dùng nguyên giá trị
+                    Log::info('Using image input as-is', ['image_index' => $index, 'value' => substr((string)$image, 0, 50)]);
+                    $imageInput = $image;
                 }
-                
-                $processedImages[] = $imageUrl;
+
+                $processedImages[] = $imageInput;
             }
 
             // Build nodeInfoList based on number of images
@@ -251,7 +262,8 @@ class RunningHubImageService
                     'status' => 'processing',
                     'task_id' => $taskId,
                     'message' => 'Task is still processing. Use the check endpoint to get updates.',
-                    'raw_response' => $taskData
+                    'raw_response' => $taskData,
+                    'local_input_files' => $localInputFiles
                 ];
             }
 
@@ -261,7 +273,8 @@ class RunningHubImageService
                     'status' => 'completed',
                     'task_id' => $taskId,
                     'images' => $result['images'],
-                    'raw_response' => $taskData
+                    'raw_response' => $taskData,
+                    'local_input_files' => $localInputFiles
                 ];
             } else {
                 throw new Exception('No images generated from ImageGen');
