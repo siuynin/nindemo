@@ -24,7 +24,7 @@ echo "Prompt: {$prompt}\n";
 echo "Ratio: {$ratio}\n";
 
 try {
-    $result = $service->generateImageToImage($prompt, $image, $ratio);
+    $result = $service->generateImageToImage($prompt, $image, $ratio, 'test-generate-id');
     
     if (isset($result['images']) && !empty($result['images'])) {
         echo "✅ Success! Generated " . count($result['images']) . " images\n";

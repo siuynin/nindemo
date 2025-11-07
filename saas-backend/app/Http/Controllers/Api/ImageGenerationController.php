@@ -690,9 +690,27 @@ class ImageGenerationController extends Controller
             try {
                 // Prepare images array for storage
                 $allImages = [$validatedData['image']]; // Main image first
+                Log::info('Image-to-image: Main image prepared', ['main_image' => substr($validatedData['image'], 0, 50) . '...']);
+                
                 if (isset($validatedData['images']) && is_array($validatedData['images'])) {
-                    $allImages = array_merge($allImages, $validatedData['images']);
+                    Log::info('Image-to-image: Processing additional images', ['additional_count' => count($validatedData['images'])]);
+                    // Only add images that are not duplicates of the main image
+                    foreach ($validatedData['images'] as $additionalImage) {
+                        if ($additionalImage !== $validatedData['image']) {
+                            $allImages[] = $additionalImage;
+                            Log::info('Image-to-image: Added unique additional image', ['image' => substr($additionalImage, 0, 50) . '...']);
+                        } else {
+                            Log::info('Image-to-image: Skipped duplicate image in additional images', ['image' => substr($additionalImage, 0, 50) . '...']);
+                        }
+                    }
                 }
+                
+                Log::info('Image-to-image: Final images array prepared', [
+                    'original_main' => 1,
+                    'original_additional' => isset($validatedData['images']) ? count($validatedData['images']) : 0,
+                    'final_count' => count($allImages),
+                    'all_images_preview' => array_map(function($img) { return substr($img, 0, 50) . '...'; }, $allImages)
+                ]);
 
                 // Create Generate record
                 $generate = Generate::create([
@@ -740,7 +758,8 @@ class ImageGenerationController extends Controller
                 $result = $this->runningHubImageService->generateImageToImage(
                     $validatedData['prompt'],
                     $allImages, // Pass all images array instead of single image
-                    $validatedData['ratio']
+                    $validatedData['ratio'],
+                    $generate->id // Pass the generate ID for webhook tracking
                 );
 
                 // Check if generation completed immediately

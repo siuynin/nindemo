@@ -26,7 +26,8 @@ try {
     $result = $runningHubImageService->generateImageToImage(
         'A beautiful sunset over mountains',
         $sampleBase64,
-        '16:9'
+        '16:9',
+        'test-generate-id'
     );
     
     echo "   Generation result:\n";

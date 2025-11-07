@@ -49,47 +49,118 @@ class RunningHubImageService
     /**
      * Generate image-to-image using ImageGen
      */
-    public function generateImageToImage(string $prompt, array $images, string $ratio): array
+    public function generateImageToImage(string $prompt, array $images, string $ratio, ?string $generateId = null): array
     {
         try {
             // Process all images and convert them to appropriate format
             $processedImages = [];
             $localInputFiles = [];
             
-            foreach ($images as $index => $image) {
+            // Remove duplicate images to avoid processing same image multiple times
+            $uniqueImages = [];
+            $base64Hashes = []; // Track base64 hashes separately
+            $urlList = []; // Track URLs separately
+            
+            foreach ($images as $image) {
+                // For base64 images, check if content is already processed
+                if (str_starts_with($image, 'data:image/')) {
+                    // Extract base64 content for comparison (use more comprehensive hash)
+                    // Extract the base64 part after the comma
+                    $base64Part = substr($image, strpos($image, ',') + 1);
+                    // Use first 500 characters + last 100 characters as key for better uniqueness
+                    $startPart = substr($base64Part, 0, 500);
+                    $endPart = substr($base64Part, -100);
+                    $imageHash = md5($startPart . $endPart);
+                    
+                    if (!in_array($imageHash, $base64Hashes)) {
+                        $base64Hashes[] = $imageHash;
+                        $uniqueImages[] = $image;
+                        Log::info('Added unique base64 image', ['hash' => substr($imageHash, 0, 10) . '...', 'index' => count($uniqueImages) - 1]);
+                    } else {
+                        Log::info('Skipped duplicate base64 image', ['hash' => substr($imageHash, 0, 10) . '...']);
+                    }
+                } else {
+                    // For URLs, use the full URL as key
+                    if (!in_array($image, $urlList)) {
+                        $urlList[] = $image;
+                        $uniqueImages[] = $image;
+                        Log::info('Added unique URL image', ['url' => substr($image, 0, 50) . '...', 'index' => count($uniqueImages) - 1]);
+                    } else {
+                        Log::info('Skipped duplicate URL image', ['url' => substr($image, 0, 50) . '...']);
+                    }
+                }
+            }
+            
+            Log::info('Processing unique images', [
+                'original_count' => count($images),
+                'unique_count' => count($uniqueImages)
+            ]);
+            
+            foreach ($uniqueImages as $index => $image) {
                 // Mặc định giữ nguyên input
                 $imageInput = $image;
 
-                // Nếu là base64 data URL thì dùng trực tiếp (không đẩy lên S3)
+                // Nếu là base64 data URL thì lưu trực tiếp vào server và lấy URL
                 if (str_starts_with($image, 'data:image/')) {
-                    Log::info('Using base64 data URL directly for RunningHub', ['image_index' => $index]);
-                    $imageInput = $image;
+                    try {
+                        // Decode base64 và lấy extension
+                        $imageData = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $image));
+                        $extension = 'jpg'; // default
+                        if (preg_match('#^data:image/(\w+);#', $image, $matches)) {
+                            $extension = $matches[1];
+                            if ($extension === 'jpeg') $extension = 'jpg';
+                        }
+                        
+                        // Tạo tên file unique
+                        $filename = uniqid('runninghub-') . '.' . $extension;
+                        $relativePath = 'uploads/runninghub-inputs/' . $filename;
+                        $absolutePath = public_path($relativePath);
+                        
+                        // Lưu file vào public directory
+                        file_put_contents($absolutePath, $imageData);
+                        
+                        // Tạo URL công khai - explicitly use tunnel URL instead of relying on url() helper
+                        $tunnelUrl = config('app.url');
+                        $imageInput = rtrim($tunnelUrl, '/') . '/' . ltrim($relativePath, '/');
+                        
+                        Log::info('Saved base64 image to local server for RunningHub', [
+                            'image_index' => $index,
+                            'local_url' => $imageInput,
+                            'file_path' => $relativePath
+                        ]);
+                        
+                    } catch (\Exception $e) {
+                        // Fallback: dùng base64 trực tiếp nếu lưu thất bại
+                        Log::warning('Failed to save base64 to local server, falling back to direct base64', [
+                            'image_index' => $index,
+                            'error' => $e->getMessage()
+                        ]);
+                        $imageInput = $image;
+                    }
 
                 // Nếu là HTTP URL
                 } elseif (str_starts_with($image, 'http')) {
                     // Với mọi HTTP URL, tải về và lưu ở local public để RunningHub truy cập ổn định
                     try {
-                        $stored = $this->imageStorageService->uploadImageFromUrlToLocalPublic($image, 'runninghub-inputs');
-                        $imageInput = $stored['url'];
-                        $localInputFiles[] = $stored; // Lưu để dọn dẹp sau
-                        Log::info('Stored HTTP input image locally for RunningHub', ['index' => $index, 'local_url' => $stored['url']]);
+                        $imageInput = $this->downloadAndSaveImage($image);
+                        Log::info('Downloaded and saved HTTP image to local server for RunningHub', ['index' => $index, 'local_url' => $imageInput]);
                     } catch (\Exception $e) {
-                        // Nếu lưu local thất bại, thử chuyển S3 sang base64 hoặc dùng URL gốc làm dự phòng
+                        // Nếu download thất bại, thử fallback
                         if (str_contains($image, 's3.amazonaws.com') || str_contains($image, 'amazonaws.com')) {
                             try {
                                 $imageInput = $this->convertS3UrlToBase64($image);
                                 Log::info('Fallback converted S3 URL to base64 for RunningHub', ['image_index' => $index]);
                             } catch (\Exception $e2) {
-                                Log::warning('Failed local store and base64 convert; fallback to original URL', [
+                                Log::warning('Failed download and base64 convert; fallback to original URL', [
                                     'image_index' => $index,
-                                    'store_error' => $e->getMessage(),
+                                    'download_error' => $e->getMessage(),
                                     'convert_error' => $e2->getMessage(),
                                     'url' => $image
                                 ]);
                                 $imageInput = $image;
                             }
                         } else {
-                            Log::warning('Failed to store HTTP input locally; using original URL', [
+                            Log::warning('Failed to download HTTP image; using original URL', [
                                 'image_index' => $index,
                                 'error' => $e->getMessage(),
                                 'url' => $image
@@ -108,6 +179,7 @@ class RunningHubImageService
 
             // Build nodeInfoList based on number of images
             $nodeInfoList = [];
+            // Use count of processed images for imageCount (which is built from unique images)
             $imageCount = min(count($processedImages), 3);
             
             // Add image nodes with specific nodeIds based on image count
@@ -116,7 +188,7 @@ class RunningHubImageService
                 $nodeInfoList[] = [
                     'nodeId' => '2',
                     'fieldName' => 'image',
-                    'fieldValue' => $processedImages[0],
+                    'fieldValue' => $processedImages[0], // processedImages is built from uniqueImages
                     'description' => 'Upload image 1'
                 ];
                 
@@ -209,18 +281,31 @@ class RunningHubImageService
                 'selectedWebappId' => $webappId
             ]);
 
+            // Build webhook URL with generateId as identifier (we'll map this to taskId later)
+            $webhookUrl = config('app.url') . '/api/runninghub/video-webhook';
+            if ($generateId) {
+                $webhookUrl .= '?generateId=' . $generateId;
+            }
+
+            Log::info('Built webhook URL', ['webhookUrl' => $webhookUrl]);
+
             $requestData = [
                 'webappId' => $webappId,
                 'apiKey' => $this->apiKey,
-                'nodeInfoList' => $nodeInfoList
+                'nodeInfoList' => $nodeInfoList,
+                'webhookUrl' => $webhookUrl
             ];
 
             Log::info('Calling RunningHub image-to-image API', [
                 'webappId' => $webappId,
                 'ratio' => $ratio,
                 'prompt_length' => strlen($prompt),
-                'images_count' => count($processedImages),
-                'processed_images' => array_map(function($img) { return substr($img, 0, 50) . '...'; }, $processedImages)
+                'original_images_count' => count($images),
+                'unique_images_count' => count($uniqueImages),
+                'processed_images_count' => count($processedImages),
+                'final_image_count' => $imageCount,
+                'processed_images' => $processedImages, // Log full URLs for debugging
+                'request_data' => $requestData // Log the full request data
             ]);
 
             $response = Http::withHeaders([
@@ -591,6 +676,84 @@ class RunningHubImageService
         } catch (\Exception $e) {
             Log::error('Failed to convert S3 URL to base64', [
                 's3_url' => $s3Url,
+                'error' => $e->getMessage()
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Download image from URL and save to local server
+     */
+    private function downloadAndSaveImage(string $imageUrl): string
+    {
+        try {
+            Log::info('Downloading image from URL', ['url' => $imageUrl]);
+            
+            // Download the image
+            $response = Http::timeout(30)->get($imageUrl);
+            
+            if (!$response->successful()) {
+                throw new \Exception("Failed to download image: HTTP {$response->status()}");
+            }
+            
+            $imageData = $response->body();
+            $contentType = $response->header('Content-Type');
+            
+            // Determine file extension from content type or URL
+            $extension = 'jpg'; // default
+            if ($contentType) {
+                $mimeToExt = [
+                    'image/jpeg' => 'jpg',
+                    'image/jpg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp',
+                    'image/bmp' => 'bmp'
+                ];
+                $extension = $mimeToExt[$contentType] ?? 'jpg';
+            } else {
+                // Try to get from URL
+                $pathInfo = pathinfo(parse_url($imageUrl, PHP_URL_PATH));
+                if (isset($pathInfo['extension'])) {
+                    $ext = strtolower($pathInfo['extension']);
+                    if (in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'])) {
+                        $extension = $ext;
+                    }
+                }
+            }
+            
+            // Generate unique filename
+            $filename = uniqid('runninghub-') . '.' . $extension;
+            $relativePath = 'uploads/runninghub-inputs/' . $filename;
+            $absolutePath = public_path($relativePath);
+            
+            // Ensure directory exists
+            $directory = dirname($absolutePath);
+            if (!is_dir($directory)) {
+                mkdir($directory, 0755, true);
+            }
+            
+            // Save file
+            file_put_contents($absolutePath, $imageData);
+            
+            // Return public URL - explicitly use tunnel URL instead of relying on url() helper
+            $tunnelUrl = config('app.url');
+            $localUrl = rtrim($tunnelUrl, '/') . '/' . ltrim($relativePath, '/');
+            
+            Log::info('Image downloaded and saved successfully', [
+                'original_url' => $imageUrl,
+                'local_url' => $localUrl,
+                'file_path' => $relativePath,
+                'file_size' => strlen($imageData),
+                'content_type' => $contentType
+            ]);
+            
+            return $localUrl;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to download and save image', [
+                'url' => $imageUrl,
                 'error' => $e->getMessage()
             ]);
             throw $e;

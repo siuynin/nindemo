@@ -21,7 +21,8 @@ export const Modal: React.FC<ModalProps> = ({
   isFullscreen = false,
   title,
   size = "md",
-}) => { 
+}) => {
+  const { actualTheme } = useTheme();
   const modalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
