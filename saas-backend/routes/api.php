@@ -216,6 +216,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('video')->group(function () {
         Route::post('/generate', [App\Http\Controllers\Api\VideoGenerationController::class, 'generateVideo']);
         Route::get('/generation/{id}', [App\Http\Controllers\Api\VideoGenerationController::class, 'getGenerationStatus']);
+        // Alias để tương thích với frontend dùng '/generation-status/{id}'
+        Route::get('/generation-status/{id}', [App\Http\Controllers\Api\VideoGenerationController::class, 'getGenerationStatus']);
         Route::get('/generations', [App\Http\Controllers\Api\VideoGenerationController::class, 'getUserGenerations']);
         Route::match(['get', 'post'], '/check-processing-status', [App\Http\Controllers\Api\VideoGenerationController::class, 'checkVideoProcessingStatus']);
         Route::post('/test-upload', [App\Http\Controllers\Api\VideoGenerationController::class, 'testUpload']);
