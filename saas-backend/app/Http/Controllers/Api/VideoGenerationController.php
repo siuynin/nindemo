@@ -205,9 +205,14 @@ class VideoGenerationController extends Controller
                 
                 $response = $this->videoGenApiService->generateVideo($videoGenData);
                 
-                // Store generation_id for tracking
+                // Store generation_id for tracking (normalize non-final statuses)
+                $initialStatusRaw = $response['status'] ?? 'pending';
+                $initialStatus = in_array($initialStatusRaw, ['in_progress', 'processing', 'pending', 'queued'])
+                    ? 'processing'
+                    : $initialStatusRaw;
+                
                 $generate->update([
-                    'status' => $response['status'] ?? 'pending',
+                    'status' => $initialStatus,
                     'task_id' => $response['generation_id'],
                     'api_response' => json_encode($response)
                 ]);
@@ -394,12 +399,24 @@ class VideoGenerationController extends Controller
                     
                     // Update local status based on API response
                     if (isset($apiStatus['status'])) {
-                        $newStatus = $apiStatus['status'];
+                        $rawStatus = $apiStatus['status'];
+                        $hasVideoUrl = isset($apiStatus['video_url']) && !empty($apiStatus['video_url']);
+                        
+                        // Normalize status: treat any active states uniformly as 'processing'
+                        // If a video_url exists and it's not an error state, consider it completed
+                        if ($hasVideoUrl && !in_array($rawStatus, ['failed', 'error'])) {
+                            $newStatus = 'completed';
+                        } elseif (in_array($rawStatus, ['in_progress', 'processing', 'pending', 'queued'])) {
+                            $newStatus = 'processing';
+                        } else {
+                            $newStatus = $rawStatus;
+                        }
+                        
                         $updateData = ['status' => $newStatus];
                         
                         // If completed, save the video URL and additional data
                         if ($newStatus === 'completed') {
-                            if (isset($apiStatus['video_url'])) {
+                            if ($hasVideoUrl) {
                                 $originalVideoUrl = $apiStatus['video_url'];
                                 $finalVideoUrl = $originalVideoUrl; // Default to original URL
                                 

@@ -344,7 +344,7 @@ const VideoGeneration: React.FC = () => {
 
       console.log(`Checking batch status for ${unpolledProcessingVideos.length} unpolled videos`);
 
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'}/api/video/check-processing-status`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001/api'}/video/check-processing-status`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
