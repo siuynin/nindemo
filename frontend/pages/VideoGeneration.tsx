@@ -545,10 +545,14 @@ const VideoGeneration: React.FC = () => {
       }
 
       setAlert({ type: 'success', message: 'Video đang được tạo! Kiểm tra kết quả bên dưới.' });
-      
+
+      // Normalize ids and task keys from backend response
+      const genId = (data?.data?.id ?? '').toString();
+      const returnedTaskId = data?.data?.task_id || data?.data?.taskId || data?.data?.generation_id;
+
       // Add to generations list
       const newGeneration: VideoGeneration = {
-        id: data.data.id,
+        id: genId,
         prompt,
         status: 'processing',
         createdAt: new Date().toISOString(),
@@ -560,9 +564,9 @@ const VideoGeneration: React.FC = () => {
       
       setGenerations(prev => [newGeneration, ...prev]);
       
-      // Start polling for this generation
-      if (data.data.taskId) {
-        startPolling(data.data.id, data.data.taskId);
+      // Start polling for this generation using correct task key
+      if (returnedTaskId) {
+        startPolling(genId, returnedTaskId);
       }
       
       // Reset form
