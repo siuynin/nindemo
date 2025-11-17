@@ -24,6 +24,21 @@ const versionTrackingPlugin = () => {
       
       writeFileSync('public/version.json', JSON.stringify(versionData, null, 2));
       console.log(`Build version: ${buildVersion} (${buildDate})`);
+
+      // Inject build version into service worker cache name
+      try {
+        const swPath = path.resolve(process.cwd(), 'public/sw.js');
+        const swContent = readFileSync(swPath, 'utf8');
+        const updated = swContent.replace(/%BUILD_VERSION%/g, buildVersion);
+        if (updated !== swContent) {
+          writeFileSync(swPath, updated);
+          console.log('Injected build version into service worker cache name.');
+        } else {
+          console.warn('No %BUILD_VERSION% placeholder found in public/sw.js');
+        }
+      } catch (err: any) {
+        console.warn('Failed to inject build version into service worker:', err?.message || err);
+      }
     },
     transformIndexHtml(html: string) {
       // Replace placeholders in index.html

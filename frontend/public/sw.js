@@ -1,5 +1,6 @@
 // Service Worker for NDhubs AI PWA
-const CACHE_NAME = 'ndhubs-ai-v1';
+// Cache name includes build version to invalidate old caches on deploy
+const CACHE_NAME = 'ndhubs-ai-%BUILD_VERSION%';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -37,14 +38,32 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
+    }).then(() => {
+      // Immediately take control of pages
+      return self.clients.claim();
     })
   );
+  // Ensure new SW activates immediately
+  self.skipWaiting();
 });
 
 // Fetch event - serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
   // Skip chrome-extension requests to avoid cache errors
   if (event.request.url.startsWith('chrome-extension://')) {
+    return;
+  }
+  
+  // For navigation/document requests, use network-first to always get latest index.html
+  if (event.request.mode === 'navigate' || event.request.destination === 'document') {
+    event.respondWith(
+      fetch(event.request).catch(async () => {
+        // Fallback to cached index.html when offline
+        const cache = await caches.open(CACHE_NAME);
+        const cachedIndex = await cache.match('/index.html');
+        return cachedIndex || new Response('Offline - Please check your connection');
+      })
+    );
     return;
   }
   
