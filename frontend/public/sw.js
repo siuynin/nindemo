@@ -1,6 +1,6 @@
 // Service Worker for NDhubs AI PWA
 // Cache name includes build version to invalidate old caches on deploy
-const CACHE_NAME = 'ndhubs-ai-%BUILD_VERSION%';
+const CACHE_NAME = 'ndhubs-ai-d678eac3';
 const urlsToCache = [
   '/',
   '/index.html',
