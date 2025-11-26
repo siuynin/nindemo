@@ -20,6 +20,9 @@ import App from './App';
 import DebugRunware from './debug-runware';
 import UpScaler from './pages/image-tool/UpScaler';
 import ImageCreatorDebug from './pages/ImageCreatorDebug';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
+import Contact from './pages/Contact';
 
 // Wrapper component for Canvas page
 const CanvasPage: React.FC = () => {
@@ -286,6 +289,36 @@ export const router = createBrowserRouter([
       {
         index: true,
         element: <UserCredit />,
+      },
+    ],
+  },
+  {
+    path: '/privacy',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Privacy />,
+      },
+    ],
+  },
+  {
+    path: '/terms',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Terms />,
+      },
+    ],
+  },
+  {
+    path: '/contact',
+    element: <AdminLayout />,
+    children: [
+      {
+        index: true,
+        element: <Contact />,
       },
     ],
   },

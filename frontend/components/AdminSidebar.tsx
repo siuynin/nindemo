@@ -456,6 +456,17 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             </div>
           </div>
         )}
+
+        {/* Inline Legal Menu */}
+        <div className="mt-4 px-2">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-gray-500 dark:text-gray-400">
+            <Link to="/privacy" onClick={handleMobileLinkClick} className="hover:text-gray-900 dark:hover:text-white">Privacy</Link>
+            <span className="opacity-50">•</span>
+            <Link to="/terms" onClick={handleMobileLinkClick} className="hover:text-gray-900 dark:hover:text-white">Terms</Link>
+            <span className="opacity-50">•</span>
+            <Link to="/contact" onClick={handleMobileLinkClick} className="hover:text-gray-900 dark:hover:text-white">Contact</Link>
+          </div>
+        </div>
       </div>
     </aside>
     

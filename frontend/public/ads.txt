@@ -1,0 +1,4 @@
+# Authorized Digital Sellers for NDhubs AI
+# Learn more: https://iabtechlab.com/ads-txt/
+# Google AdSense
+google.com, pub-1775620387476505, DIRECT, f08c47fec0942fa0
