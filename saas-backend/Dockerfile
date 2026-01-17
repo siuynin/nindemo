@@ -12,8 +12,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 # Kích hoạt mod_rewrite và chỉnh DocumentRoot về /public
 RUN a2enmod rewrite
 
-# Clean all MPMs and enable only prefork
-RUN rm -f /etc/apache2/mods-enabled/mpm_* && a2enmod mpm_prefork
+# Disable conflicting MPMs (ensure only prefork is active)
+RUN a2dismod mpm_event mpm_worker || true
 
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
@@ -38,7 +38,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 EXPOSE 80
 
 # Khởi động Apache và đảm bảo storage được link
-CMD php artisan config:cache && php artisan route:cache && (php artisan storage:link || true) && apache2-foreground
+CMD php artisan config:cache && php artisan route:cache && rm -rf public/storage && php artisan storage:link && apache2-foreground
 
 # Tạo thư mục storage nếu chưa có
 RUN mkdir -p storage/app/public/models/thumbnails
