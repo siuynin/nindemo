@@ -11,6 +11,8 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 
 # Kích hoạt mod_rewrite và chỉnh DocumentRoot về /public
 RUN a2enmod rewrite
+RUN a2dismod mpm_event mpm_worker || true
+RUN a2enmod mpm_prefork
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
