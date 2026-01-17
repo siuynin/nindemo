@@ -12,6 +12,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
 # Kích hoạt mod_rewrite và chỉnh DocumentRoot về /public
 RUN a2enmod rewrite
 
+# Fix conflicting MPMs: remove event/worker and ensure prefork is enabled
+RUN rm -f /etc/apache2/mods-enabled/mpm_event.load /etc/apache2/mods-enabled/mpm_worker.conf \
+    && rm -f /etc/apache2/mods-enabled/mpm_event.conf /etc/apache2/mods-enabled/mpm_worker.load \
+    && a2enmod mpm_prefork
+
 RUN sed -ri -e 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf
 RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
@@ -35,7 +40,7 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 EXPOSE 80
 
 # Khởi động Apache và đảm bảo storage được link
-CMD php artisan config:cache && php artisan route:cache && php artisan storage:link && apache2-foreground
+CMD php artisan config:cache && php artisan route:cache && (php artisan storage:link || true) && apache2-foreground
 
 # Tạo thư mục storage nếu chưa có
 RUN mkdir -p storage/app/public/models/thumbnails
