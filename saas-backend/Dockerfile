@@ -33,8 +33,8 @@ RUN chown -R www-data:www-data storage bootstrap/cache
 
 EXPOSE 80
 
-# Khởi động Apache
-CMD php artisan config:cache && php artisan route:cache && apache2-foreground
+# Khởi động Apache và đảm bảo storage được link
+CMD php artisan config:cache && php artisan route:cache && php artisan storage:link && apache2-foreground
 
 # Tạo thư mục storage nếu chưa có
 RUN mkdir -p storage/app/public/models/thumbnails
